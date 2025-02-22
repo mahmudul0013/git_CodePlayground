@@ -1,2 +1,3 @@
 Random text for checking
 git learning abc
+Tasting new line
