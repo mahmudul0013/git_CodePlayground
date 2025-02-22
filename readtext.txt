@@ -1,2 +1,2 @@
 Random text for checking
-git learning abc
+git learning ab
