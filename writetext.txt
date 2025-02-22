@@ -1,0 +1,2 @@
+tesing write file text.
+new paragraph 1
