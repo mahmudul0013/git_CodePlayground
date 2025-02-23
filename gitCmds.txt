@@ -29,7 +29,7 @@ git push -u origin main
 
 Git commit
 git commit -m "message"
-git commit -a -m "add file + message" (after making file unmarked to added)
+git commit -a -m "add file + message" (will not work if the file us unstaged or not added at .gitignore)
 git commit --amend (to change last commit message)
 
 credential:
