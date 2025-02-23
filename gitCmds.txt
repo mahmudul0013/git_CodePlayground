@@ -41,3 +41,5 @@ git log
 git log --oneline (small log)
 
 git branch --list
+For remane branch
+>git branch -m branch1 1stBranch
