@@ -61,3 +61,14 @@ Possible to revert on that point.
 >git revert <commit ID> then quit by press >wq (it is kind of new commit, not deleting any thing)
 Distructive way:
 >git reset <commit ID> --hard
+
+
+>>>>Track Large Binary Files with Git LFS
+need to add file .gitattributes
+>
+>git lfs track "*.ACD"
+>git add .gitattributes
+.gitattributes file Should contain 
+# Track Rockwell binary files with Git LFS
+*.ACD filter=lfs diff=lfs merge=lfs -text
+*.LDF filter=lfs diff=lfs merge=lfs -text
