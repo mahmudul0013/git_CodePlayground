@@ -48,4 +48,6 @@ Creating new Branch and checkout togather
 To delete git branch
 >git branch -D <branch name> (D for Delete and to delete any branch, have to have checkout main branch)
 
+Merge:
+1st need to checkout the desire branch then merge the branch with it.
 git merge <branch name>
