@@ -1,0 +1,43 @@
+git help config (will open browser)
+git --version
+git -v 
+git config --global user.name "mahmudul hasan"
+git config --global user.email "getentry.russel@gmail.com"
+
+For checking> git config user.name 
+git config user.email
+
+git config --global init.defaultBranch 
+
+Remove .git 
+>>rm -rf <.git or any file folder > 
+
+Initialize git 
+>git init
+
+>git status -s (shortcut of the status)
+
+add file
+>git add . (.for all file)
+>git restore <file name>
+
+Creating repostory:
+git remote add origin <github address>
+git branch -M main <M- for master>
+git push -u origin main
+
+
+Git commit
+git commit -m "message"
+git commit -a -m "add file + message"
+
+
+credential:
+git config credential.helper 'cache --timeout=7800'  (2hr)
+git config --global credential.helper 'cache --timeout=7800'
+
+
+git log
+git log --oneline (small log)
+
+git branch --list
