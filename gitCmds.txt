@@ -36,6 +36,8 @@ credential:
 git config credential.helper 'cache --timeout=7800'  (2hr)
 git config --global credential.helper 'cache --timeout=7800'
 
+Create new file at git repostory
+>touch <File name>
 
 git log
 git log --oneline (small log)
