@@ -29,8 +29,8 @@ git push -u origin main
 
 Git commit
 git commit -m "message"
-git commit -a -m "add file + message"
-
+git commit -a -m "add file + message" (after making file unmarked to added)
+git commit --amend (to change last commit message)
 
 credential:
 git config credential.helper 'cache --timeout=7800'  (2hr)
