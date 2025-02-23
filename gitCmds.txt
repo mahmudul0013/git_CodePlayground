@@ -51,3 +51,7 @@ To delete git branch
 Merge:
 1st need to checkout the desire branch then merge the branch with it.
 git merge <branch name>
+
+To going beck at any specific stage of the project, take the commit ID (short one) and checkout ther,
+>git checking <ID> (Possible to create new branch from the poin also)
+
