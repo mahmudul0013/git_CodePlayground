@@ -54,4 +54,5 @@ git merge <branch name>
 
 To going beck at any specific stage of the project, take the commit ID (short one) and checkout ther,
 >git checking <ID> (Possible to create new branch from the poin also)
+git switch -c <new-branch-name>
 
