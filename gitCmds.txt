@@ -36,6 +36,8 @@ credential:
 git config credential.helper 'cache --timeout=7800'  (2hr)
 git config --global credential.helper 'cache --timeout=7800'
 
+Create new file at git repostory
+>touch <File name>
 
 git log
 git log --oneline (small log)
@@ -59,3 +61,32 @@ Possible to revert on that point.
 >git revert <commit ID> then quit by press >wq (it is kind of new commit, not deleting any thing)
 Distructive way:
 >git reset <commit ID> --hard
+
+
+>>>>Track Large Binary Files with Git LFS
+need to install git LFD and add file .gitattributes
+>git lfs install
+>git lfs track "*.ACD"
+>git add .gitattributes
+.gitattributes file Should contain 
+# Track Rockwell binary files with Git LFS
+*.ACD filter=lfs diff=lfs merge=lfs -text
+*.LDF filter=lfs diff=lfs merge=lfs -text
+
+Example for Rockwell peoject:(.gitattributes file or add at .gitignore)
+
+# Track Rockwell binary files with Git LFS
+*.ACD filter=lfs diff=lfs merge=lfs -text
+*.LDF filter=lfs diff=lfs merge=lfs -text
+
+# Treat L5X files as text for diffing/merging
+*.L5X text
+
+# Normalize line endings for L5X files
+*.L5X text eol=lf
+
+# Mark temporary files as binary
+*.BAK binary
+*.LOG binary
+*.TMP binary
+#END 
