@@ -90,3 +90,9 @@ Example for Rockwell peoject:(.gitattributes file or add at .gitignore)
 *.LOG binary
 *.TMP binary
 #END 
+
+.gitignore for Rockwell
+*.bak*acd
+*.acd.recovery
+*.sem
+*.wrk
