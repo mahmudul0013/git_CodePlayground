@@ -96,3 +96,11 @@ Example for Rockwell peoject:(.gitattributes file or add at .gitignore)
 *.acd.recovery
 *.sem
 *.wrk
+
+Git Reset:
+git reset --hard <commit ID>
+git reset --hard HEAD           (Reset to the Last Committed State)
+git reset --hard origin/main    (Reset to Remote State (Undo Local Commits)
+
+Git Push Hard:
+git push --force
