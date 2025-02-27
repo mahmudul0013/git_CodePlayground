@@ -1,6 +1,6 @@
 git help config (will open browser)
 git --version
-git -v 
+git -v  (shortcut of version)
 git config --global user.name "mahmudul hasan"
 git config --global user.email "getentry.russel@gmail.com"
 
