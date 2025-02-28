@@ -1,3 +1,17 @@
 tesing write file text.
 new paragraph 1
+
+TT:
 TT412_1 unit > control tag
+
+Valve:
+Not use:
+AV660a_1, AV660b_2, 
+
+AOI:
+Alarm_Instance:
+Ack_Hmi, Active_warning, Analog_High, Analog_Low, C_Ack, C_Enable, C_Fb_Cls_Rdy_En, C_Fb_Opn_Run_En, C_Force, C_Mask, C_No, C_Simulate, Class, Digital, One_Hz, OneHz_Pulse, Unack_Warning
+Valve:
+(NOT-USE)ADD_ERROR_OUT, INTCLK, Ons2, TEST(This local instance is not userd anymore)
+CM_AI:
+ADDRESS, EU, MASK, PROFIBUS_READING, PV, PV_INT_REAL, RAW_IN, SPChange, Temp_Ons, TEMP2 ??, 
