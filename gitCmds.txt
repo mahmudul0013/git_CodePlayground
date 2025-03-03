@@ -1,6 +1,6 @@
 git help config (will open browser)
 git --version
-git -v 
+git -v  (shortcut of version)
 git config --global user.name "mahmudul hasan"
 git config --global user.email "getentry.russel@gmail.com"
 
@@ -36,6 +36,8 @@ credential:
 git config credential.helper 'cache --timeout=7800'  (2hr)
 git config --global credential.helper 'cache --timeout=7800'
 
+Create new file at git repostory
+>touch <File name>
 Create new file at git repostory
 >touch <File name>
 
@@ -91,3 +93,16 @@ Example for Rockwell peoject:(.gitattributes file or add at .gitignore)
 *.TMP binary
 #END 
 
+.gitignore for Rockwell
+*.bak*acd
+*.acd.recovery
+*.sem
+*.wrk
+
+Git Reset:
+git reset --hard <commit ID>
+git reset --hard HEAD           (Reset to the Last Committed State)
+git reset --hard origin/main    (Reset to Remote State (Undo Local Commits)
+
+Git Push Hard:
+git push --force
