@@ -1,17 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>git Playground</title>
+    <title>Industrial Machine Control</title>
     <link rel="stylesheet" href="style.css">
-    <script src="main.js" defer></script>
 </head>
-
 <body>
-    <h1>Hello</h1>
-</body>
+    <nav class="navbar">
+        <div class="logo">CONTROL PANEL v1.0</div>
+        <ul>
+            <li><a href="#" onclick="showPage('overview')">Overview</a></li>
+            <li><a href="#" onclick="showPage('alarms')">Alarms</a></li>
+            <li><a href="#" onclick="showPage('logs')">Logs</a></li>
+        </ul>
+    </nav>
 
+    <div class="container">
+        <section id="overview" class="page active">
+            <h1>Process Control Overview</h1>
+            
+            <div class="process-window">
+                <svg width="600" height="300" viewBox="0 0 600 300">
+                    <path id="pipeLine" d="M 50 100 L 250 100 L 250 50 L 500 50 L 500 150" fill="none" stroke="#555" stroke-width="20" />
+                    <path id="fluidFlow" d="M 50 100 L 250 100 L 250 50 L 500 50 L 500 150" fill="none" stroke="#3498db" stroke-width="12" stroke-dasharray="20,10" class="flow-off" />
+                    
+                    <g id="valveSymbol" transform="translate(140, 85)">
+                        <polygon points="0,0 30,30 30,0 0,30" fill="#f39c12" stroke="white" />
+                        <rect x="12" y="-10" width="6" height="15" fill="#fff" />
+                        <text x="-5" y="45" fill="white" font-size="10">CV-101</text>
+                    </g>
+        
+                    <rect x="440" y="150" width="120" height="120" fill="none" stroke="#fff" stroke-width="4" />
+                    <rect id="tankLevel" x="442" y="270" width="116" height="0" fill="#3498db" opacity="0.7" />
+                    <text x="465" y="215" fill="white" font-size="14" font-weight="bold">TANK-01</text>
+                </svg>
+            </div>
+        
+            <div class="dashboard">
+                <div class="status-box">
+                    Status: <span id="machineStatus" class="status-stopped">STOPPED</span>
+                    <div id="animationContainer"></div>
+                </div>
+                
+                <div class="valve-control">
+                    <label>Control Valve Opening: <span id="valveValue">50</span>%</label>
+                    <input type="range" id="valveSlider" min="0" max="100" value="50" oninput="updateValve(this.value)">
+                </div>
+            </div>
+        
+            <div class="timer-panel">
+                <div id="timerDisplay">Duration: 0.00s</div>
+                <select id="unitSelector" onchange="updateTimerDisplay()">
+                    <option value="s">Seconds (s)</option>
+                    <option value="m">Minutes (m)</option>
+                    <option value="h">Hours (h)</option>
+                </select>
+            </div>
+            
+            <div class="control-panel">
+                <button class="btn btn-start" onclick="controlMachine('START')">START</button>
+                <button class="btn btn-hold" onclick="controlMachine('HOLD')">HOLD</button>
+                <button class="btn btn-stop" onclick="controlMachine('STOP')">STOP</button>
+            </div>
+            <div id="alarmAlert">⚠️ SYSTEM FAULT DETECTED: CHECK ALARM PAGE</div>
+        </section>
+
+        <section id="alarms" class="page">
+            <h1>Active Alarms</h1>
+            <table id="alarmTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Severity</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>10:45:12</td>
+                        <td class="critical">CRITICAL</td>
+                        <td>Emergency Stop Pressed</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="logs" class="page">
+            <h1>Event Logs</h1>
+            <ul id="logList">
+                <li>[10:40:01] System Booted Successfully</li>
+            </ul>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>
