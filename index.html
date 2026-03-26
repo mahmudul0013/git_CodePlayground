@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Scrolling Ticker Bar -->
+  <div id="ticker-bar">
+    <div class="ticker-track" id="ticker-track">
+      <span class="ticker-item loading">Connecting to market data...</span>
+    </div>
+  </div>
+
+  <!-- App Layout -->
+  <div id="app">
+
+    <!-- Sidebar Watchlist -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Watchlist</span>
+      </div>
+      <div id="watchlist-container">
+        <div class="loading-row">Loading...</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content">
+
+      <!-- Header -->
+      <header id="main-header">
+        <div class="header-left">
+          <div class="logo">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect width="20" height="20" rx="4" fill="#2962FF"/>
+              <polyline points="3,14 7,9 11,12 17,5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="logo-text">TradeView</span>
+          </div>
+        </div>
+        <div class="header-center">
+          <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="portfolio">Portfolio</button>
+            <button class="nav-tab" data-tab="stocks">Stocks</button>
+            <button class="nav-tab" data-tab="funds">Funds</button>
+          </nav>
+        </div>
+        <div class="header-right">
+          <button id="currency-toggle" class="currency-btn" title="Toggle display currency">
+            <span id="currency-label-left" class="cur-active">SEK</span>
+            <span class="toggle-sep">⇄</span>
+            <span id="currency-label-right" class="cur-inactive">USD</span>
+          </button>
+          <div class="status-bar">
+            <span class="dot live" id="status-dot"></span>
+            <span id="last-updated-time">Connecting...</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable body -->
+      <div id="scroll-body">
+
+        <!-- Summary Cards -->
+        <section id="summary-cards">
+          <div class="card">
+            <div class="card-label">Total Portfolio Value</div>
+            <div class="card-value" id="cv-total">—</div>
+            <div class="card-sub" id="cv-total-alt">—</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Today's P&amp;L</div>
+            <div class="card-value" id="cv-day">—</div>
+            <div class="card-sub" id="cv-day-pct">—</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Total Return</div>
+            <div class="card-value" id="cv-return">—</div>
+            <div class="card-sub" id="cv-return-pct">—</div>
+          </div>
+          <div class="card">
+            <div class="card-label">USD/SEK Rate</div>
+            <div class="card-value" id="cv-usdsek">—</div>
+            <div class="card-sub" id="cv-allocation">EU: —% / US: —%</div>
+          </div>
+        </section>
+
+        <!-- Tomorrow's Signals -->
+        <section id="predictions-section">
+          <div class="pred-header">
+            <h2 class="section-title">Tomorrow's Signals
+              <span class="pred-badge" id="pred-badge">Analyzing…</span>
+            </h2>
+            <span class="pred-meta" id="pred-meta">Based on pivot points, RSI &amp; moving averages · from your portfolio</span>
+          </div>
+          <div class="pred-grid">
+            <div class="pred-panel pred-up">
+              <div class="pred-panel-title">▲ Top 5 Likely Up</div>
+              <div id="pred-up-list"><div class="pred-loading">Fetching data…</div></div>
+            </div>
+            <div class="pred-panel pred-down">
+              <div class="pred-panel-title">▼ Top 5 Likely Down</div>
+              <div id="pred-down-list"><div class="pred-loading">Fetching data…</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Holdings -->
+        <div id="holdings">
+
+          <!-- Stocks Table -->
+          <div class="table-section" id="stocks-section">
+            <div class="table-header-row">
+              <h2 class="section-title">Stocks &amp; ETFs <span class="count-badge" id="stocks-count"></span></h2>
+              <div class="table-controls">
+                <div class="filter-tabs" id="currency-filter-tabs">
+                  <button class="filter-tab active" data-filter="ALL">All</button>
+                  <button class="filter-tab" data-filter="SEK">SEK</button>
+                  <button class="filter-tab" data-filter="USD">USD</button>
+                  <button class="filter-tab" data-filter="EUR">EUR</button>
+                  <button class="filter-tab" data-filter="NOK">NOK</button>
+                </div>
+                <input type="text" id="stocks-search" class="search-input" placeholder="Search name or ticker…">
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="stocks-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th class="col-logo"></th>
+                    <th class="col-name sortable" data-col="name">Name <span class="sort-icon">↕</span></th>
+                    <th class="col-cur" data-col="currency">Cur</th>
+                    <th class="col-num sortable" data-col="qty">Qty <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="gav">GAV <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="price">Price <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="change">Day % <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="value">Value <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="returnPct">Return % <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="returnAbs">Return <span class="sort-icon">↕</span></th>
+                    <th class="col-spark">7D</th>
+                  </tr>
+                </thead>
+                <tbody id="stocks-tbody">
+                  <tr><td colspan="11" class="loading-row">Loading portfolio data…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Funds Table -->
+          <div class="table-section" id="funds-section">
+            <div class="table-header-row">
+              <h2 class="section-title">Funds <span class="count-badge" id="funds-count"></span></h2>
+              <div class="table-controls">
+                <input type="text" id="funds-search" class="search-input" placeholder="Search funds…">
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="funds-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th class="col-logo"></th>
+                    <th class="col-name sortable" data-col="name">Name <span class="sort-icon">↕</span></th>
+                    <th class="col-cur" data-col="currency">Cur</th>
+                    <th class="col-num sortable" data-col="qty">Units <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="gav">Avg NAV <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="price">NAV <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="change">Day % <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="value">Value <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="returnPct">Return % <span class="sort-icon">↕</span></th>
+                    <th class="col-num sortable" data-col="returnAbs">Return <span class="sort-icon">↕</span></th>
+                    <th class="col-spark">7D</th>
+                  </tr>
+                </thead>
+                <tbody id="funds-tbody">
+                  <tr><td colspan="11" class="loading-row">Loading fund data…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div><!-- /holdings -->
+      </div><!-- /scroll-body -->
+    </main>
+  </div><!-- /app -->
+
+  <script src="app.js"></script>
+</body>
+</html>
