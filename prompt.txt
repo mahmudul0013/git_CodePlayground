@@ -1,0 +1,43 @@
+Siemens TIA portal 18: I export DBs from the TIA portal 18 project to the VS code project folder. Need to cross-check those DBs default value settings for the insteunet instances.
+for the system family Brew follow the SysConfig_Lib_Brew.db
+the souece of true is comeing from hardware specification Excel testBrew.xlsx
+where the rows are different tab label and column is indicating system family like BREW350, BREW 450 etc.
+you should see the DB comments and should discover the MachineConfig[7] is for Brew 350.
+
+we will looking for the bool tag setting on the DB for respective instrument what is given at xlsx.
+ENABLE  : Bool;
+EXIST   : Bool;
+
+you need to read thorough the full DB structure and discover& brows the MachineConfig[7]>Unit Process or any > every EM-XXX (like EM-201)>....> finally the ENABLE and EXIST tag.
+   
+you should read the general default value also somewhere you found in DB.
+If tag name is not available or not bound in excel or in DB use the default setting 
+
+ENABLE  : False;
+EXIST   : False;
+
+Consider excel tag reading rules, 
+IF  marked 'X' 
+	ENABLE = true and  EXIST = true;
+if marked 'o' 
+	ENABLE = true and  EXIST = false;
+if marked enpty or sapre 
+	ENABLE = false and  EXIST = false;
+   
+VLV_W_FB logic based on Function column:
+    FB OPN/FB CLS = X or o → VLV_W_FB=True  
+    Both empty → VLV_W_FB=False
+
+If excel has commens on any cell, the like tagLabel PCV22X-1 (read the comments for the value of X, this might be 0,1 ,2 or any thing what mention on the comments) 
+	then map the value what is given on BREW350 column according to the comments of the cell. 
+		e.g PCV22X-1 ( here cell comments X is 0 or 1) the corronponding column value (X with comments PCV220-1, means ENABLE=EXIST=true for PCV220-1 for BREW350)
+	
+   
+
+We want to read all the DB and check this two value mismatch . Example first compare for BREW350(fanily name) and Brew 450
+the hardware specification excel showing the family name (BREW350 or etc) and marked 'X' or 'o' or empty.
+
+Finally create conplete the excel with all compararison. produce an updated SysConfig_Lib_Brew.db that i will import on the TIA portal project directly to run the project with out any other issue.
+	
+		
+now read the promt and by deep analysis update the wishList.md and make a clean DesignStructure.md plan the excicute the plan and do the assignment. 
