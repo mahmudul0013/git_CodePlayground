@@ -75,6 +75,42 @@ Funds section below stocks section.
 - News feed widget per stock
 - Target price / alerts
 
+## Phase 3 — Implemented Features (2026-03-30)
+
+### Nordnet Portfolio Sync (`nordnet_sync.py`)
+- **File-watch mode**: Monitors your Downloads folder for newly exported Nordnet CSVs
+  (`aktier_kontonummer-{account}_*_stocks.csv` / `fonder_kontonummer-{account}_*_funds.csv`)
+  and copies the newest file to `portfolio_stocks.csv` / `portfolio_funds.csv`.
+- **API mode**: Fetches live positions from Nordnet REST API using a session token
+  (obtained from browser DevTools after logging in with BankID).
+- **One-shot copy**: Detects existing dated CSVs in the project folder and promotes
+  the newest ones to the fixed filenames used by the dashboard.
+
+Usage:
+```
+python nordnet_sync.py            # copy newest existing CSVs
+python nordnet_sync.py --watch    # auto-copy from Downloads (keep running)
+python nordnet_sync.py --api      # live fetch via Nordnet API
+```
+
+### Auto Portfolio Reload
+- Dashboard re-reads CSVs every **5 minutes** automatically (no browser refresh needed).
+- **Refresh Portfolio** button in the header triggers an immediate reload + price update.
+- Falls back gracefully from `portfolio_stocks.csv` to the last Nordnet-dated export.
+
+### Last Buy Tracking
+- After each CSV reload the dashboard compares the new holdings against the previous
+  snapshot stored in `localStorage`.
+- If the quantity of any position increased, the number of new shares and the implied
+  buy price are calculated from the shift in weighted-average price:
+  `buyPrice = (newQty × newGAV − oldQty × oldGAV) / addedShares`
+- The result is shown **inline** in the Qty and Price columns in gold text:
+  - Qty column: `5 (+2)` — current total with new shares in brackets
+  - Price column: `252.00 (248.50)` — current price with last-buy price in brackets
+- Data persists across page loads (stored in `localStorage['portfolio_lastbuy']`).
+
+---
+
 ## Phase 2 — Implemented Features
 
 ### Tomorrow's Signals Widget

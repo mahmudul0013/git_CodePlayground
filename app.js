@@ -8,8 +8,11 @@
 // CONFIG
 // ────────────────────────────────────────────────────────────
 const CFG = {
-  stocksFile: 'aktier_kontonummer-66262387_2026-03-26_stocks.csv',
-  fundsFile:  'fonder_kontonummer-66262387_2026-03-26_funds.csv',
+  // Fixed-name files written by nordnet_sync.py; fallback = last Nordnet export
+  stocksFile:         'portfolio_stocks.csv',
+  fundsFile:          'portfolio_funds.csv',
+  stocksFileFallback: 'aktier_kontonummer-66262387_2026-03-26_stocks.csv',
+  fundsFileFallback:  'fonder_kontonummer-66262387_2026-03-26_funds.csv',
 
   yahooBase:  'https://query1.finance.yahoo.com',
   corsProxy:  'https://corsproxy.io/?url=',
@@ -19,8 +22,9 @@ const CFG = {
   tickerLabels:  { '^OMX':'OMXS30', '^GDAXI':'DAX', 'ES=F':'SP500F',
                    'GC=F':'GOLD', 'USDSEK=X':'USD/SEK', 'EURUSD=X':'EUR/USD' },
 
-  refreshMs: 60_000,    // live-price refresh interval
-  sparkLimit: 25,       // max sparklines to fetch (rate-limit caution)
+  refreshMs:    60_000,       // live-price refresh interval (ms)
+  csvRefreshMs: 5 * 60_000,  // portfolio CSV re-check interval (ms)
+  sparkLimit:   25,           // max sparklines to fetch (rate-limit caution)
 };
 
 // ────────────────────────────────────────────────────────────
@@ -192,7 +196,9 @@ const S = {
   fundsSearch:   '',
   stockSort:     { col: 'value', dir: 'desc' },
   fundsSort:     { col: 'value', dir: 'desc' },
-  fx: { USD: 9.35, EUR: 10.81, NOK: 0.965, DKK: 1.446, CAD: 6.77 },
+  fx:            { USD: 9.35, EUR: 10.81, NOK: 0.965, DKK: 1.446, CAD: 6.77 },
+  lastBuy:       {},   // name → { qty, price, date } — most-recent purchase detected
+  _snapshot:     {},   // previous-load snapshot used for buy detection
 };
 
 // ────────────────────────────────────────────────────────────
@@ -292,6 +298,80 @@ function buildFund(raw) {
     returnSEK:        parseSE(retAbsCol   ? raw[retAbsCol]   : '0'),
     ticker: null,
   };
+}
+
+// ────────────────────────────────────────────────────────────
+// LAST BUY SNAPSHOT TRACKING
+// Persists portfolio state in localStorage so new purchases
+// are detected on next CSV load and shown as (+qty) / (price)
+// ────────────────────────────────────────────────────────────
+function loadLastBuyData() {
+  try {
+    S.lastBuy   = JSON.parse(localStorage.getItem('portfolio_lastbuy')  || '{}');
+    S._snapshot = JSON.parse(localStorage.getItem('portfolio_snapshot') || '{}');
+  } catch (_) {
+    S.lastBuy   = {};
+    S._snapshot = {};
+  }
+}
+
+/** Compare current holdings to snapshot; record any qty increases as new buys. */
+function detectAndSaveBuys() {
+  const snap = S._snapshot;
+  [...S.stocks, ...S.funds].forEach(item => {
+    const prev = snap[item.name];
+    if (prev && item.qty > prev.qty + 0.0001) {
+      const added    = item.qty - prev.qty;
+      // Derive last-buy price from the shift in weighted-average:
+      // newAvg * newQty = oldAvg * oldQty + buyPrice * added
+      const buyPrice = (item.qty * item.gav - prev.qty * prev.gav) / added;
+      S.lastBuy[item.name] = {
+        qty:   added,
+        price: buyPrice > 0 ? buyPrice : item.gav,
+        date:  new Date().toLocaleDateString('sv-SE'),
+      };
+    }
+  });
+  localStorage.setItem('portfolio_lastbuy', JSON.stringify(S.lastBuy));
+  // Save new snapshot for next comparison
+  const newSnap = {};
+  [...S.stocks, ...S.funds].forEach(item => {
+    newSnap[item.name] = { qty: item.qty, gav: item.gav };
+  });
+  S._snapshot = newSnap;
+  localStorage.setItem('portfolio_snapshot', JSON.stringify(newSnap));
+}
+
+// ────────────────────────────────────────────────────────────
+// CSV LOADING WITH FALLBACK + PORTFOLIO RELOAD
+// ────────────────────────────────────────────────────────────
+async function loadCSVWithFallback(primary, fallback) {
+  try { return await loadCSV(primary); }
+  catch (_) {
+    if (fallback) return await loadCSV(fallback);
+    throw _;
+  }
+}
+
+/** Re-fetch CSVs, detect new buys, re-render tables + refresh prices. */
+async function reloadPortfolio() {
+  setStatus('loading', 'Refreshing portfolio…');
+  try {
+    const [stockRows, fundRows] = await Promise.all([
+      loadCSVWithFallback(CFG.stocksFile, CFG.stocksFileFallback),
+      loadCSVWithFallback(CFG.fundsFile,  CFG.fundsFileFallback),
+    ]);
+    S.stocks = stockRows.map(buildStock).filter(s => s.name);
+    S.funds  = fundRows.map(buildFund).filter(f => f.name);
+    S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
+    S.funds.forEach(f  => { f.ticker = resolveTickerFor(f); });
+    detectAndSaveBuys();
+    renderAll();
+    await refreshPrices();
+  } catch (err) {
+    console.error('[reloadPortfolio]', err);
+    setStatus('', 'Refresh failed: ' + err.message);
+  }
 }
 
 // ────────────────────────────────────────────────────────────
@@ -691,6 +771,16 @@ function stockRow(s) {
   const retDisp   = displayAmt(s.returnSEK);
   const liveMark  = s.livePrice ? '' : 'style="opacity:0.7"';
 
+  // Last-buy annotation: show (+qty) and (buy price) if a new purchase was detected
+  const lb       = S.lastBuy[s.name];
+  const qtyDec   = s.qty % 1 !== 0 ? 4 : 0;
+  const qtyCell  = lb
+    ? `${fmtNum(s.qty, qtyDec)}<span class="lb-tag">(+${fmtNum(lb.qty, lb.qty % 1 ? 4 : 0)})</span>`
+    : fmtNum(s.qty, qtyDec);
+  const priceCell = lb
+    ? `${fmtNum(price, 2)}<span class="lb-tag">(${fmtNum(lb.price, 2)})</span>`
+    : fmtNum(price, 2);
+
   return `<tr>
     <td class="col-logo" id="sl-${idx}"></td>
     <td class="col-name">
@@ -700,9 +790,9 @@ function stockRow(s) {
       </div>
     </td>
     <td class="col-cur"><span class="cur-badge">${s.currency}</span></td>
-    <td>${fmtNum(s.qty, s.qty % 1 !== 0 ? 4 : 0)}</td>
+    <td>${qtyCell}</td>
     <td ${liveMark}>${fmtNum(s.gav, 2)}</td>
-    <td ${liveMark}>${fmtNum(price, 2)}</td>
+    <td ${liveMark}>${priceCell}</td>
     <td class="${pctClass(dayPct)}">${fmtPct(dayPct)}</td>
     <td>${valDisp}</td>
     <td class="${pctClass(s.returnPct)}">${fmtPct(s.returnPct)}</td>
@@ -757,6 +847,14 @@ function fundRow(f) {
   const valDisp  = displayAmt(f.valueSEK);
   const retDisp  = displayAmt(f.returnSEK);
 
+  const lb        = S.lastBuy[f.name];
+  const qtyCell   = lb
+    ? `${fmtNum(f.qty, 4)}<span class="lb-tag">(+${fmtNum(lb.qty, 4)})</span>`
+    : fmtNum(f.qty, 4);
+  const priceCell = lb
+    ? `${fmtNum(f.price, 2)}<span class="lb-tag">(${fmtNum(lb.price, 2)})</span>`
+    : fmtNum(f.price, 2);
+
   return `<tr>
     <td class="col-logo" id="fl-${idx}"></td>
     <td class="col-name">
@@ -765,9 +863,9 @@ function fundRow(f) {
       </div>
     </td>
     <td class="col-cur"><span class="cur-badge">${f.currency}</span></td>
-    <td>${fmtNum(f.qty, 4)}</td>
+    <td>${qtyCell}</td>
     <td>${fmtNum(f.gav, 2)}</td>
-    <td>${fmtNum(f.price, 2)}</td>
+    <td>${priceCell}</td>
     <td class="${pctClass(f.dayChange)}">${fmtPct(f.dayChange)}</td>
     <td>${valDisp}</td>
     <td class="${pctClass(f.returnPct)}">${fmtPct(f.returnPct)}</td>
@@ -1225,6 +1323,9 @@ function bindEvents() {
     });
   });
 
+  // Manual portfolio refresh button
+  document.getElementById('refresh-portfolio-btn')?.addEventListener('click', reloadPortfolio);
+
   // Nav tabs — Portfolio shows everything; Stocks/Funds filter visible sections
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1257,11 +1358,14 @@ function bindEvents() {
 async function init() {
   setStatus('loading', 'Loading portfolio…');
 
+  // Load persisted last-buy data from previous session
+  loadLastBuyData();
+
   try {
-    // Load and parse both CSV files in parallel
+    // Load and parse both CSV files in parallel (try fixed names, fallback to dated)
     const [stockRows, fundRows] = await Promise.all([
-      loadCSV(CFG.stocksFile),
-      loadCSV(CFG.fundsFile),
+      loadCSVWithFallback(CFG.stocksFile, CFG.stocksFileFallback),
+      loadCSVWithFallback(CFG.fundsFile,  CFG.fundsFileFallback),
     ]);
 
     S.stocks = stockRows.map(buildStock).filter(s => s.name);
@@ -1270,6 +1374,9 @@ async function init() {
     // Resolve Yahoo Finance tickers
     S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
     S.funds.forEach(f  => { f.ticker = resolveTickerFor(f); });
+
+    // Detect any new purchases since last session
+    detectAndSaveBuys();
 
     // First render with CSV data only
     renderAll();
@@ -1285,8 +1392,11 @@ async function init() {
     loadSparklines();
     loadPredictions();
 
-    // Auto-refresh every minute
+    // Auto-refresh prices every minute
     setInterval(refreshPrices, CFG.refreshMs);
+
+    // Auto-reload portfolio CSVs every 5 minutes (picks up nordnet_sync.py output)
+    setInterval(reloadPortfolio, CFG.csvRefreshMs);
 
   } catch (err) {
     console.error('[init]', err);
