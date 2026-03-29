@@ -32,8 +32,9 @@ OUT_XLSX   = "InstrumentStatusComparison.xlsx"
 
 # Map Excel column header → (MachineConfig index, 1-based column index in Excel)
 FAMILIES = {
-    "BREW 350": {"mc_idx": 7, "col_idx": 4},   # column D
+    "BREW 350": {"mc_idx": 7, "col_idx": 4},   # column D (auto-detected from header)
     "BREW 450": {"mc_idx": 8, "col_idx": 5},   # column E
+    "BREW 600": {"mc_idx": 9, "col_idx": 7},   # column G
 }
 
 # ── Tag path map: Excel label → (unit, em, db_field, is_vlv) ─────────────────
