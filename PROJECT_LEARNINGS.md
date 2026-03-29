@@ -448,7 +448,36 @@ EM_UNIT_MAP = {
 
 ---
 
-## 12. Quick-Reference Cheatsheet
+## 12. MachineConfig Index (mc_idx) Reference
+
+### How TypeNo works
+- `TypeNo` in the DB is the **HSS (Hardware Specification Sheet) ID number** — Alfa Laval's internal serial identifier for a machine variant.
+- The DB has **no human-readable name** stored for each index. The mapping to "BREW 350", "BREW 450" etc. comes from Alfa Laval's HSS documentation and the Excel column headers.
+- `mc_idx` always equals `TypeNo` — `MachineConfig[7]` has `TypeNo := 7`.
+
+### MachineConfig fields that help identify a machine
+| DB Field | Comment | Values |
+|---|---|---|
+| `Family` | Machine product line | 1=Brew, 2=Clara, 3=CR, 4=PurePuls, 5=KR, 6=Protein, 7=VOT, 8=Dairy |
+| `TypeNo` | **HSS ID** — equals mc_idx | 7, 8, 9, … |
+| `Range` | Factory/size range | 1=TumbaL, 2=PuneS |
+| `Frame` | Separator frame size | 1=18, 2=18e, 3=15, 4=13, 5=10, 6=07, 7=04, 8=LD |
+| `DchSystem` | Discharge system type | 1=Dosing ring, 2=OWMC, 3=OWMCe, 4=OWM II |
+| `eMotion` | eMotion option | 0=Not compatible, 1=Compatible, 2=Installed |
+
+### Known Brew family mapping (update from HSS documentation)
+| mc_idx | TypeNo | Family Name | Range | Frame | DchSystem | Notes |
+|---|---|---|---|---|---|---|
+| 7 | 7 | **BREW 350** | TumbaL | 18 | OWMC | — |
+| 8 | 8 | **BREW 450** | TumbaL | 18 | OWMCe | eMotion compatible |
+| 9 | 9 | **BREW 600** | TumbaL | 18 | OWMCe | eMotion compatible |
+| 10–14 | 10–14 | _(update from HSS)_ | TumbaL | 18–18e | OWMCe | — |
+
+> **To find mc_idx for a new family:** Open the `.db` file, search for `TypeNo :=` blocks, match the `Frame` + `DchSystem` + option flags to the known machine spec, then use that `MachineConfig[N]` number as `mc_idx`.
+
+---
+
+## 13. Quick-Reference Cheatsheet
 
 ```
 # Run the full pipeline
