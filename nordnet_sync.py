@@ -67,8 +67,8 @@ def load_env():
 
 # ── File-watcher mode ──────────────────────────────────────────────────────────
 
-STOCKS_PATTERN = f'aktier_kontonummer-{ACCOUNT_NUM}_*_stocks.csv'
-FUNDS_PATTERN  = f'fonder_kontonummer-{ACCOUNT_NUM}_*_funds.csv'
+STOCKS_PATTERN = f'aktier_kontonummer-{ACCOUNT_NUM}_*.csv'
+FUNDS_PATTERN  = f'fonder_kontonummer-{ACCOUNT_NUM}_*.csv'
 
 def find_latest(folder: Path, pattern: str) -> Path | None:
     matches = sorted(folder.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
