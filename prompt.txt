@@ -8,7 +8,7 @@ we will looking for the bool tag setting on the DB for respective instrument wha
 ENABLE  : Bool;
 EXIST   : Bool;
 
-you need to read thorough the full DB structure and discover& brows the MachineConfig[7]>Unit Process or any > every EM-XXX (like EM-201)>....> finally the ENABLE and EXIST tag.
+you need to read thorough the full DB structure and discover e.g. brows the MachineConfig[7]>Unit Process or any > every EM-XXX (like EM-201)>....> finally the ENABLE and EXIST tag.
    
 you should read the general default value also somewhere you found in DB.
 If tag name is not available or not bound in excel or in DB use the default setting 
@@ -16,6 +16,12 @@ If tag name is not available or not bound in excel or in DB use the default sett
 ENABLE  : False;
 EXIST   : False;
 
+IF any tagLabel has option description on excel like BLENDING, RECIRCULATION, COOLING RECIRCULATION, SRU, FEED PUMP
+and the value marked 'o' 
+then, 
+	ENABLE = false and  EXIST = false;
+
+otherwise,
 Consider excel tag reading rules, 
 IF  marked 'X' 
 	ENABLE = true and  EXIST = true;
@@ -24,8 +30,8 @@ if marked 'o'
 if marked enpty or sapre 
 	ENABLE = false and  EXIST = false;
    
-VLV_W_FB logic based on Function column:
-    FB OPN/FB CLS = X or o → VLV_W_FB=True  
+for AV valve, VLV_W_FB logic based on Function column:
+    FB OPN/FB CLS = 'X' or 'o' → VLV_W_FB=True  
     Both empty → VLV_W_FB=False
 
 If excel has commens on any cell, the like tagLabel PCV22X-1 (read the comments for the value of X, this might be 0,1 ,2 or any thing what mention on the comments) 

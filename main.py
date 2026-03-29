@@ -241,9 +241,10 @@ def parse_excel(path):
     wb = openpyxl.load_workbook(path)
     ws = wb.active
 
-    # Find header row and family columns
+    # Find header row, family columns, and optional "Option" descriptor column
     family_cols = {}   # {col_idx (1-based): family_name}
-    header_row = None
+    option_col  = None # col_idx (1-based) for the "Option" descriptor column
+    header_row  = None
     for row in ws.iter_rows(min_row=1, max_row=10):
         for cell in row:
             if cell.value and isinstance(cell.value, str):
@@ -251,6 +252,8 @@ def parse_excel(path):
                 if v in FAMILIES:
                     family_cols[cell.column] = v
                     header_row = cell.row
+                elif v.lower() == "option":
+                    option_col = cell.column
 
     if not family_cols:
         raise ValueError("No family columns found in Excel")
@@ -286,7 +289,27 @@ def parse_excel(path):
                         break
             fam_vals[fam_name] = {"val": raw_val, "comment": comment}
 
-        raw_rows.append((tag_label, func, fam_vals))
+        # Read option descriptor column if present (e.g. "Option" column = BLENDING, SRU...)
+        opt_desc = ""
+        if option_col:
+            opt_desc = str(row[option_col - 1].value or "").strip().upper()
+
+        raw_rows.append((tag_label, func, fam_vals, opt_desc))
+
+    # Identify option-type tags via the dedicated "Option" column (col D in updated Excel)
+    # or, as fallback, if any family cell value IS one of these descriptors (legacy layout).
+    # For such tags, 'o' means the option module is NOT installed → ENABLE=False, EXIST=False.
+    OPTION_MARKERS = {"BLENDING", "RECIRCULATION", "COOLING RECIRCULATION", "SRU", "FEED PUMP"}
+    option_tags = set()
+    for _tag, _func, _fam_vals, _opt_desc in raw_rows:
+        if _opt_desc in OPTION_MARKERS:
+            option_tags.add(_tag)
+        else:
+            # Legacy fallback: option description in a family cell itself
+            for _fv in _fam_vals.values():
+                if str(_fv.get("val") or "").strip().upper() in OPTION_MARKERS:
+                    option_tags.add(_tag)
+                    break
 
     # Aggregate rows by tag into valve (multi-row) vs non-valve (single row)
     valve_rows = defaultdict(lambda: {"fb_opn": {}, "fb_cls": {}, "act": {}})
@@ -294,7 +317,7 @@ def parse_excel(path):
 
     AV_FUNCS = {"FB OPN", "FB CLS", "ACT"}
 
-    for tag_label, func, fam_vals in raw_rows:
+    for tag_label, func, fam_vals, _opt in raw_rows:
         func_up = func.upper().strip()
         is_av = tag_label.upper().startswith("AV")
 
@@ -315,19 +338,26 @@ def parse_excel(path):
                 elif non_valve_rows[tag_label]["fam_vals"][fam]["val"] is None and fv["val"] is not None:
                     non_valve_rows[tag_label]["fam_vals"][fam] = fv
 
-    def xlval_to_enable_exist(raw_val):
+    def xlval_to_enable_exist(raw_val, is_option=False):
         if raw_val is None:
             return False, False
         v = str(raw_val).strip().lower()
         if v == "x":
             return True, True
         elif v == "o":
+            if is_option:
+                return False, False   # option module not selected → both off
             return True, False
         return False, False
 
-    def has_fb(fam_vals, fam_name):
+    def has_fb(fam_vals, fam_name, is_option=False):
         fv = fam_vals.get(fam_name, {}).get("val")
-        return fv is not None and str(fv).strip().lower() in ("x", "o")
+        if fv is None:
+            return False
+        v = str(fv).strip().lower()
+        if is_option and v == "o":
+            return False   # option module 'o' = not installed → no feedback
+        return v in ("x", "o")
 
     families_data = {fam: {} for fam in family_cols.values()}
 
@@ -338,8 +368,9 @@ def parse_excel(path):
             fb_opn   = rows["fb_opn"].get(fam_name, {"val": None})
             fb_cls   = rows["fb_cls"].get(fam_name, {"val": None})
 
-            enable, exist = xlval_to_enable_exist(act_fv.get("val"))
-            vlv_w_fb = has_fb(rows["fb_opn"], fam_name) or has_fb(rows["fb_cls"], fam_name)
+            is_opt   = tag_label in option_tags
+            enable, exist = xlval_to_enable_exist(act_fv.get("val"), is_option=is_opt)
+            vlv_w_fb = has_fb(rows["fb_opn"], fam_name, is_option=is_opt) or has_fb(rows["fb_cls"], fam_name, is_option=is_opt)
 
             resolved = act_fv.get("comment") or tag_label
 
@@ -361,7 +392,7 @@ def parse_excel(path):
             fv = info["fam_vals"].get(fam_name, {"val": None, "comment": None})
             raw_val = fv.get("val")
             comment = fv.get("comment")
-            enable, exist = xlval_to_enable_exist(raw_val)
+            enable, exist = xlval_to_enable_exist(raw_val, is_option=(tag_label in option_tags))
             resolved = comment if comment else tag_label
 
             families_data[fam_name][tag_label] = {

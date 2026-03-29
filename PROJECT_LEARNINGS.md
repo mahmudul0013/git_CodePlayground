@@ -148,12 +148,25 @@ Cell comments in TIA Portal-related Excel files may contain boilerplate prefixes
 
 ### Excel value → ENABLE / EXIST
 
-| Cell value | ENABLE | EXIST |
-|------------|--------|-------|
-| `X` or `x` | True | True |
-| `o` or `O` | True | False |
-| empty / None | False | False |
-| `SPARE` | skip row | — |
+| Cell value | ENABLE | EXIST | Notes |
+|------------|--------|-------|-------|
+| `X` or `x` | True | True | Always |
+| `o` or `O` | True | False | Standard rule |
+| `o` (option-type tag) | False | False | See Option Override Rule below |
+| empty / None | False | False | |
+| `SPARE` | skip row | — | Row skipped entirely |
+
+### Option Module Override Rule
+
+If any family cell for a tag contains one of these **option description** strings:
+`BLENDING`, `RECIRCULATION`, `COOLING RECIRCULATION`, `SRU`, `FEED PUMP`
+— the tag is classified as **option-type**.
+
+For option-type tags, `o` in any family column means "option module not installed for this variant" → **ENABLE=False, EXIST=False** (overrides the standard `o` rule). `X` still gives True/True.
+
+The same logic applies to VLV_W_FB: `o` on FB OPN/CLS rows of an option-type valve → VLV_W_FB=False.
+
+**Implementation:** `option_tags` set is built inside `parse_excel()` before the aggregation loop. Both `xlval_to_enable_exist(val, is_option)` and `has_fb(fam_vals, fam_name, is_option)` accept an `is_option` flag.
 
 ### AV Valve multi-row processing
 

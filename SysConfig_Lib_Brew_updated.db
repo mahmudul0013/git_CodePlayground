@@ -1276,22 +1276,12 @@ BEGIN
    MachineConfig[7].Communications."EM - BC-COMM".BCO3 := 8;
    MachineConfig[7].Communications."EM - BC-COMM".ALARM := 8;
    // === CW auto-patched for MachineConfig[7] ===
-   MachineConfig[7]."Options"."EM - 208"."AV208-1".CW.ENABLE := True;
-   MachineConfig[7]."Options"."EM - 208"."FCV208-1".CW.ENABLE := True;
-   MachineConfig[7]."Options"."EM - 208"."FIT208-1".CW.ENABLE := True;
-   MachineConfig[7]."Options"."EM - 208"."P208-1".CW.ENABLE := True;
+   MachineConfig[7]."Options"."EM - 208"."AV208-1".CW.VLV_W_FB := False;
    MachineConfig[7]."Options"."EM - 208"."P208-1".CW.EXIST := False;
-   MachineConfig[7]."Options"."EM - 208"."QT220-2".CW.ENABLE := True;
-   MachineConfig[7]."Options"."EM - 208"."QT220-2_OK".CW.ENABLE := True;
-   MachineConfig[7]."Options"."EM - 210"."AV210-1".CW.ENABLE := True;
    MachineConfig[7]."Options"."EM - 210"."AV210-1".CW.EXIST := False;
-   MachineConfig[7]."Options"."EM - 210"."FCV210-1".CW.ENABLE := True;
-   MachineConfig[7]."Options"."EM - 430"."AV430-1".CW.ENABLE := True;
+   MachineConfig[7]."Options"."EM - 210"."AV210-1".CW.VLV_W_FB := False;
    MachineConfig[7]."Options"."EM - 430"."AV430-1".CW.EXIST := False;
-   MachineConfig[7]."Options"."EM - 430"."FCV430-1".CW.ENABLE := True;
-   MachineConfig[7]."Options"."EM - 430"."P406-1".CW.ENABLE := True;
    MachineConfig[7]."Options"."EM - 430"."P406-1".CW.EXIST := False;
-   MachineConfig[7]."Options"."EM - 430"."TT406-1".CW.ENABLE := True;
    MachineConfig[7]."Options"."EM - 463"."AV305-2".CW.EXIST := False;
    MachineConfig[7]."Options"."EM - 463"."AV463-1".CW.EXIST := False;
    MachineConfig[7]."Options"."EM - 463"."AV463-1".CW.VLV_W_FB := False;
@@ -1301,7 +1291,6 @@ BEGIN
    MachineConfig[7]."Options"."EM - 463"."AV660-1".CW.EXIST := False;
    MachineConfig[7]."Options"."EM - 463"."AV660-2".CW.EXIST := False;
    MachineConfig[7]."Options"."EM - 463"."P463-1".CW.EXIST := False;
-   MachineConfig[7]."Options"."EM - P201"."P201-1".CW.ENABLE := True;
    MachineConfig[7]."Options"."EM - P201"."P201-1".CW.EXIST := False;
    MachineConfig[7]."Unit Dch"."EM - 222"."AV222-1".CW.ENABLE := True;
    MachineConfig[7]."Unit Dch"."EM - 222"."TT222-1".CW.ENABLE := True;
@@ -1397,22 +1386,12 @@ BEGIN
    MachineConfig[8].Communications."EM - BC-COMM".BCO3 := 8;
    MachineConfig[8].Communications."EM - BC-COMM".ALARM := 8;
    // === CW auto-patched for MachineConfig[8] ===
-   MachineConfig[8]."Options"."EM - 208"."AV208-1".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - 208"."FCV208-1".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - 208"."FIT208-1".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - 208"."P208-1".CW.ENABLE := True;
+   MachineConfig[8]."Options"."EM - 208"."AV208-1".CW.VLV_W_FB := False;
    MachineConfig[8]."Options"."EM - 208"."P208-1".CW.EXIST := False;
-   MachineConfig[8]."Options"."EM - 208"."QT220-2".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - 208"."QT220-2_OK".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - 210"."AV210-1".CW.ENABLE := True;
    MachineConfig[8]."Options"."EM - 210"."AV210-1".CW.EXIST := False;
-   MachineConfig[8]."Options"."EM - 210"."FCV210-1".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - 430"."AV430-1".CW.ENABLE := True;
+   MachineConfig[8]."Options"."EM - 210"."AV210-1".CW.VLV_W_FB := False;
    MachineConfig[8]."Options"."EM - 430"."AV430-1".CW.EXIST := False;
-   MachineConfig[8]."Options"."EM - 430"."FCV430-1".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - 430"."P406-1".CW.ENABLE := True;
    MachineConfig[8]."Options"."EM - 430"."P406-1".CW.EXIST := False;
-   MachineConfig[8]."Options"."EM - 430"."TT406-1".CW.ENABLE := True;
    MachineConfig[8]."Options"."EM - 463"."AV305-2".CW.ENABLE := True;
    MachineConfig[8]."Options"."EM - 463"."AV305-2".CW.EXIST := False;
    MachineConfig[8]."Options"."EM - 463"."AV463-1".CW.ENABLE := True;
@@ -1429,7 +1408,6 @@ BEGIN
    MachineConfig[8]."Options"."EM - 463"."P463-1".CW.ENABLE := True;
    MachineConfig[8]."Options"."EM - 463"."P463-1".CW.EXIST := False;
    MachineConfig[8]."Options"."EM - 463"."PIT463-1".CW.ENABLE := True;
-   MachineConfig[8]."Options"."EM - P201"."P201-1".CW.ENABLE := True;
    MachineConfig[8]."Options"."EM - P201"."P201-1".CW.EXIST := False;
    MachineConfig[8]."Unit Dch"."EM - 222"."AV222-1".CW.ENABLE := True;
    MachineConfig[8]."Unit Dch"."EM - 222"."TT222-1".CW.ENABLE := True;

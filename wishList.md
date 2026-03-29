@@ -12,9 +12,20 @@ Produce an updated `.db` file importable directly into TIA Portal, plus a compar
 - `o`          → ENABLE = True,  EXIST = False
 - empty/SPARE  → ENABLE = False, EXIST = False
 
+### Option Module Override Rule (higher priority than the standard `o` rule)
+If a tag has an **option description** in any family column — one of:
+`BLENDING`, `RECIRCULATION`, `COOLING RECIRCULATION`, `SRU`, `FEED PUMP` —
+then for ALL families where that tag's value is `o`:
+- ENABLE = False,  EXIST = False  _(module not selected for this machine variant)_
+
+This applies to both ENABLE/EXIST (from ACT row for valves) and VLV_W_FB (FB OPN/CLS rows).
+`X` still gives True/True regardless of option type.
+
 ### VLV_W_FB Logic (AV valves only, based on Function column)
-- FB OPN or FB CLS = `x` or `o` → VLV_W_FB = True
-- Both FB OPN and FB CLS empty   → VLV_W_FB = False
+- FB OPN or FB CLS = `x` → VLV_W_FB = True
+- FB OPN or FB CLS = `o` (and **not** an option-type tag) → VLV_W_FB = True
+- FB OPN or FB CLS = `o` (and tag **is** option-type) → VLV_W_FB = False
+- Both FB OPN and FB CLS empty → VLV_W_FB = False
 
 ### Valve ENABLE/EXIST Source
 - AV valves: ENABLE/EXIST determined by the **ACT** row for that valve
