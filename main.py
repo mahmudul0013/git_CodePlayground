@@ -35,6 +35,7 @@ FAMILIES = {
     "BREW 350": {"mc_idx": 7, "col_idx": 4},   # column D (auto-detected from header)
     "BREW 450": {"mc_idx": 8, "col_idx": 5},   # column E
     "BREW 600": {"mc_idx": 9, "col_idx": 7},   # column G
+    "BREW 750H": {"mc_idx": 10, "col_idx": 8},   # column H
 }
 
 # ── Tag path map: Excel label → (unit, em, db_field, is_vlv) ─────────────────
