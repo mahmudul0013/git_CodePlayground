@@ -12,16 +12,12 @@ Produce an updated `.db` file importable directly into TIA Portal, plus a compar
 - `o`          → ENABLE = True,  EXIST = False
 - empty/SPARE  → ENABLE = False, EXIST = False
 
-### Option Module Override Rule (higher priority than the standard `o` rule)
-A tag is **option-type** if **either** condition is true:
-1. Excel "Option" column for that tag contains: `BLENDING`, `RECIRCULATION`, `COOLING RECIRCULATION`, `SRU`, or `FEED PUMP`
-2. The tag's DB path is under unit **`Options`** (i.e. found under `Options."EM - XXX"` in the DB)
+### Option Module Rule
+If a tag is found under **`Options."EM - XXX"`** in the DB (TAG_MAP unit = `"Options"`):
+- ENABLE = False,  EXIST = False  — unconditionally, regardless of Excel value
+- VLV_W_FB = False  — unconditionally
 
-For option-type tags, any family value of `o` gives:
-- ENABLE = False,  EXIST = False  _(module not installed for this variant)_
-- VLV_W_FB = False  _(even if FB OPN/CLS = 'o')_
-
-`X` still gives True/True regardless of option type.
+Excel value is ignored for these instruments. The DB structure determines the rule.
 
 ### VLV_W_FB Logic (AV valves only, based on Function column)
 - FB OPN or FB CLS = `x` → VLV_W_FB = True

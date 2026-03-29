@@ -156,21 +156,14 @@ Cell comments in TIA Portal-related Excel files may contain boilerplate prefixes
 | empty / None | False | False | |
 | `SPARE` | skip row | — | Row skipped entirely |
 
-### Option Module Override Rule
+### Option Module Rule
 
-If any family cell for a tag contains one of these **option description** strings:
-`BLENDING`, `RECIRCULATION`, `COOLING RECIRCULATION`, `SRU`, `FEED PUMP`
-— the tag is classified as **option-type**.
+If a tag's DB path is under **`Options."EM - XXX"`** (TAG_MAP unit == `"Options"`):
+- ENABLE=False, EXIST=False, VLV_W_FB=False — **unconditionally**, Excel value is ignored.
 
-For option-type tags, `o` in any family column means "option module not installed for this variant" → **ENABLE=False, EXIST=False** (overrides the standard `o` rule). `X` still gives True/True.
+**Why unconditional:** The DB structure is the authority for option modules. Any instrument whose EM lives under the Options unit in the DB is considered not-installed by default, regardless of what the Excel column says.
 
-The same logic applies to VLV_W_FB: `o` on FB OPN/CLS rows of an option-type valve → VLV_W_FB=False.
-
-**Two conditions — either triggers option-type classification:**
-1. Excel "Option" column value is one of the OPTION_MARKERS (or legacy: family cell contains the marker)
-2. Tag's `TAG_MAP` unit is `"Options"` — catches any EM found under `Options."EM-XXX"` in the DB (e.g. EM-463 eMotion instruments whose Option column says "E-MOTION")
-
-**Implementation:** `option_tags` set is built inside `parse_excel()` before the aggregation loop. Both `xlval_to_enable_exist(val, is_option)` and `has_fb(fam_vals, fam_name, is_option)` accept an `is_option` flag.
+**Implementation:** `option_tags = {tag for tag, info in TAG_MAP.items() if info[0] == "Options"}` — one-liner built in `parse_excel()`. Both `xlval_to_enable_exist(val, is_option)` and `has_fb(fam_vals, fam_name, is_option)` short-circuit to False/False/False when `is_option=True`.
 
 ### AV Valve multi-row processing
 

@@ -296,25 +296,10 @@ def parse_excel(path):
 
         raw_rows.append((tag_label, func, fam_vals, opt_desc))
 
-    # Identify option-type tags. Two conditions (either is sufficient):
-    #  1. Excel "Option" column (or family cell) contains an option descriptor
-    #  2. The tag's DB path is under unit "Options" (any EM found under Options in the DB)
-    # For option-type tags, 'o' → ENABLE=False, EXIST=False, VLV_W_FB=False.
-    OPTION_MARKERS = {"BLENDING", "RECIRCULATION", "COOLING RECIRCULATION", "SRU", "FEED PUMP"}
-    option_tags = set()
-    # Condition 1 — Excel Option column or legacy family-cell descriptor
-    for _tag, _func, _fam_vals, _opt_desc in raw_rows:
-        if _opt_desc in OPTION_MARKERS:
-            option_tags.add(_tag)
-        else:
-            for _fv in _fam_vals.values():
-                if str(_fv.get("val") or "").strip().upper() in OPTION_MARKERS:
-                    option_tags.add(_tag)
-                    break
-    # Condition 2 — tag lives under the "Options" unit in the DB (TAG_MAP lookup)
-    for _tag_key, _tag_info in TAG_MAP.items():
-        if _tag_info[0] == "Options":
-            option_tags.add(_tag_key)
+    # Identify option-type tags: any tag whose DB path lives under the "Options" unit
+    # (i.e. found under Options."EM - XXX" in the DB).
+    # For option-type tags ENABLE=False, EXIST=False unconditionally (any Excel value).
+    option_tags = {tag for tag, info in TAG_MAP.items() if info[0] == "Options"}
 
     # Aggregate rows by tag into valve (multi-row) vs non-valve (single row)
     valve_rows = defaultdict(lambda: {"fb_opn": {}, "fb_cls": {}, "act": {}})
@@ -344,25 +329,24 @@ def parse_excel(path):
                     non_valve_rows[tag_label]["fam_vals"][fam] = fv
 
     def xlval_to_enable_exist(raw_val, is_option=False):
+        if is_option:
+            return False, False   # Options.EM-XXX → always disabled
         if raw_val is None:
             return False, False
         v = str(raw_val).strip().lower()
         if v == "x":
             return True, True
         elif v == "o":
-            if is_option:
-                return False, False   # option module not selected → both off
             return True, False
         return False, False
 
     def has_fb(fam_vals, fam_name, is_option=False):
+        if is_option:
+            return False   # Options.EM-XXX → VLV_W_FB always False
         fv = fam_vals.get(fam_name, {}).get("val")
         if fv is None:
             return False
-        v = str(fv).strip().lower()
-        if is_option and v == "o":
-            return False   # option module 'o' = not installed → no feedback
-        return v in ("x", "o")
+        return str(fv).strip().lower() in ("x", "o")
 
     families_data = {fam: {} for fam in family_cols.values()}
 
