@@ -35,8 +35,8 @@
 **Families:**
 | Excel Column | Family Name | MachineConfig Index |
 |---|---|---|
-| D | BREW 350 | 7 |
-| E | BREW 450 | 8 |
+| E | BREW 350 | 7 |
+| F | BREW 450 | 8 |
 
 ---
 

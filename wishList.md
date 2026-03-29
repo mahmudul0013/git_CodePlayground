@@ -54,8 +54,13 @@ Excel value is ignored for these instruments. The DB structure determines the ru
 ## Families Supported
 | Excel Column | Family   | MachineConfig Index | TypeNo |
 |---|---|---|---|
-| D (BREW 350) | BREW350  | 7                   | 7      |
-| E (BREW 450) | BREW450  | 8                   | 8      |
+| E (BREW 350) | BREW350  | 7                   | 7      |
+| F (BREW 450) | BREW450  | 8                   | 8      |
+| G (BREW 600) | BREW600  | 9                   | 9      |
+| H (BREW 750H) | BREW750H  | 10                   | 10      |
+| I (BREW 600e) | BREW600e  | 11                   | 11      |
+| J (BREW 750e) | BREW750e  | 12                   | 12      |
+| K (BREW 750L) | BREW750L  | 13                   | 13      |
 
 ## Output Files
 - `SysConfig_Lib_Brew_updated.db`  — updated DB importable to TIA Portal
