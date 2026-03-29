@@ -28,10 +28,10 @@ SysConfig_Lib_Brew.db ──► parse_type_defaults()  ──► type_defaults
 #### `parse_excel(path)`
 - Reads `testBrew.xlsx` Sheet1
 - Resolves tag labels using value-cell comments (e.g. D130 comment → resolved tag)
-- Detects **option-type tags**: any tag whose family cell value is one of
-  `BLENDING | RECIRCULATION | COOLING RECIRCULATION | SRU | FEED PUMP`
-  → for option-type tags, cell value `o` gives ENABLE=False, EXIST=False
-    (instead of the normal True/False), and VLV_W_FB is also forced False on `o`
+- Detects **option-type tags** via two conditions (either triggers it):
+  1. Excel "Option" column value is one of `BLENDING | RECIRCULATION | COOLING RECIRCULATION | SRU | FEED PUMP`
+  2. Tag's `TAG_MAP` unit is `"Options"` (i.e. EM lives under `Options."EM-XXX"` in the DB)
+  → for option-type tags, cell value `o` gives ENABLE=False, EXIST=False, VLV_W_FB=False
 - Handles multi-row valve processing:
   - Collects FB OPN, FB CLS rows → VLV_W_FB
   - Collects ACT row → ENABLE/EXIST for valves

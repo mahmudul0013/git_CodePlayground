@@ -296,20 +296,25 @@ def parse_excel(path):
 
         raw_rows.append((tag_label, func, fam_vals, opt_desc))
 
-    # Identify option-type tags via the dedicated "Option" column (col D in updated Excel)
-    # or, as fallback, if any family cell value IS one of these descriptors (legacy layout).
-    # For such tags, 'o' means the option module is NOT installed → ENABLE=False, EXIST=False.
+    # Identify option-type tags. Two conditions (either is sufficient):
+    #  1. Excel "Option" column (or family cell) contains an option descriptor
+    #  2. The tag's DB path is under unit "Options" (any EM found under Options in the DB)
+    # For option-type tags, 'o' → ENABLE=False, EXIST=False, VLV_W_FB=False.
     OPTION_MARKERS = {"BLENDING", "RECIRCULATION", "COOLING RECIRCULATION", "SRU", "FEED PUMP"}
     option_tags = set()
+    # Condition 1 — Excel Option column or legacy family-cell descriptor
     for _tag, _func, _fam_vals, _opt_desc in raw_rows:
         if _opt_desc in OPTION_MARKERS:
             option_tags.add(_tag)
         else:
-            # Legacy fallback: option description in a family cell itself
             for _fv in _fam_vals.values():
                 if str(_fv.get("val") or "").strip().upper() in OPTION_MARKERS:
                     option_tags.add(_tag)
                     break
+    # Condition 2 — tag lives under the "Options" unit in the DB (TAG_MAP lookup)
+    for _tag_key, _tag_info in TAG_MAP.items():
+        if _tag_info[0] == "Options":
+            option_tags.add(_tag_key)
 
     # Aggregate rows by tag into valve (multi-row) vs non-valve (single row)
     valve_rows = defaultdict(lambda: {"fb_opn": {}, "fb_cls": {}, "act": {}})

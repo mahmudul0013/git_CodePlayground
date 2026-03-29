@@ -166,6 +166,10 @@ For option-type tags, `o` in any family column means "option module not installe
 
 The same logic applies to VLV_W_FB: `o` on FB OPN/CLS rows of an option-type valve → VLV_W_FB=False.
 
+**Two conditions — either triggers option-type classification:**
+1. Excel "Option" column value is one of the OPTION_MARKERS (or legacy: family cell contains the marker)
+2. Tag's `TAG_MAP` unit is `"Options"` — catches any EM found under `Options."EM-XXX"` in the DB (e.g. EM-463 eMotion instruments whose Option column says "E-MOTION")
+
 **Implementation:** `option_tags` set is built inside `parse_excel()` before the aggregation loop. Both `xlval_to_enable_exist(val, is_option)` and `has_fb(fam_vals, fam_name, is_option)` accept an `is_option` flag.
 
 ### AV Valve multi-row processing
