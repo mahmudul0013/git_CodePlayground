@@ -1,6 +1,6 @@
 Siemens TIA portal 18: I export DBs from the TIA portal 18 project to the VS code project folder. Need to cross-check those DBs default value settings for the insteunet instances.
 for the system family Brew follow the SysConfig_Lib_Brew.db
-the souece of true is comeing from hardware specification Excel testBrew.xlsx
+the souece of true is comeing from hardware specification Excel testLBB.xlsx
 where the rows are different tab label and column is indicating system family like BREW350, BREW 450 etc.
 you should see the DB comments and should discover the MachineConfig[7] is for Brew 350.
 
@@ -47,3 +47,13 @@ Finally create conplete the excel with all compararison. produce an updated SysC
 	
 		
 now read the promt and by deep analysis update the wishList.md and make a clean DesignStructure.md plan the excicute the plan and do the assignment. 
+
+updates:
+the running TAG_MAP is done for SysConfig_Lib_Brew.db. 
+Read the new SysConfig_Lib_Clara.db, SysConfig_Lib_CR.db, SysConfig_Lib_KR.db and SysConfig_Lib_PP.db in the project folder. 
+Every .db has some similara and few different EMs. 
+And the MachineConfig [] also referefing different families. 
+That is why, I want to do indipendent operation but same job for different .dbs againes the hardware specificatin Excel like testBrew.xlsx, new name testLBB.xlsx by providing the mc_idx and excel col_idx. 
+So that no manual TAG_MAP needed. just refering the .bd name and hardware specifictin exel colomn info 
+with machine id. can generate the comparison excel and updated db respectively. Need to generate separate conparison exel and corrected indivisual updated db. 
+Now add this task in to the wishList.md then plan and update the designStructure.md and learning .md and excicure the task. 

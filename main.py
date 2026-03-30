@@ -1,7 +1,7 @@
 """
 Siemens TIA Portal DB Instrument Configuration Checker
 =======================================================
-Reads testBrew.xlsx + SysConfig_Lib_Brew.db,
+Reads testLBB.xlsx + SysConfig_Lib_Brew.db,
 compares ENABLE/EXIST/VLV_W_FB settings for each configured family,
 produces:
   - SysConfig_Lib_Brew_updated.db  (corrected DB for TIA Portal import)
@@ -26,7 +26,7 @@ if sys.platform == "win32":
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 DB_PATH    = "SysConfig_Lib_Brew.db"
-EXCEL_PATH = "testBrew.xlsx"
+EXCEL_PATH = "testLBB.xlsx"
 OUT_DB     = "SysConfig_Lib_Brew_updated.db"
 OUT_XLSX   = "InstrumentStatusComparison.xlsx"
 
