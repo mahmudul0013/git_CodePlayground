@@ -305,7 +305,7 @@ function buildFund(raw) {
 // Persists portfolio state in localStorage so new purchases
 // are detected on next CSV load and shown as (+qty) / (price)
 // ────────────────────────────────────────────────────────────
-function loadLastBuyData() {
+async function loadLastBuyData() {
   try {
     S.lastBuy   = JSON.parse(localStorage.getItem('portfolio_lastbuy')  || '{}');
     S._snapshot = JSON.parse(localStorage.getItem('portfolio_snapshot') || '{}');
@@ -313,6 +313,25 @@ function loadLastBuyData() {
     S.lastBuy   = {};
     S._snapshot = {};
   }
+
+  // Always fetch portfolio_baseline.json (written by nordnet_sync.py just BEFORE
+  // overwriting the CSVs).  If the baseline is newer than the localStorage
+  // snapshot, use it — this ensures buy detection works after every sync.
+  try {
+    const resp = await fetch('portfolio_baseline.json?t=' + Date.now());
+    if (resp.ok) {
+      const baseline = await resp.json();
+      const baselineTs = baseline.__ts || 0;
+      const localTs    = Number(localStorage.getItem('portfolio_snapshot_ts') || 0);
+      if (baselineTs > localTs || !Object.keys(S._snapshot).length) {
+        // Baseline is fresher than what's in localStorage — use it
+        const clean = Object.fromEntries(
+          Object.entries(baseline).filter(([k]) => k !== '__ts'));
+        S._snapshot = clean;
+        console.log('[snapshot] Seeded from portfolio_baseline.json (ts=' + baselineTs + ')');
+      }
+    }
+  } catch (_) {}
 }
 
 /** Compare current holdings to snapshot; record any qty increases as new buys. */
@@ -339,7 +358,9 @@ function detectAndSaveBuys() {
     newSnap[item.name] = { qty: item.qty, gav: item.gav };
   });
   S._snapshot = newSnap;
-  localStorage.setItem('portfolio_snapshot', JSON.stringify(newSnap));
+  const nowTs = Date.now();
+  localStorage.setItem('portfolio_snapshot',    JSON.stringify(newSnap));
+  localStorage.setItem('portfolio_snapshot_ts', nowTs);
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1358,8 +1379,8 @@ function bindEvents() {
 async function init() {
   setStatus('loading', 'Loading portfolio…');
 
-  // Load persisted last-buy data from previous session
-  loadLastBuyData();
+  // Load persisted last-buy data from previous session (async: may seed from baseline file)
+  await loadLastBuyData();
 
   try {
     // Load and parse both CSV files in parallel (try fixed names, fallback to dated)
