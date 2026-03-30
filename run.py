@@ -96,10 +96,17 @@ def build_tag_map(db_text):
     Step 2 — fields:  scan TYPE "EM-xxx" blocks for STAT-typed fields.
     No manual input needed.
     """
-    # Step 1: derive em → unit from any override path in the file
+    # Step 1: derive em → unit from any override path in the file.
+    # Unit names may be quoted ("Unit Sep") OR unquoted (Options, Communications).
+    # EM names are always quoted ("EM - 208").
     em_unit = {}
-    for m in re.finditer(r'MachineConfig\[\d+\]\."([^"]+)"\."([^"]+)"\.', db_text):
-        em_unit[m.group(2)] = m.group(1)   # em → unit (last occurrence wins)
+    for m in re.finditer(
+        r'MachineConfig\[\d+\]\.(?:"([^"]+)"|([A-Za-z][A-Za-z0-9_]*))\."([^"]+)"\.',
+        db_text
+    ):
+        unit = m.group(1) or m.group(2)   # quoted or unquoted unit name
+        em   = m.group(3)
+        em_unit[em] = unit                # em → unit (last occurrence wins)
 
     # Step 2: scan TYPE blocks for instrument fields
     tag_map = {}
@@ -328,17 +335,17 @@ def parse_mc_overrides(db_text, mc_idx):
     overrides = defaultdict(dict)
     pat = re.compile(
         r'MachineConfig\[' + str(mc_idx) + r'\]\.'
-        r'"([^"]+)"\."([^"]+)"\.'
-        r'(?:"([^"]+)"|([A-Za-z0-9_\-]+))\.'
+        r'(?:"([^"]+)"|([A-Za-z][A-Za-z0-9_]*))\."([^"]+)"\.'  # unit (q/unq) + em (quoted)
+        r'(?:"([^"]+)"|([A-Za-z0-9_\-]+))\.'                    # field (q/unq)
         r'CW\.(ENABLE|EXIST|VLV_W_FB)\s*:=\s*(True|true|False|false)\s*;',
         re.IGNORECASE
     )
     for m in pat.finditer(db_text):
-        unit  = m.group(1)
-        em    = m.group(2)
-        field = m.group(3) if m.group(3) else m.group(4)
-        prop  = m.group(5).upper()
-        val   = norm_bool(m.group(6))
+        unit  = m.group(1) or m.group(2)
+        em    = m.group(3)
+        field = m.group(4) if m.group(4) else m.group(5)
+        prop  = m.group(6).upper()
+        val   = norm_bool(m.group(7))
         pk    = path_key(unit, em, field)
         if prop == "ENABLE":    overrides[pk]["enable"]    = val
         elif prop == "EXIST":   overrides[pk]["exist"]     = val
@@ -461,10 +468,11 @@ def generate_updated_db(db_text, excel_data, type_defaults, mc_overrides_all,
         return db_text
 
     # Patterns to strip old CW override lines per mc_idx
+    # Unit may be quoted ("Unit Sep") or unquoted (Options, Communications)
     remove_pats = {
         mc_idx: re.compile(
             r'MachineConfig\[' + str(mc_idx) + r'\]\.'
-            r'"[^"]+"\."[^"]+"\.'
+            r'(?:"[^"]+"|[A-Za-z][A-Za-z0-9_]*)\."[^"]+"\.'
             r'(?:"[^"]+"|[A-Za-z0-9_\-]+)\.'
             r'CW\.(ENABLE|EXIST|VLV_W_FB)\s*:=',
             re.IGNORECASE
