@@ -273,8 +273,9 @@ html, body {
   flex-shrink: 0;
 }
 
-.dot.live { background: var(--green); animation: blink 2s ease-in-out infinite; }
+.dot.live    { background: var(--green); animation: blink 2s ease-in-out infinite; }
 .dot.loading { background: var(--gold); }
+.dot.error   { background: var(--red); }
 
 @keyframes blink {
   0%, 100% { opacity: 1; }

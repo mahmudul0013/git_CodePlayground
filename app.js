@@ -15,7 +15,6 @@ const CFG = {
   fundsFileFallback:  'fonder_kontonummer-66262387_2026-03-26_funds.csv',
 
   yahooBase:  'https://query1.finance.yahoo.com',
-  corsProxy:  'https://corsproxy.io/?url=',
 
   // Ticker bar symbols + display labels
   tickerSymbols: ['^OMX', '^GDAXI', 'ES=F', 'GC=F', 'USDSEK=X', 'EURUSD=X'],
@@ -409,23 +408,44 @@ function resolveTickerFor(item) {
 }
 
 // ────────────────────────────────────────────────────────────
-// YAHOO FINANCE API
+// YAHOO FINANCE API  (multi-proxy, multi-host fallback)
 // ────────────────────────────────────────────────────────────
-async function yahooGet(url) {
-  // 1. Try direct (works from localhost in some browsers)
-  try {
-    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    if (r.ok) {
-      const d = await r.json();
-      if (d && !d.error) return d;
-    }
-  } catch (_) {}
 
-  // 2. CORS proxy fallback
-  const proxied = CFG.corsProxy + encodeURIComponent(url);
-  const r = await fetch(proxied);
-  if (!r.ok) throw new Error(`Proxy HTTP ${r.status}`);
-  return r.json();
+// Tried in order until one succeeds
+const CORS_PROXIES = [
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+];
+
+async function yahooGet(url) {
+  const timeout = ms => new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
+
+  async function tryFetch(fetchUrl, wrapAllOrigins = false) {
+    const r = await Promise.race([
+      fetch(fetchUrl, { headers: { Accept: 'application/json' } }),
+      timeout(6000),
+    ]);
+    if (!r.ok) return null;
+    const text = await r.text();
+    let data;
+    try {
+      // allorigins wraps payload in { contents: "..." }
+      const wrapper = JSON.parse(text);
+      data = wrapAllOrigins && wrapper.contents ? JSON.parse(wrapper.contents) : wrapper;
+    } catch (_) { return null; }
+    return (data && !data.error) ? data : null;
+  }
+
+  // 1. query1 direct
+  try { const d = await tryFetch(url);                         if (d) return d; } catch (_) {}
+  // 2. query2 direct (alternate Yahoo host, often succeeds when query1 is blocked)
+  try { const d = await tryFetch(url.replace('query1.', 'query2.')); if (d) return d; } catch (_) {}
+  // 3. corsproxy.io
+  try { const d = await tryFetch(CORS_PROXIES[0](url));        if (d) return d; } catch (_) {}
+  // 4. allorigins.win
+  try { const d = await tryFetch(CORS_PROXIES[1](url), true);  if (d) return d; } catch (_) {}
+
+  throw new Error('All Yahoo Finance endpoints failed for: ' + url);
 }
 
 async function fetchQuotesBatch(symbols) {
@@ -433,9 +453,12 @@ async function fetchQuotesBatch(symbols) {
   const url = `${CFG.yahooBase}/v7/finance/quote?symbols=${symbols.join(',')}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketChange`;
   try {
     const d = await yahooGet(url);
-    return d?.quoteResponse?.result || [];
+    const results = d?.quoteResponse?.result || [];
+    if (!results.length) console.warn('[quotes] empty result for', symbols.join(','));
+    return results;
   } catch (e) {
-    console.warn('[quotes] fetch failed:', e.message);
+    console.warn('[quotes] all proxies failed for batch:', symbols.slice(0, 3).join(',') + '…', e.message);
+    setStatus('error', 'Price feed unavailable — retrying…');
     return [];
   }
 }
@@ -465,6 +488,7 @@ async function refreshPrices() {
     ...new Set([
       ...S.stocks.filter(s => s.ticker).map(s => s.ticker),
       ...CFG.tickerSymbols,
+      ...WATCHLIST.map(w => w.sym),   // ensure watchlist symbols always fetched
     ]),
   ];
 
