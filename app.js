@@ -4,6 +4,11 @@
    renders sparklines via Chart.js, company logos via Clearbit.
    ============================================================ */
 
+// When served from server.py (localhost) all Yahoo Finance calls go through
+// the local /yahoo/* proxy — no CORS, no blocked requests.
+// When opened from a remote host the full Yahoo URL is used with proxy fallbacks.
+const IS_LOCAL = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+
 // ────────────────────────────────────────────────────────────
 // CONFIG
 // ────────────────────────────────────────────────────────────
@@ -14,7 +19,9 @@ const CFG = {
   stocksFileFallback: 'aktier_kontonummer-66262387_2026-03-26_stocks.csv',
   fundsFileFallback:  'fonder_kontonummer-66262387_2026-03-26_funds.csv',
 
-  yahooBase:  'https://query1.finance.yahoo.com',
+  // On localhost: /yahoo/* is proxied by server.py — no CORS issues
+  // On remote:    direct Yahoo URL (browser/proxy fallbacks in yahooGet)
+  yahooBase:  IS_LOCAL ? '/yahoo' : 'https://query1.finance.yahoo.com',
 
   // Ticker bar symbols + display labels
   tickerSymbols: ['^OMX', '^GDAXI', 'ES=F', 'GC=F', 'USDSEK=X', 'EURUSD=X'],
@@ -408,44 +415,43 @@ function resolveTickerFor(item) {
 }
 
 // ────────────────────────────────────────────────────────────
-// YAHOO FINANCE API  (multi-proxy, multi-host fallback)
+// YAHOO FINANCE API
+// Local mode  : /yahoo/* proxied by server.py  — direct fetch, no CORS
+// Remote mode : try query1 → query2 → corsproxy.io → allorigins.win
 // ────────────────────────────────────────────────────────────
-
-// Tried in order until one succeeds
-const CORS_PROXIES = [
-  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-];
-
 async function yahooGet(url) {
-  const timeout = ms => new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
+  const tFetch = (u, wrapAO = false) => new Promise((res, rej) => {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 7000);
+    fetch(u, { signal: ctrl.signal, headers: { Accept: 'application/json' } })
+      .then(async r => {
+        clearTimeout(tid);
+        if (!r.ok) return rej(new Error('HTTP ' + r.status));
+        const text = await r.text();
+        let d;
+        try {
+          const w = JSON.parse(text);
+          d = wrapAO && w.contents ? JSON.parse(w.contents) : w;
+        } catch (_) { return rej(new Error('JSON parse fail')); }
+        if (d?.error) return rej(new Error('Yahoo error'));
+        res(d);
+      })
+      .catch(e => { clearTimeout(tid); rej(e); });
+  });
 
-  async function tryFetch(fetchUrl, wrapAllOrigins = false) {
-    const r = await Promise.race([
-      fetch(fetchUrl, { headers: { Accept: 'application/json' } }),
-      timeout(6000),
-    ]);
-    if (!r.ok) return null;
-    const text = await r.text();
-    let data;
-    try {
-      // allorigins wraps payload in { contents: "..." }
-      const wrapper = JSON.parse(text);
-      data = wrapAllOrigins && wrapper.contents ? JSON.parse(wrapper.contents) : wrapper;
-    } catch (_) { return null; }
-    return (data && !data.error) ? data : null;
+  if (IS_LOCAL) {
+    // server.py proxy: simple, reliable, no CORS
+    return tFetch(url);
   }
 
-  // 1. query1 direct
-  try { const d = await tryFetch(url);                         if (d) return d; } catch (_) {}
-  // 2. query2 direct (alternate Yahoo host, often succeeds when query1 is blocked)
-  try { const d = await tryFetch(url.replace('query1.', 'query2.')); if (d) return d; } catch (_) {}
-  // 3. corsproxy.io
-  try { const d = await tryFetch(CORS_PROXIES[0](url));        if (d) return d; } catch (_) {}
-  // 4. allorigins.win
-  try { const d = await tryFetch(CORS_PROXIES[1](url), true);  if (d) return d; } catch (_) {}
-
-  throw new Error('All Yahoo Finance endpoints failed for: ' + url);
+  // Remote fallback chain
+  const ext = 'https://query1.finance.yahoo.com';
+  const absUrl = url.startsWith('/') ? ext + url : url;
+  try { return await tFetch(absUrl); } catch (_) {}
+  try { return await tFetch(absUrl.replace('query1.', 'query2.')); } catch (_) {}
+  try { return await tFetch(`https://corsproxy.io/?url=${encodeURIComponent(absUrl)}`); } catch (_) {}
+  try { return await tFetch(`https://api.allorigins.win/get?url=${encodeURIComponent(absUrl)}`, true); } catch (_) {}
+  throw new Error('All Yahoo Finance routes failed');
 }
 
 async function fetchQuotesBatch(symbols) {
