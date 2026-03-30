@@ -2,8 +2,8 @@
 
 ## Goal
 Cross-check Siemens TIA Portal DB default values against hardware specification Excel.
-Compare BREW350 (MachineConfig[7]) and BREW450 (MachineConfig[8]) families.
-Produce an updated `.db` file importable directly into TIA Portal, plus a comparison report.
+Support all product families (Brew, Clara, CR, PP, KR) using a single universal runner.
+Produce a separate comparison report and corrected updated `.db` per product — importable directly into TIA Portal.
 
 ## Processing Rules
 
@@ -13,7 +13,7 @@ Produce an updated `.db` file importable directly into TIA Portal, plus a compar
 - empty/SPARE  → ENABLE = False, EXIST = False
 
 ### Option Module Rule
-If a tag is found under **`Options."EM - XXX"`** in the DB (TAG_MAP unit = `"Options"`):
+If a tag is found under **`Options."EM - XXX"`** in the DB (unit = `"Options"` in auto-discovered tag map):
 - ENABLE = False,  EXIST = False  — unconditionally, regardless of Excel value
 - VLV_W_FB = False  — unconditionally
 
@@ -30,7 +30,7 @@ Excel value is ignored for these instruments. The DB structure determines the ru
 - VLV_W_FB determined by FB OPN / FB CLS rows
 
 ### Non-Valve ENABLE/EXIST Source
-- Direct column value (BREW350 / BREW450 column) → ENABLE/EXIST
+- Direct column value → ENABLE/EXIST
 
 ### Tag Resolution via Cell Comments
 - If the family column cell has a comment, the comment gives the RESOLVED tag label
@@ -51,25 +51,66 @@ Excel value is ignored for these instruments. The DB structure determines the ru
 - If a tag is not found in the DB at all: ENABLE = False, EXIST = False (default)
 - If a tag is in Excel but has no DB path mapping: flagged as NOT_FOUND in report
 
-## Families Supported
-| Excel Column | Family   | MachineConfig Index | TypeNo |
+## Families Supported — Brew (SysConfig_Lib_Brew.db)
+| Excel Column | Family    | MachineConfig Index | TypeNo |
 |---|---|---|---|
-| E (BREW 350) | BREW350  | 7                   | 7      |
-| F (BREW 450) | BREW450  | 8                   | 8      |
-| G (BREW 600) | BREW600  | 9                   | 9      |
-| H (BREW 750H) | BREW750H  | 10                   | 10      |
-| I (BREW 600e) | BREW600e  | 11                   | 11      |
-| J (BREW 750e) | BREW750e  | 12                   | 12      |
-| K (BREW 750L) | BREW750L  | 13                   | 13      |
+| E (BREW 350)  | BREW350   | 7  | 7  |
+| F (BREW 450)  | BREW450   | 8  | 8  |
+| G (BREW 600)  | BREW600   | 9  | 9  |
+| H (BREW 750H) | BREW750H  | 10 | 10 |
+| I (BREW 600e) | BREW600e  | 11 | 11 |
+| J (BREW 750e) | BREW750e  | 12 | 12 |
+| K (BREW 750L) | BREW750L  | 13 | 13 |
 
-## Output Files
-- `SysConfig_Lib_Brew_updated.db`  — updated DB importable to TIA Portal
-- `InstrumentStatusComparison.xlsx` — full comparison report for all instruments
-  - Fixed columns: Tag Label, Function, **Unit** (e.g. "Unit Sep"), **EM Module** (e.g. "EM - 100")
-  - Per-family columns: Excel Val, Exp EN/EX/VF, DB EN/EX/VF, Match, Action
+## Families Pending — Clara / CR / PP / KR
+These products are configured in `jobs.json` but mc_idx → family name mapping requires
+HSS documentation to confirm. Once known, fill the `"families"` dict in jobs.json:
 
-## Sustainable Operation
-To reprocess a new family:
-1. Update `testBrew.xlsx` with the new family column
-2. Upload the new `.db` file
-3. Run `python main.py` — everything is regenerated from scratch
+| Product | DB File                  | Excel Columns           | MC Indices (TypeNo)              |
+|---|---|---|---|
+| Clara   | SysConfig_Lib_Clara.db   | CLARA 400…CLARA 750H    | MC[0–14] (TypeNo 20–34)          |
+| CR      | SysConfig_Lib_CR.db      | CR 450/750              | MC[0]=40, MC[2]=42, MC[3]=43     |
+| PP      | SysConfig_Lib_PP.db      | PP 450/750              | MC[0]=50, MC[2]=52, MC[3]=53     |
+| KR      | SysConfig_Lib_KR.db      | KR 400                  | MC[0]=60, MC[1]=61               |
+
+## Output Files (per product)
+| Product | Comparison Report       | Updated DB                      |
+|---|---|---|
+| Brew    | Brew_Comparison.xlsx    | SysConfig_Lib_Brew_updated.db   |
+| Clara   | Clara_Comparison.xlsx   | SysConfig_Lib_Clara_updated.db  |
+| CR      | CR_Comparison.xlsx      | SysConfig_Lib_CR_updated.db     |
+| PP      | PP_Comparison.xlsx      | SysConfig_Lib_PP_updated.db     |
+| KR      | KR_Comparison.xlsx      | SysConfig_Lib_KR_updated.db     |
+
+Each comparison report has:
+- Fixed columns: Tag Label, Function, Unit (e.g. "Unit Sep"), EM Module (e.g. "EM - 100")
+- Per-family columns: Excel Val, Exp EN/EX/VF, DB EN/EX/VF, Match, Action
+
+## How to Run
+
+### Prerequisites
+- Close any open `.xlsx` files before running (Windows file lock)
+
+### Brew (ready)
+```
+python run.py Brew
+```
+
+### All configured products
+```
+python run.py
+```
+
+### List job status
+```
+python run.py --list
+```
+
+### Add a new product or family
+1. Add the new family column to `testLBB.xlsx` (header must match the key in jobs.json exactly)
+2. Add/update the job entry in `jobs.json` — set `"families": {"Family Name": mc_idx, ...}`
+3. Run `python run.py <JobName>` — no code changes needed
+
+### Legacy single-product script
+`main.py` still works for Brew only with hardcoded TAG_MAP (kept for reference).
+New work should use `run.py` + `jobs.json`.

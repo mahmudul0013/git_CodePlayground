@@ -1,0 +1,86 @@
+{
+  "_comment": "TIA Portal DB cross-check jobs. Edit 'families' to add products.",
+  "_family_format": "{ExcelColumnHeaderExact: MachineConfigIndex}",
+  "_run_instructions": [
+    "python run.py           -> run all jobs with families configured",
+    "python run.py Brew      -> run one job by name",
+    "python run.py --list    -> list jobs and their status"
+  ],
+  "jobs": [
+    {
+      "name": "Brew",
+      "db": "SysConfig_Lib_Brew.db",
+      "excel": "testLBB.xlsx",
+      "families": {
+        "BREW 350":  7,
+        "BREW 450":  8,
+        "BREW 600":  9,
+        "BREW 750H": 10,
+        "BREW 600e": 11,
+        "BREW 750e": 12,
+        "BREW 750L": 13
+      },
+      "out_db":   "SysConfig_Lib_Brew_updated.db",
+      "out_xlsx": "Brew_Comparison.xlsx"
+    },
+    {
+      "name": "Clara",
+      "_note": "Clara has TypeNo 20-34 across MC[0]-MC[14]. Fill families from HSS ID reference.",
+      "_typeno_map": {
+        "MC[0]":  "TypeNo 20",
+        "MC[1]":  "TypeNo 21",
+        "MC[2]":  "TypeNo 22",
+        "MC[3]":  "TypeNo 23",
+        "MC[4]":  "TypeNo 24",
+        "MC[5]":  "TypeNo 25",
+        "MC[6]":  "TypeNo 26",
+        "MC[7]":  "TypeNo 27",
+        "MC[8]":  "TypeNo 28",
+        "MC[9]":  "TypeNo 29",
+        "MC[10]": "TypeNo 30",
+        "MC[11]": "TypeNo 31",
+        "MC[12]": "TypeNo 32",
+        "MC[13]": "TypeNo 33",
+        "MC[14]": "TypeNo 34"
+      },
+      "_excel_columns": [
+        "CLARA 400", "CLARA 400S", "CLARA 450", "CLARA 600", "CLARA 600D", "CLARA 750H"
+      ],
+      "db": "SysConfig_Lib_Clara.db",
+      "excel": "testLBB.xlsx",
+      "families": {},
+      "out_db":   "SysConfig_Lib_Clara_updated.db",
+      "out_xlsx": "Clara_Comparison.xlsx"
+    },
+    {
+      "name": "CR",
+      "_note": "CR has MC[0]=TypeNo40, MC[2]=TypeNo42, MC[3]=TypeNo43. Fill from HSS.",
+      "_excel_columns": ["CR 450/750"],
+      "db": "SysConfig_Lib_CR.db",
+      "excel": "testLBB.xlsx",
+      "families": {},
+      "out_db":   "SysConfig_Lib_CR_updated.db",
+      "out_xlsx": "CR_Comparison.xlsx"
+    },
+    {
+      "name": "PP",
+      "_note": "PP has MC[0]=TypeNo50, MC[2]=TypeNo52, MC[3]=TypeNo53. Fill from HSS.",
+      "_excel_columns": ["PP 450/750"],
+      "db": "SysConfig_Lib_PP.db",
+      "excel": "testLBB.xlsx",
+      "families": {},
+      "out_db":   "SysConfig_Lib_PP_updated.db",
+      "out_xlsx": "PP_Comparison.xlsx"
+    },
+    {
+      "name": "KR",
+      "_note": "KR has MC[0]=TypeNo60, MC[1]=TypeNo61. Fill from HSS.",
+      "_excel_columns": ["KR 400"],
+      "db": "SysConfig_Lib_KR.db",
+      "excel": "testLBB.xlsx",
+      "families": {},
+      "out_db":   "SysConfig_Lib_KR_updated.db",
+      "out_xlsx": "KR_Comparison.xlsx"
+    }
+  ]
+}

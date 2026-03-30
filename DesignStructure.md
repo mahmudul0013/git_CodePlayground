@@ -1,88 +1,148 @@
 # DesignStructure.md
 
-## Architecture: Single-File Sustainable Pipeline
+## Architecture: Universal Multi-Product Pipeline
 
-### Entry Point
-`main.py` — run with `python main.py` from the TestDB folder.
+### Entry Points
+- `run.py` — universal runner, reads config from `jobs.json` (**recommended**)
+- `main.py` — legacy Brew-only script with hardcoded TAG_MAP (kept for reference)
 
-### Processing Pipeline
+### Configuration File: jobs.json
+```json
+{
+  "jobs": [
+    {
+      "name": "Brew",
+      "db":    "SysConfig_Lib_Brew.db",
+      "excel": "testLBB.xlsx",
+      "families": {
+        "BREW 350": 7, "BREW 450": 8, "BREW 600": 9,
+        "BREW 750H": 10, "BREW 600e": 11, "BREW 750e": 12, "BREW 750L": 13
+      },
+      "out_db":   "SysConfig_Lib_Brew_updated.db",
+      "out_xlsx": "Brew_Comparison.xlsx"
+    }
+  ]
+}
+```
+- `families` dict: **key** = exact Excel column header, **value** = MachineConfig array index
+- Jobs with empty `"families": {}` are skipped (printed as PENDING)
+
+### Processing Pipeline (per job in run.py)
 
 ```
-testBrew.xlsx  ──► parse_excel()           ──► excel_data
-                                                  │
-SysConfig_Lib_Brew.db ──► parse_type_defaults()  ──► type_defaults
-                       ──► parse_mc_overrides(N)  ──► mc_overrides[7], mc_overrides[8]
-                                                  │
-                      compute_effective_values()  ──► effective[7], effective[8]
-                                                  │
-                           compare()              ──► comparison_rows
-                                                  │
-                 ┌─────────────────┴───────────────────┐
-                 ▼                                       ▼
-    write_updated_db()                   write_comparison_xlsx()
-    SysConfig_Lib_Brew_updated.db        InstrumentStatusComparison.xlsx
+jobs.json ──► run_job(job)
+                 │
+                 ├─[1] Read DB text
+                 │
+                 ├─[2] build_tag_map(db_text)
+                 │       ┌─ Step A: scan BEGIN section for any MachineConfig[N]."unit"."em".
+                 │       │          → em → unit mapping (no manual input)
+                 │       └─ Step B: scan TYPE "EM-xxx" blocks for STAT-typed fields
+                 │                  → {field: (unit, em, field, is_vlv)}
+                 │
+                 ├─[3] parse_excel(path, families_cfg, tag_map)
+                 │       → {family_name: {tag_label: {enable, exist, vlv_w_fb, ...}}}
+                 │
+                 ├─[4] parse_type_defaults(db_text, tag_map)
+                 │       → {path_key: {default_enable, default_exist, default_vlv_w_fb}}
+                 │
+                 ├─[5] parse_mc_overrides(db_text, mc_idx)  [per family]
+                 │       → {mc_idx: {path_key: {enable, exist, vlv_w_fb}}}
+                 │
+                 ├─[6] build_comparison(...)
+                 │       → list of comparison dicts (one row per instrument)
+                 │
+                 ├─[7] write_comparison_xlsx(rows, out_xlsx, families_cfg, job_name)
+                 │       → <name>_Comparison.xlsx
+                 │
+                 ├─[8] generate_updated_db(...)
+                 │       → SysConfig_Lib_<name>_updated.db
+                 │
+                 └─[9] verify_updated_db(...)
+                         → all ENABLE/EXIST values confirmed correct
 ```
 
-### Module Functions in main.py
+### Key Functions in run.py
 
-#### `parse_excel(path)`
-- Reads `testBrew.xlsx` Sheet1
-- Resolves tag labels using value-cell comments (e.g. D130 comment → resolved tag)
-- Detects **option-type tags**: tag's `TAG_MAP` unit is `"Options"` (found under `Options."EM-XXX"` in the DB)
-  → ENABLE=False, EXIST=False, VLV_W_FB=False **unconditionally** (Excel value ignored)
-- Handles multi-row valve processing:
-  - Collects FB OPN, FB CLS rows → VLV_W_FB
-  - Collects ACT row → ENABLE/EXIST for valves
-  - Single row for non-valves → ENABLE/EXIST
-- Returns: `{family: {resolved_db_tag: {enable, exist, vlv_w_fb, excel_label, function}}}`
+#### `build_tag_map(db_text)` — Auto-Discovery (no manual input)
+```python
+# Step 1: derive em → unit from any path line in BEGIN section
+em_unit = {}
+for m in re.finditer(r'MachineConfig\[\d+\]\."([^"]+)"\."([^"]+)"\.', db_text):
+    em_unit[m.group(2)] = m.group(1)   # em_name → unit_name
 
-#### `parse_type_defaults(db_text)`
-- Scans `TYPE ... END_TYPE` blocks in the DB
-- Parses CW tuple `(b0..b15)` for each STAT VLV/DI/DO/AI/AO/MTR/VFD instance
-  - bit 3 = ENABLE, bit 13 = EXIST, bit 15 = VLV_W_FB (VLV only)
-- Builds the tag→path map from each EM type definition
-- Returns: `{db_path_key: {default_enable, default_exist, default_vlv_w_fb, unit, em, field}}`
+# Step 2: scan TYPE "EM-xxx" blocks for STAT-typed instrument fields
+for each TYPE block starting with "EM":
+    for each field with ": "STAT VLV/DI/DO/AI/AO/MTR/VFD" :=":
+        tag_map[field] = (unit, em, field, is_vlv)
+```
+
+#### `parse_excel(path, families_cfg, tag_map)`
+- Auto-detects family columns by matching header values against `families_cfg` keys
+- Auto-detects Option column (`cell.value.lower() == "option"`)
+- Reads openpyxl cell comments for resolved tag name aliases
+- Aggregates AV valve rows (FB OPN / FB CLS / ACT) separately from non-valve rows
+- option_tags = {tag for tag, info in tag_map.items() if info[0] == "Options"}
+  → these tags get ENABLE=EXIST=VLV_W_FB=False unconditionally
+
+#### `parse_type_defaults(db_text, tag_map)`
+- Derives em→unit from tag_map (not hardcoded)
+- Walks `TYPE ... END_TYPE` blocks; for each STAT field finds CW tuple
+- CW bit 3=ENABLE, bit 13=EXIST, bit 15=VLV_W_FB (VLV only)
+- `()` element in tuple = False (Siemens convention)
 
 #### `parse_mc_overrides(db_text, mc_idx)`
-- Finds all `MachineConfig[N].*.CW.(ENABLE|EXIST|VLV_W_FB) := (True|False)` lines
-- Returns: `{db_path_key: {enable, exist, vlv_w_fb}}`
+- Regex: `MachineConfig[N]."unit"."em"."field".CW.(ENABLE|EXIST|VLV_W_FB) := (True|False)`
+- Both quoted and unquoted field names handled
 
-#### `compute_effective(type_defaults, mc_overrides)`
-- Merges overrides on top of type defaults
-- Returns: `{db_path_key: {enable, exist, vlv_w_fb}}`
+#### `generate_updated_db(...)`
+- Pass 1: strip all existing CW lines for the target MC indices
+- Pass 2: reinsert minimal-patch CW lines only where expected ≠ type default
+- Insert comment header `// === CW auto-patched for MachineConfig[N] ===` per block
+- Handles special field names with parentheses/hyphens by quoting them (e.g. `"LS42X(b)"`)
 
-#### `compare(excel_data, effective, type_defaults, family, mc_idx)`
-- For each Excel instrument, looks up effective DB value
-- Returns list of comparison rows with match/mismatch flag
+#### `verify_updated_db(...)`
+- Re-parses the updated DB text and checks ENABLE/EXIST per tag per family
+- Reports any remaining mismatches to stdout
 
-#### `write_updated_db(db_text, mc_idx, excel_data, type_defaults, mc_overrides)`
-- Keeps all original lines EXCEPT CW.ENABLE/EXIST/VLV_W_FB for the target MachineConfig
-- Regenerates CW override lines only where expected ≠ type default
-- Writes `SysConfig_Lib_Brew_updated.db`
-
-#### `write_comparison_xlsx(comparison_rows)`
-- Writes `InstrumentStatusComparison.xlsx` with columns:
-  - **Fixed:** Tag Label, Function, Unit, EM Module (from TAG_MAP; "N/A" if not mapped)
-  - **Per family:** Excel Val, Exp EN, Exp EX, Exp VF, DB EN, DB EX, DB VF, Match, Action
-- Freeze panes after the 4 fixed columns for easy scrolling
-
-### Tag Path Map (Excel label → DB path)
-Hard-coded in `TAG_MAP` dict: `{excel_label: (unit, em, db_field, is_vlv)}`
-Updated when new instruments are added to the Excel.
-
-### Configuration Constants
+### path_key Convention
 ```python
-FAMILIES = {
-    'BREW 350': {'mc_idx': 7, 'col_idx': 4},   # column D
-    'BREW 450': {'mc_idx': 8, 'col_idx': 5},   # column E
-}
-DB_PATH    = 'SysConfig_Lib_Brew.db'
-EXCEL_PATH = 'testBrew.xlsx'
-OUT_DB     = 'SysConfig_Lib_Brew_updated.db'
-OUT_XLSX   = 'InstrumentStatusComparison.xlsx'
+def path_key(unit, em, field):
+    return f"{unit}|{em}|{field}"
+```
+Used as the dict key throughout the pipeline to link Excel instruments to DB paths.
+
+### CW Bit Layout
+| Bit | Property  | Notes             |
+|-----|-----------|-------------------|
+| 3   | ENABLE    | All STAT types    |
+| 13  | EXIST     | All STAT types    |
+| 15  | VLV_W_FB  | STAT VLV only     |
+
+### Multi-Product Portability
+All 5 DBs (Brew, Clara, CR, KR, PP) share the same 30 TYPE "EM-XXX" block definitions.
+`build_tag_map()` works identically for all — no product-specific code.
+The only product-specific configuration is `families` in `jobs.json`.
+
+### STAT Types Recognized
+```python
+STAT_TYPES = {"STAT VLV", "STAT DI", "STAT DO", "STAT AI", "STAT AO", "STAT MTR", "STAT VFD"}
 ```
 
-### Extensibility
-- Add a new family: add a column to Excel + add entry to FAMILIES dict
-- New instrument in Excel: add entry to TAG_MAP
-- New DB version: just drop in the new `.db` file and re-run
+### Comparison Excel Format
+- Row 1: Title banner (merged)
+- Row 2: Family group headers (merged per family)
+- Row 3: Sub-column headers (frozen after col 4)
+- Row 4+: Data — one row per instrument
+
+Per-family sub-columns (9 per family):
+`Excel Val | Exp EN | Exp EX | Exp VF | DB EN | DB EX | DB VF | Match | Action`
+
+Color coding: green = OK/True, red = MISMATCH, yellow = NOT_FOUND/warning
+
+### Usage
+```
+python run.py               # run all jobs in jobs.json with families configured
+python run.py Brew          # run one job by name
+python run.py --list        # list jobs and status
+```

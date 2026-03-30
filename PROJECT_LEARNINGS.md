@@ -125,7 +125,7 @@ def extract_tuple_content(text, start_pos):
 
 ## 4. Excel Specification Structure
 
-**File:** `testBrew.xlsx`, Sheet1
+**File:** `testLBB.xlsx`, Sheet1
 
 | Column | Content |
 |--------|---------|
@@ -207,7 +207,7 @@ This keeps the DB clean and avoids duplicating defaults. The script strips all e
 ## 6. Architecture & Data Flow
 
 ```
-testBrew.xlsx ─────► parse_excel()
+testLBB.xlsx ─────► parse_excel()
                           │
                           ▼ excel_data
                           │   {family: {tag: {enable, exist, vlv_w_fb, ...}}}
@@ -347,7 +347,7 @@ The bit at `bits[15]` physically exists in all CW tuples in the file but only ha
 
 | Library | Version | Usage | Notes |
 |---------|---------|-------|-------|
-| `openpyxl` | ≥3.1 | Read `testBrew.xlsx` including cell comments | `values_only=False` required to access `.comment` on cells |
+| `openpyxl` | ≥3.1 | Read `testLBB.xlsx` including cell comments | `values_only=False` required to access `.comment` on cells |
 | `xlsxwriter` | ≥3.1 | Write `InstrumentStatusComparison.xlsx` | Better formatting control than openpyxl write mode; supports cell formats, merges, freeze panes |
 | `re` | stdlib | Parse DB TYPE blocks and CW override lines | Multiline / DOTALL flags required for TYPE blocks |
 | `collections.defaultdict` | stdlib | Group valve rows; accumulate overrides per path_key | Avoids KeyError on first access |
@@ -359,9 +359,12 @@ The bit at `bits[15]` physically exists in all CW tuples in the file but only ha
 
 ---
 
-## 9. TAG_MAP — The Central Mapping Layer
+## 9. TAG_MAP — Legacy Manual Mapping (main.py only)
 
-`TAG_MAP` is the single lookup table that bridges Excel tag labels to DB paths:
+> **Note:** `main.py` still uses a hardcoded `TAG_MAP`. The new `run.py` auto-discovers the tag map
+> from the DB — no manual TAG_MAP maintenance required. See Section 9a.
+
+`TAG_MAP` is the lookup table that bridges Excel tag labels to DB paths (used in `main.py`):
 
 ```python
 TAG_MAP = {
@@ -376,53 +379,87 @@ TAG_MAP = {
 3. `db_field` — the exact field name inside that EM type (case-sensitive, must match the DB)
 4. `is_vlv` — `True` if this is a `STAT VLV` type (has meaningful VLV_W_FB bit)
 
-**When `NOT IN TAG_MAP`:** The comparison report shows `NOT IN TAG_MAP` in the Action column. The instrument is still listed (from Excel) but no DB comparison or patch is attempted.
+**When `NOT IN TAG_MAP`:** The comparison report shows `NOT IN TAG_MAP` in the Action column.
+**Maintenance:** Requires manual update when adding instruments. Use `run.py` instead to avoid this.
 
-**When `NOT FOUND IN DB`:** The tag is in TAG_MAP but its path_key is not in either `type_defaults` or `mc_overrides`. Effective value defaults to False/False.
+---
 
-**Maintenance:** Add a new row to TAG_MAP whenever a new instrument is added to the Excel. The unit/em/db_field values must match the DB export exactly — including case.
+## 9a. Auto-Discovery of Tag Map (run.py)
+
+`run.py` eliminates the manual TAG_MAP entirely. `build_tag_map(db_text)` does this in two steps:
+
+**Step 1 — derive em → unit** by scanning any `MachineConfig[N]."unit"."em".` path that appears
+anywhere in the DB BEGIN section. This doesn't require knowing which MC index to use — any path
+in the file reveals the em→unit relationship:
+
+```python
+em_unit = {}
+for m in re.finditer(r'MachineConfig\[\d+\]\."([^"]+)"\."([^"]+)"\.', db_text):
+    em_unit[m.group(2)] = m.group(1)   # em_name → unit_name (last occurrence wins)
+```
+
+**Step 2 — scan TYPE blocks** for instrument fields typed with STAT VLV/DI/DO/AI/AO/MTR/VFD:
+
+```python
+for each TYPE "EM-xxx" block:
+    for each field: "STAT VLV/DI/..." :=
+        tag_map[field_name] = (unit, em, field_name, is_vlv)
+```
+
+**Why this works:** All 5 DBs (Brew, Clara, CR, KR, PP) share the same 30 `TYPE "EM-XXX"` block
+definitions. The auto-discovery is identical for all products — only the `families` dict in
+`jobs.json` changes per product.
+
+**Multi-product operation:** Configure `jobs.json` once, then run any product with:
+```
+python run.py Brew       # or Clara, CR, PP, KR
+python run.py            # run all
+```
+
+**Special characters in field names:** Field names containing parentheses or hyphens (e.g.
+`LS42X(b)`) must be **quoted** when written to the DB so the parser can find them back:
+```python
+def q(s):
+    return f'"{s}"' if re.search(r'[^A-Za-z0-9_]', s) else s
+```
+Original bug: only `[\s\-\+/]` triggered quoting, so `LS42X(b)` was written unquoted but couldn't
+be found by `parse_mc_overrides` — causing 7 verify failures until fix.
 
 ---
 
 ## 10. How to Extend the Project
 
-### Add a new machine family
+### Using run.py (recommended)
 
-1. Add a column to `testBrew.xlsx` (e.g. column F = BREW 550)
-2. Add an entry to `FAMILIES` in `main.py`:
-   ```python
-   FAMILIES = {
-       "BREW 350": {"mc_idx": 7, "col_idx": 4},
-       "BREW 450": {"mc_idx": 8, "col_idx": 5},
-       "BREW 550": {"mc_idx": 9, "col_idx": 6},   # ← new
-   }
+**Add a new machine family to an existing product:**
+1. Add a column to `testLBB.xlsx` — the column header must match exactly what you'll put in jobs.json
+2. Open `jobs.json`, add the family to the relevant job's `"families"` dict: `"NEW FAMILY": mc_idx`
+3. Run `python run.py <JobName>` — no code changes needed
+
+**Add a new product (e.g. new .db file):**
+1. Add a new job entry in `jobs.json`:
+   ```json
+   {"name": "NewProduct", "db": "SysConfig_Lib_New.db", "excel": "testLBB.xlsx",
+    "families": {"FAMILY X": 0}, "out_db": "SysConfig_Lib_New_updated.db",
+    "out_xlsx": "New_Comparison.xlsx"}
    ```
-3. Run `python main.py` — all other code adapts automatically.
+2. Run `python run.py NewProduct` — tag map is auto-discovered from the DB
 
-### Add a new instrument
+**Swap to a new DB version:**
+1. Drop the new `.db` file into the TestDB folder
+2. Run `python run.py <JobName>` — re-parses from scratch
 
-1. Add the row(s) to `testBrew.xlsx` (tag label in col B, function in col C, values in D/E/etc.)
-2. Add to `TAG_MAP` in `main.py`:
-   ```python
-   "NewTag-1": ("Unit Sep", "EM - 400", "NewTag-1", True),
-   ```
-3. If the instrument belongs to a new EM module, add the module to `EM_UNIT_MAP` inside `parse_type_defaults()`.
-4. Run `python main.py`.
+**Add a new instrument:**
+- No code change needed. If the instrument is in the DB TYPE blocks as a STAT-typed field,
+  `build_tag_map()` finds it automatically.
 
-### Swap to a new DB version
+---
 
-1. Drop the new `.db` file into the TestDB folder (overwrite or rename `DB_PATH`)
-2. Run `python main.py` — type defaults and overrides are re-parsed from scratch.
+### Using main.py (legacy, Brew only)
 
-### Add a new EM module to the DB parser
-
-In `parse_type_defaults()`, add an entry to `EM_UNIT_MAP`:
-```python
-EM_UNIT_MAP = {
-    ...
-    "EM - 999": "Unit Sep",   # ← new module
-}
-```
+1. Add a column to `testLBB.xlsx`, add an entry to `FAMILIES` in `main.py`
+2. To add a new instrument: add to `TAG_MAP` and `EM_UNIT_MAP` in `main.py`
+3. Run `python main.py`
 
 ---
 
@@ -434,7 +471,7 @@ EM_UNIT_MAP = {
 |---|-------|--------|---------------|
 | 1 | Field names with spaces missed during type default parsing | Type default falls back to False; patch still correct | Extend `field_hdr_pat` regex to capture quoted field names |
 | 2 | ~47 instruments per family show `NOT IN TAG_MAP` | These are unmapped SPARE/special-function rows or instruments not yet added | Review Excel rows and map the meaningful ones |
-| 3 | Script only processes Sheet1 of testBrew.xlsx | Multi-sheet layouts would require `wb.worksheets` iteration | Low priority unless layout changes |
+| 3 | Script only processes Sheet1 of testLBB.xlsx | Multi-sheet layouts would require `wb.worksheets` iteration | Low priority unless layout changes |
 | 4 | No GUI / web interface | Requires Python environment to run | Could be wrapped in a simple Flask UI or a batch script for non-technical users |
 | 5 | VLV_W_FB comparison is skipped for non-valve instruments | Correct by design, but silently | No change needed |
 
@@ -465,28 +502,61 @@ EM_UNIT_MAP = {
 | `DchSystem` | Discharge system type | 1=Dosing ring, 2=OWMC, 3=OWMCe, 4=OWM II |
 | `eMotion` | eMotion option | 0=Not compatible, 1=Compatible, 2=Installed |
 
-### Known Brew family mapping (update from HSS documentation)
-| mc_idx | TypeNo | Family Name | Range | Frame | DchSystem | Notes |
-|---|---|---|---|---|---|---|
-| 7 | 7 | **BREW 350** | TumbaL | 18 | OWMC | — |
-| 8 | 8 | **BREW 450** | TumbaL | 18 | OWMCe | eMotion compatible |
-| 9 | 9 | **BREW 600** | TumbaL | 18 | OWMCe | eMotion compatible |
-| 10–14 | 10–14 | _(update from HSS)_ | TumbaL | 18–18e | OWMCe | — |
+### Known Brew family mapping (SysConfig_Lib_Brew.db)
+| mc_idx | TypeNo | Family Name   | Notes |
+|---|---|---|---|
+| 7  | 7  | **BREW 350**  | |
+| 8  | 8  | **BREW 450**  | |
+| 9  | 9  | **BREW 600**  | |
+| 10 | 10 | **BREW 750H** | |
+| 11 | 11 | **BREW 600e** | |
+| 12 | 12 | **BREW 750e** | |
+| 13 | 13 | **BREW 750L** | |
 
-> **To find mc_idx for a new family:** Open the `.db` file, search for `TypeNo :=` blocks, match the `Frame` + `DchSystem` + option flags to the known machine spec, then use that `MachineConfig[N]` number as `mc_idx`.
+### Other Products — TypeNo Reference (mc_idx → TypeNo, family name from HSS)
+| Product | DB                      | MC Indices   | TypeNo Range | Family Code |
+|---|---|---|---|---|
+| Clara   | SysConfig_Lib_Clara.db  | MC[0]–MC[14] | 20–34        | 2           |
+| CR      | SysConfig_Lib_CR.db     | MC[0,2,3]    | 40, 42, 43   | 3           |
+| PP      | SysConfig_Lib_PP.db     | MC[0,2,3]    | 50, 52, 53   | 4           |
+| KR      | SysConfig_Lib_KR.db     | MC[0,1]      | 60, 61       | 5           |
+
+> MC indices are 0-based. For Clara: MC[0]=TypeNo20, MC[1]=TypeNo21, …, MC[14]=TypeNo34.
+> Family code 1=Brew, 2=Clara, 3=CR, 4=PurePuls, 5=KR (from DB comment).
+
+> **To confirm mc_idx for a family:** Open the DB, find `MachineConfig[N].Machine.TypeNo := XX` and
+> cross-reference TypeNo with the HSS document to get the human-readable model name (e.g. "CLARA 400").
+> Then add `"CLARA 400": N` to the `"families"` dict in jobs.json.
 
 ---
 
 ## 13. Quick-Reference Cheatsheet
 
 ```
-# Run the full pipeline
-cd "c:\Users\Administrator\Documents\Agentic World\TestDB"
-python main.py
+# === RECOMMENDED: run.py + jobs.json ===
 
-# Outputs produced
-SysConfig_Lib_Brew_updated.db       ← drop into TIA Portal
-InstrumentStatusComparison.xlsx     ← review mismatches
+cd "c:\Users\Administrator\Documents\Agentic World\TestDB"
+
+python run.py --list        # show all jobs and their status
+python run.py Brew          # run a specific job
+python run.py               # run all jobs with families configured
+
+# Outputs per job (example: Brew)
+Brew_Comparison.xlsx             ← review mismatches (close before running)
+SysConfig_Lib_Brew_updated.db    ← drop into TIA Portal
+
+# To add a new family to an existing product
+1. Add column to testLBB.xlsx (exact header = job key)
+2. Edit jobs.json: add "Family Name": mc_idx to the job's "families" dict
+3. python run.py <JobName>
+
+# To enable Clara/CR/PP/KR: fill in "families" dict in jobs.json from HSS docs
+# mc_idx values: Clara=MC[0-14]/TypeNo20-34, CR=MC[0,2,3]/TypeNo40,42,43
+#                PP=MC[0,2,3]/TypeNo50,52,53, KR=MC[0,1]/TypeNo60,61
+
+# === LEGACY: main.py (Brew only) ===
+python main.py
+# Outputs: SysConfig_Lib_Brew_updated.db, InstrumentStatusComparison.xlsx
 
 # CW bit positions (0-indexed)
 bit 3  = ENABLE
@@ -498,28 +568,20 @@ X  → ENABLE=True,  EXIST=True
 o  → ENABLE=True,  EXIST=False
    → ENABLE=False, EXIST=False
 
+# Option tags (unit="Options" in DB): always ENABLE=EXIST=VLV_W_FB=False
+
 # Valve rows in Excel (AV prefix)
 FB OPN + FB CLS → VLV_W_FB
 ACT             → ENABLE / EXIST
 
 # Action column meanings in report
 OK              → DB already matches Excel
-UPDATE: ...     → DB will be corrected in updated.db
-NOT IN TAG_MAP  → Excel row not mapped in TAG_MAP dict
+UPDATE: ...     → DB has been corrected in updated.db
+NOT IN TAG_MAP  → Excel row not in auto-discovered map (run.py) or TAG_MAP (main.py)
 NOT FOUND IN DB → Mapped but path_key absent in DB
-
-# To add a new family
-1. Add Excel column
-2. Add entry to FAMILIES dict
-3. python main.py
-
-# To add a new instrument
-1. Add row to Excel
-2. Add entry to TAG_MAP
-3. python main.py
 ```
 
 ---
 
-*Document generated from the BREW 350 / BREW 450 implementation — March 2026.*
-*All rules and findings apply equally to any future Brew family variant.*
+*Updated March 2026 — extended to universal multi-product runner (run.py + jobs.json).*
+*Covers Brew (all 7 families), with Clara/CR/PP/KR pending HSS mc_idx confirmation.*
