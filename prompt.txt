@@ -57,3 +57,21 @@ That is why, I want to do indipendent operation but same job for different .dbs 
 So that no manual TAG_MAP needed. just refering the .bd name and hardware specifictin exel colomn info 
 with machine id. can generate the comparison excel and updated db respectively. Need to generate separate conparison exel and corrected indivisual updated db. 
 Now add this task in to the wishList.md then plan and update the designStructure.md and learning .md and excicure the task. 
+
+
+Correction:
+Tag name updated. PLC has full form. 
+L-GREEN
+L-YELLOW
+L-RED
+L-BUZZ
+
+for AV valve, VLV_W_FB logic based on Function column:
+    if FB OPN/FB CLS = 'X' or 'o' → VLV_W_FB = True  
+    if FB OPN and FB CLS empty → VLV_W_FB = False
+	if FB OPN = 'X' or 'o' FB_OPN_EN = True
+	if FB OPN = 'X' or 'o' FB_OPN_EN = True
+
+if NC
+
+NO 
