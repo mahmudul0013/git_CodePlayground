@@ -78,17 +78,20 @@ for each TYPE block starting with "EM":
 ```
 
 #### `parse_excel(path, families_cfg, tag_map)`
-- Auto-detects family columns by matching header values against `families_cfg` keys
-- Auto-detects Option column (`cell.value.lower() == "option"`)
+- Auto-detects family columns, Option column, and **Type column** (`cell.value.lower() == "type"`)
 - Reads openpyxl cell comments for resolved tag name aliases
 - Aggregates AV valve rows (FB OPN / FB CLS / ACT) separately from non-valve rows
 - option_tags = {tag for tag, info in tag_map.items() if info[0] == "Options"}
-  → these tags get ENABLE=EXIST=VLV_W_FB=False unconditionally
+  → these tags get ENABLE=False, EXIST=False unconditionally (VLV_W_FB/NO/FB follows normal logic)
+- Type column → `no_val`: NC→False, NO→True, other/empty→None (no override)
+- FB OPN / FB CLS x or o → `fb_opn_en=True` / `fb_cls_en=True`, VLV_W_FB=True
+- Both FB empty → VLV_W_FB=False, FB_OPN_EN=False, FB_CLS_EN=False
 
 #### `parse_type_defaults(db_text, tag_map)`
 - Derives em→unit from tag_map (not hardcoded)
 - Walks `TYPE ... END_TYPE` blocks; for each STAT field finds CW tuple
-- CW bit 3=ENABLE, bit 13=EXIST, bit 15=VLV_W_FB (VLV only)
+- Extracts: bit 3=ENABLE, bit 6=FB_CLS_EN (VLV), bit 7=FB_OPN_EN (VLV),
+            bit 12=NO, bit 13=EXIST, bit 15=VLV_W_FB (VLV)
 - `()` element in tuple = False (Siemens convention)
 
 #### `parse_mc_overrides(db_text, mc_idx)`
@@ -113,11 +116,17 @@ def path_key(unit, em, field):
 Used as the dict key throughout the pipeline to link Excel instruments to DB paths.
 
 ### CW Bit Layout
-| Bit | Property  | Notes             |
-|-----|-----------|-------------------|
-| 3   | ENABLE    | All STAT types    |
-| 13  | EXIST     | All STAT types    |
-| 15  | VLV_W_FB  | STAT VLV only     |
+| Bit | Property   | CW Type  | Notes                                |
+|-----|------------|----------|--------------------------------------|
+| 3   | ENABLE     | Both     | All STAT types                       |
+| 6   | FB_CLS_EN  | CW_VLV   | Enable Close Feedback (STAT VLV)     |
+| 7   | FB_OPN_EN  | CW_VLV   | Enable Open Feedback (STAT VLV)      |
+| 12  | NO         | Both     | 0=NC (False), 1=NO (True)            |
+| 13  | EXIST      | Both     | All STAT types                       |
+| 15  | VLV_W_FB   | CW_VLV   | Valve Without Position Feedback      |
+
+DB comment: `NO : Bool // 0=NC, 1=NO`
+Excel Type column → NO bit: NC → False, NO → True, 4..20MA/empty → no override
 
 ### Multi-Product Portability
 All 5 DBs (Brew, Clara, CR, KR, PP) share the same 30 TYPE "EM-XXX" block definitions.
@@ -135,8 +144,11 @@ STAT_TYPES = {"STAT VLV", "STAT DI", "STAT DO", "STAT AI", "STAT AO", "STAT MTR"
 - Row 3: Sub-column headers (frozen after col 4)
 - Row 4+: Data — one row per instrument
 
-Per-family sub-columns (9 per family):
-`Excel Val | Exp EN | Exp EX | Exp VF | DB EN | DB EX | DB VF | Match | Action`
+Per-family sub-columns (16 per family):
+```
+Excel Val | Type(NC/NO) | Exp EN | Exp EX | Exp VF | Exp NO | Exp FBOPN | Exp FBCLS |
+                          DB EN  | DB EX  | DB VF  | DB NO  | DB FBOPN  | DB FBCLS  | Match | Action
+```
 
 Color coding: green = OK/True, red = MISMATCH, yellow = NOT_FOUND/warning
 

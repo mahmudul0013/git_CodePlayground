@@ -6,8 +6,21 @@ Auto-discovers instrument paths from DB TYPE blocks — NO manual TAG_MAP needed
 For each job defined in jobs.json:
   - Reads the specified .db and .xlsx files
   - Auto-builds the tag map from the DB structure
-  - Compares ENABLE / EXIST / VLV_W_FB for every instrument × every family
+  - Compares ENABLE / EXIST / VLV_W_FB / NO / FB_OPN_EN / FB_CLS_EN per instrument × family
   - Produces a separate comparison .xlsx and corrected .db per job
+
+CW bit layout (CW_VLV / CW_AN):
+  bit  3 = ENABLE         (all STAT types)
+  bit  6 = FB_CLS_EN      (CW_VLV only — Enable Close Feedback)
+  bit  7 = FB_OPN_EN      (CW_VLV only — Enable Open Feedback)
+  bit 12 = NO             (CW_VLV and CW_AN — 0=NC, 1=NO)
+  bit 13 = EXIST          (all STAT types)
+  bit 15 = VLV_W_FB       (CW_VLV only — Valve Without Feedback)
+
+Excel Type column → NO bit:
+  NC  → NO = True   (Normally Closed output logic)
+  NO  → NO = False  (Normally Open output logic)
+  other/empty → no override (keep type default)
 
 Usage:
   python run.py                  # run all jobs in jobs.json
@@ -93,6 +106,7 @@ def build_tag_map(db_text):
     Auto-build {field_name: (unit, em, field_name, is_vlv)} directly from the DB.
 
     Step 1 — em→unit: scan any MachineConfig[N]."unit"."em". line in BEGIN section.
+             Unit names may be quoted ("Unit Sep") OR unquoted (Options, Communications).
     Step 2 — fields:  scan TYPE "EM-xxx" blocks for STAT-typed fields.
     No manual input needed.
     """
@@ -143,14 +157,31 @@ def build_tag_map(db_text):
 def parse_excel(path, families_cfg, tag_map):
     """
     families_cfg: {family_name: mc_idx}  (from jobs.json)
-    Returns: {family_name: {tag_label: {enable, exist, vlv_w_fb, ...}}}
+
+    Returns: {family_name: {tag_label: {enable, exist, vlv_w_fb, fb_opn_en, fb_cls_en,
+                                        no_val, is_vlv, ...}}}
+
+    Type column logic (col header = "Type"):
+      NC   → no_val = True   (Normally Closed output — NO bit = True)
+      NO   → no_val = False  (Normally Open output  — NO bit = False)
+      other/empty → no_val = None  (no override; keep type default)
+
+    VLV_W_FB / FB_OPN_EN / FB_CLS_EN (AV valves only):
+      FB OPN = x or o  →  fb_opn_en = True,  VLV_W_FB = True
+      FB CLS = x or o  →  fb_cls_en = True,  VLV_W_FB = True
+      both empty/spare →  VLV_W_FB = False
+
+    Option Module Rule (unit = "Options" in DB):
+      ENABLE = False, EXIST = False unconditionally.
+      VLV_W_FB / FB_OPN_EN / FB_CLS_EN / NO follow normal logic.
     """
     wb = openpyxl.load_workbook(path)
     ws = wb.active
 
-    # Auto-detect family columns by matching header cell values to families_cfg keys
+    # Auto-detect family columns, option column, and type column from header rows
     family_cols = {}    # {col_idx (1-based): family_name}
-    option_col  = None  # col_idx of "Option" descriptor column
+    option_col  = None
+    type_col    = None
     header_row  = None
     for row in ws.iter_rows(min_row=1, max_row=10):
         for cell in row:
@@ -161,6 +192,8 @@ def parse_excel(path, families_cfg, tag_map):
                     header_row = cell.row
                 elif v.lower() == "option":
                     option_col = cell.column
+                elif v.lower() == "type":
+                    type_col = cell.column
 
     if not family_cols:
         raise ValueError(
@@ -170,6 +203,22 @@ def parse_excel(path, families_cfg, tag_map):
 
     # Tags under "Options" unit in the DB are always ENABLE=False, EXIST=False
     option_tags = {tag for tag, info in tag_map.items() if info[0] == "Options"}
+
+    def type_to_no(type_val):
+        """Convert Excel Type column value to NO bit. None = no override.
+        DB comment: NO : Bool  // 0=NC, 1=NO
+          NC  → NO = False  (0 = Normally Closed)
+          NO  → NO = True   (1 = Normally Open)
+          other/empty → None (keep type default)
+        """
+        if type_val is None:
+            return None
+        v = str(type_val).strip().upper()
+        if v == "NC":
+            return False
+        if v == "NO":
+            return True
+        return None   # 4..20MA or other analog types — no NO override
 
     # Read data rows
     raw_rows = []
@@ -199,27 +248,37 @@ def parse_excel(path, families_cfg, tag_map):
         opt_desc = ""
         if option_col:
             opt_desc = str(row[option_col - 1].value or "").strip().upper()
-        raw_rows.append((tag_label, func, fam_vals, opt_desc))
+
+        no_val = None
+        if type_col:
+            no_val = type_to_no(row[type_col - 1].value)
+
+        raw_rows.append((tag_label, func, fam_vals, opt_desc, no_val))
 
     # Aggregate: AV valves (FB OPN / FB CLS / ACT rows) vs everything else
-    valve_rows    = defaultdict(lambda: {"fb_opn": {}, "fb_cls": {}, "act": {}})
+    valve_rows     = defaultdict(lambda: {"fb_opn": {}, "fb_cls": {}, "act": {}, "no_val": None})
     non_valve_rows = {}
     AV_FUNCS       = {"FB OPN", "FB CLS", "ACT"}
 
-    for tag_label, func, fam_vals, _opt in raw_rows:
+    for tag_label, func, fam_vals, _opt, no_val in raw_rows:
         func_up = func.upper().strip()
         if tag_label.upper().startswith("AV") and func_up in AV_FUNCS:
             key = {"FB OPN": "fb_opn", "FB CLS": "fb_cls", "ACT": "act"}[func_up]
             valve_rows[tag_label][key] = fam_vals
+            if no_val is not None:
+                valve_rows[tag_label]["no_val"] = no_val
         else:
             if tag_label not in non_valve_rows:
-                non_valve_rows[tag_label] = {"fam_vals": {}, "func": func}
+                non_valve_rows[tag_label] = {"fam_vals": {}, "func": func, "no_val": no_val}
             for fam, fv in fam_vals.items():
                 existing = non_valve_rows[tag_label]["fam_vals"]
                 if fam not in existing or (existing[fam]["val"] is None and fv["val"] is not None):
                     existing[fam] = fv
+            if no_val is not None:
+                non_valve_rows[tag_label]["no_val"] = no_val
 
     def xlval(raw_val, is_option=False):
+        """Return (enable, exist) from Excel cell value."""
         if is_option:
             return False, False
         if raw_val is None:
@@ -229,9 +288,8 @@ def parse_excel(path, families_cfg, tag_map):
         elif v == "o": return True, False
         return False, False
 
-    def has_fb(fam_vals, fam_name, is_option=False):
-        if is_option:
-            return False
+    def fb_active(fam_vals, fam_name):
+        """True if the FB OPN or FB CLS cell is x or o for this family."""
         fv = fam_vals.get(fam_name, {}).get("val")
         if fv is None:
             return False
@@ -239,23 +297,37 @@ def parse_excel(path, families_cfg, tag_map):
 
     families_data = {fam: {} for fam in family_cols.values()}
 
+    # AV valves
     for tag_label, rows in valve_rows.items():
+        tag_no_val = rows["no_val"]
         for fam_name in family_cols.values():
             is_opt  = tag_label in option_tags
             act_fv  = rows["act"].get(fam_name, {"val": None, "comment": None})
-            fb_opn  = rows["fb_opn"].get(fam_name, {"val": None})
-            fb_cls  = rows["fb_cls"].get(fam_name, {"val": None})
             enable, exist = xlval(act_fv.get("val"), is_opt)
-            vlv_w_fb = has_fb(rows["fb_opn"], fam_name, is_opt) or \
-                       has_fb(rows["fb_cls"], fam_name, is_opt)
+
+            fb_opn_active = fb_active(rows["fb_opn"], fam_name)
+            fb_cls_active = fb_active(rows["fb_cls"], fam_name)
+            fb_opn_en  = fb_opn_active
+            fb_cls_en  = fb_cls_active
+            vlv_w_fb   = fb_opn_active or fb_cls_active
+
             families_data[fam_name][tag_label] = {
-                "enable": enable, "exist": exist, "vlv_w_fb": vlv_w_fb,
+                "enable":     enable,
+                "exist":      exist,
+                "vlv_w_fb":   vlv_w_fb,
+                "fb_opn_en":  fb_opn_en,
+                "fb_cls_en":  fb_cls_en,
+                "no_val":     tag_no_val,
                 "resolved_tag": act_fv.get("comment") or tag_label,
-                "label": tag_label, "function": "AV Valve", "is_vlv": True,
-                "raw_act": act_fv.get("val"),
-                "raw_fb":  fb_opn.get("val") or fb_cls.get("val"),
+                "label":      tag_label,
+                "function":   "AV Valve",
+                "is_vlv":     True,
+                "raw_act":    act_fv.get("val"),
+                "raw_fb_opn": rows["fb_opn"].get(fam_name, {}).get("val"),
+                "raw_fb_cls": rows["fb_cls"].get(fam_name, {}).get("val"),
             }
 
+    # Non-valve instruments
     for tag_label, info in non_valve_rows.items():
         for fam_name in family_cols.values():
             is_opt  = tag_label in option_tags
@@ -263,10 +335,17 @@ def parse_excel(path, families_cfg, tag_map):
             raw_val = fv.get("val")
             enable, exist = xlval(raw_val, is_opt)
             families_data[fam_name][tag_label] = {
-                "enable": enable, "exist": exist, "vlv_w_fb": False,
+                "enable":    enable,
+                "exist":     exist,
+                "vlv_w_fb":  False,
+                "fb_opn_en": False,
+                "fb_cls_en": False,
+                "no_val":    info.get("no_val"),
                 "resolved_tag": fv.get("comment") or tag_label,
-                "label": tag_label, "function": info["func"],
-                "is_vlv": False, "raw_val": raw_val,
+                "label":     tag_label,
+                "function":  info["func"],
+                "is_vlv":    False,
+                "raw_val":   raw_val,
             }
 
     return families_data
@@ -277,7 +356,17 @@ def parse_excel(path, families_cfg, tag_map):
 def parse_type_defaults(db_text, tag_map):
     """
     Parse TYPE...END_TYPE blocks using em→unit from tag_map.
-    Returns: {path_key: {default_enable, default_exist, default_vlv_w_fb, ...}}
+
+    CW bit positions extracted:
+      bit  3 = ENABLE       (all STAT types)
+      bit  6 = FB_CLS_EN    (CW_VLV / STAT VLV only)
+      bit  7 = FB_OPN_EN    (CW_VLV / STAT VLV only)
+      bit 12 = NO           (CW_VLV and CW_AN)
+      bit 13 = EXIST        (all STAT types)
+      bit 15 = VLV_W_FB     (CW_VLV / STAT VLV only)
+
+    Returns: {path_key: {default_enable, default_exist, default_vlv_w_fb,
+                          default_no, default_fb_opn_en, default_fb_cls_en, ...}}
     """
     em_unit   = {info[1]: info[0] for info in tag_map.values()}
     defaults  = {}
@@ -320,9 +409,12 @@ def parse_type_defaults(db_text, tag_map):
 
             pk = path_key(unit, em, field_raw)
             defaults[pk] = {
-                "default_enable":   bits[3]  if len(bits) > 3  else False,
-                "default_exist":    bits[13] if len(bits) > 13 else False,
-                "default_vlv_w_fb": bits[15] if (is_vlv and len(bits) > 15) else False,
+                "default_enable":    bits[3]  if len(bits) > 3  else False,
+                "default_fb_cls_en": bits[6]  if (is_vlv and len(bits) > 6)  else False,
+                "default_fb_opn_en": bits[7]  if (is_vlv and len(bits) > 7)  else False,
+                "default_no":        bits[12] if len(bits) > 12 else False,
+                "default_exist":     bits[13] if len(bits) > 13 else False,
+                "default_vlv_w_fb":  bits[15] if (is_vlv and len(bits) > 15) else False,
                 "unit": unit, "em": em, "field": field_raw, "is_vlv": is_vlv,
             }
 
@@ -331,13 +423,16 @@ def parse_type_defaults(db_text, tag_map):
 
 # ── Step 3: Parse MachineConfig[N] overrides ──────────────────────────────────
 
+# All CW properties that can appear as overrides in the BEGIN section
+CW_PROPS = {"ENABLE", "EXIST", "VLV_W_FB", "NO", "FB_OPN_EN", "FB_CLS_EN"}
+
 def parse_mc_overrides(db_text, mc_idx):
     overrides = defaultdict(dict)
     pat = re.compile(
         r'MachineConfig\[' + str(mc_idx) + r'\]\.'
         r'(?:"([^"]+)"|([A-Za-z][A-Za-z0-9_]*))\."([^"]+)"\.'  # unit (q/unq) + em (quoted)
         r'(?:"([^"]+)"|([A-Za-z0-9_\-]+))\.'                    # field (q/unq)
-        r'CW\.(ENABLE|EXIST|VLV_W_FB)\s*:=\s*(True|true|False|false)\s*;',
+        r'CW\.(ENABLE|EXIST|VLV_W_FB|NO|FB_OPN_EN|FB_CLS_EN)\s*:=\s*(True|true|False|false)\s*;',
         re.IGNORECASE
     )
     for m in pat.finditer(db_text):
@@ -347,9 +442,12 @@ def parse_mc_overrides(db_text, mc_idx):
         prop  = m.group(6).upper()
         val   = norm_bool(m.group(7))
         pk    = path_key(unit, em, field)
-        if prop == "ENABLE":    overrides[pk]["enable"]    = val
-        elif prop == "EXIST":   overrides[pk]["exist"]     = val
-        elif prop == "VLV_W_FB": overrides[pk]["vlv_w_fb"] = val
+        if prop == "ENABLE":      overrides[pk]["enable"]      = val
+        elif prop == "EXIST":     overrides[pk]["exist"]       = val
+        elif prop == "VLV_W_FB":  overrides[pk]["vlv_w_fb"]   = val
+        elif prop == "NO":        overrides[pk]["no"]          = val
+        elif prop == "FB_OPN_EN": overrides[pk]["fb_opn_en"]  = val
+        elif prop == "FB_CLS_EN": overrides[pk]["fb_cls_en"]  = val
     return dict(overrides)
 
 
@@ -357,18 +455,19 @@ def parse_mc_overrides(db_text, mc_idx):
 
 def compute_effective(type_defaults, mc_overrides, excel_tag, tag_map):
     if excel_tag not in tag_map:
-        return False, False, False, False
+        return False, False, False, False, False, False, False
     unit, em, field, is_vlv = tag_map[excel_tag]
-    pk     = path_key(unit, em, field)
-    def_en = type_defaults.get(pk, {}).get("default_enable",   False)
-    def_ex = type_defaults.get(pk, {}).get("default_exist",    False)
-    def_vf = type_defaults.get(pk, {}).get("default_vlv_w_fb", False)
-    ov     = mc_overrides.get(pk, {})
-    found  = (pk in type_defaults) or (pk in mc_overrides)
+    pk  = path_key(unit, em, field)
+    td  = type_defaults.get(pk, {})
+    ov  = mc_overrides.get(pk, {})
+    found = (pk in type_defaults) or (pk in mc_overrides)
     return (
-        ov.get("enable",    def_en),
-        ov.get("exist",     def_ex),
-        ov.get("vlv_w_fb",  def_vf),
+        ov.get("enable",      td.get("default_enable",    False)),
+        ov.get("exist",       td.get("default_exist",     False)),
+        ov.get("vlv_w_fb",    td.get("default_vlv_w_fb",  False)),
+        ov.get("no",          td.get("default_no",        False)),
+        ov.get("fb_opn_en",   td.get("default_fb_opn_en", False)),
+        ov.get("fb_cls_en",   td.get("default_fb_cls_en", False)),
         found,
     )
 
@@ -400,52 +499,75 @@ def build_comparison(excel_data, type_defaults, mc_overrides_all, tag_map, famil
             fam_data     = excel_data.get(fam_name, {})
 
             if tag_label in fam_data:
-                inst     = fam_data[tag_label]
-                exp_en   = inst["enable"]
-                exp_ex   = inst["exist"]
-                exp_vf   = inst["vlv_w_fb"] if is_vlv else False
-                raw_disp = (
+                inst        = fam_data[tag_label]
+                exp_en      = inst["enable"]
+                exp_ex      = inst["exist"]
+                exp_vf      = inst["vlv_w_fb"]  if is_vlv else False
+                exp_no      = inst["no_val"]     # None = no override expected
+                exp_fbopn   = inst["fb_opn_en"] if is_vlv else False
+                exp_fbcls   = inst["fb_cls_en"] if is_vlv else False
+                raw_disp    = (
                     str(inst.get("raw_act", "")).upper() or "empty"
                     if inst.get("is_vlv") else
                     str(inst.get("raw_val", "")).upper() or "empty"
                 )
             else:
-                exp_en, exp_ex, exp_vf, raw_disp = False, False, False, "N/A"
+                exp_en, exp_ex, exp_vf = False, False, False
+                exp_no, exp_fbopn, exp_fbcls = None, False, False
+                raw_disp = "N/A"
 
             if in_map:
-                eff_en, eff_ex, eff_vf, found = compute_effective(
-                    type_defaults, mc_overrides, tag_label, tag_map)
+                eff_en, eff_ex, eff_vf, eff_no, eff_fbopn, eff_fbcls, found = \
+                    compute_effective(type_defaults, mc_overrides, tag_label, tag_map)
             else:
-                eff_en, eff_ex, eff_vf, found = False, False, False, False
+                eff_en, eff_ex, eff_vf, eff_no, eff_fbopn, eff_fbcls, found = \
+                    False, False, False, False, False, False, False
 
-            en_m = (exp_en == eff_en)
-            ex_m = (exp_ex == eff_ex)
-            vf_m = (exp_vf == eff_vf) if (in_map and is_vlv) else True
+            en_m    = (exp_en  == eff_en)
+            ex_m    = (exp_ex  == eff_ex)
+            vf_m    = (exp_vf  == eff_vf)   if (in_map and is_vlv) else True
+            no_m    = (exp_no  == eff_no)   if (in_map and exp_no is not None) else True
+            fbopn_m = (exp_fbopn == eff_fbopn) if (in_map and is_vlv) else True
+            fbcls_m = (exp_fbcls == eff_fbcls) if (in_map and is_vlv) else True
 
             if not in_map:
                 action = "NOT IN DB MAP"
             elif not found:
                 action = "NOT FOUND IN DB"
-            elif not en_m or not ex_m or (is_vlv and not vf_m):
+            elif not en_m or not ex_m or not vf_m or not no_m or not fbopn_m or not fbcls_m:
                 parts = []
-                if not en_m: parts.append(f"ENABLE: DB={eff_en}->{exp_en}")
-                if not ex_m: parts.append(f"EXIST: DB={eff_ex}->{exp_ex}")
+                if not en_m:    parts.append(f"ENABLE: DB={eff_en}->{exp_en}")
+                if not ex_m:    parts.append(f"EXIST: DB={eff_ex}->{exp_ex}")
                 if is_vlv and not vf_m:
                     parts.append(f"VLV_W_FB: DB={eff_vf}->{exp_vf}")
+                if exp_no is not None and not no_m:
+                    parts.append(f"NO: DB={eff_no}->{exp_no}")
+                if is_vlv and not fbopn_m:
+                    parts.append(f"FB_OPN_EN: DB={eff_fbopn}->{exp_fbopn}")
+                if is_vlv and not fbcls_m:
+                    parts.append(f"FB_CLS_EN: DB={eff_fbcls}->{exp_fbcls}")
                 action = ("UPDATE: " + ", ".join(parts)) if parts else "OK"
             else:
                 action = "OK"
 
+            all_match = en_m and ex_m and vf_m and no_m and fbopn_m and fbcls_m
             row.update({
-                f"{fs}_Excel":  raw_disp,
-                f"{fs}_ExpEN":  exp_en,
-                f"{fs}_ExpEX":  exp_ex,
-                f"{fs}_ExpVF":  exp_vf if is_vlv else "N/A",
-                f"{fs}_DbEN":   eff_en,
-                f"{fs}_DbEX":   eff_ex,
-                f"{fs}_DbVF":   eff_vf if is_vlv else "N/A",
-                f"{fs}_Match":  "OK" if (en_m and ex_m and vf_m) else "MISMATCH",
-                f"{fs}_Action": action,
+                f"{fs}_Excel":    raw_disp,
+                f"{fs}_Type":     "NC" if exp_no is True else ("NO" if exp_no is False else "-"),
+                f"{fs}_ExpEN":    exp_en,
+                f"{fs}_ExpEX":    exp_ex,
+                f"{fs}_ExpVF":    exp_vf      if is_vlv else "N/A",
+                f"{fs}_ExpNO":    exp_no      if exp_no is not None else "-",
+                f"{fs}_ExpFBOPN": exp_fbopn   if is_vlv else "N/A",
+                f"{fs}_ExpFBCLS": exp_fbcls   if is_vlv else "N/A",
+                f"{fs}_DbEN":     eff_en,
+                f"{fs}_DbEX":     eff_ex,
+                f"{fs}_DbVF":     eff_vf      if is_vlv else "N/A",
+                f"{fs}_DbNO":     eff_no,
+                f"{fs}_DbFBOPN":  eff_fbopn   if is_vlv else "N/A",
+                f"{fs}_DbFBCLS":  eff_fbcls   if is_vlv else "N/A",
+                f"{fs}_Match":    "OK" if all_match else "MISMATCH",
+                f"{fs}_Action":   action,
             })
         rows.append(row)
     return rows
@@ -474,7 +596,7 @@ def generate_updated_db(db_text, excel_data, type_defaults, mc_overrides_all,
             r'MachineConfig\[' + str(mc_idx) + r'\]\.'
             r'(?:"[^"]+"|[A-Za-z][A-Za-z0-9_]*)\."[^"]+"\.'
             r'(?:"[^"]+"|[A-Za-z0-9_\-]+)\.'
-            r'CW\.(ENABLE|EXIST|VLV_W_FB)\s*:=',
+            r'CW\.(ENABLE|EXIST|VLV_W_FB|NO|FB_OPN_EN|FB_CLS_EN)\s*:=',
             re.IGNORECASE
         )
         for mc_idx in families_cfg.values()
@@ -487,19 +609,35 @@ def generate_updated_db(db_text, excel_data, type_defaults, mc_overrides_all,
             if tag_label not in tag_map:
                 continue
             unit, em, field, is_vlv = tag_map[tag_label]
-            pk     = path_key(unit, em, field)
-            def_en = type_defaults.get(pk, {}).get("default_enable",   False)
-            def_ex = type_defaults.get(pk, {}).get("default_exist",    False)
-            def_vf = type_defaults.get(pk, {}).get("default_vlv_w_fb", False)
-            exp_en = inst["enable"]
-            exp_ex = inst["exist"]
-            exp_vf = inst["vlv_w_fb"] if is_vlv else False
+            pk  = path_key(unit, em, field)
+            td  = type_defaults.get(pk, {})
+
+            def_en     = td.get("default_enable",    False)
+            def_ex     = td.get("default_exist",     False)
+            def_vf     = td.get("default_vlv_w_fb",  False)
+            def_no     = td.get("default_no",        False)
+            def_fbopn  = td.get("default_fb_opn_en", False)
+            def_fbcls  = td.get("default_fb_cls_en", False)
+
+            exp_en    = inst["enable"]
+            exp_ex    = inst["exist"]
+            exp_vf    = inst["vlv_w_fb"]  if is_vlv else False
+            exp_no    = inst["no_val"]    # None = no override needed
+            exp_fbopn = inst["fb_opn_en"] if is_vlv else False
+            exp_fbcls = inst["fb_cls_en"] if is_vlv else False
+
             if exp_en != def_en:
                 new_cw[mc_idx].append(make_db_line(mc_idx, unit, em, field, "ENABLE",    exp_en))
             if exp_ex != def_ex:
                 new_cw[mc_idx].append(make_db_line(mc_idx, unit, em, field, "EXIST",     exp_ex))
             if is_vlv and exp_vf != def_vf:
-                new_cw[mc_idx].append(make_db_line(mc_idx, unit, em, field, "VLV_W_FB", exp_vf))
+                new_cw[mc_idx].append(make_db_line(mc_idx, unit, em, field, "VLV_W_FB",  exp_vf))
+            if exp_no is not None and exp_no != def_no:
+                new_cw[mc_idx].append(make_db_line(mc_idx, unit, em, field, "NO",        exp_no))
+            if is_vlv and exp_fbopn != def_fbopn:
+                new_cw[mc_idx].append(make_db_line(mc_idx, unit, em, field, "FB_OPN_EN", exp_fbopn))
+            if is_vlv and exp_fbcls != def_fbcls:
+                new_cw[mc_idx].append(make_db_line(mc_idx, unit, em, field, "FB_CLS_EN", exp_fbcls))
 
     # Pass 1: strip old CW lines, track last line position per mc_idx
     cleaned  = []
@@ -539,16 +677,15 @@ def verify_updated_db(db_text, excel_data, type_defaults, tag_map, families_cfg)
     mc_overrides_new = {mc_idx: parse_mc_overrides(db_text, mc_idx)
                         for mc_idx in families_cfg.values()}
     for fam_name, mc_idx in families_cfg.items():
-        ov       = mc_overrides_new.get(mc_idx, {})
+        ov = mc_overrides_new.get(mc_idx, {})
         for tag_label, inst in excel_data.get(fam_name, {}).items():
             if tag_label not in tag_map:
                 continue
             unit, em, field, _ = tag_map[tag_label]
-            pk    = path_key(unit, em, field)
-            def_en = type_defaults.get(pk, {}).get("default_enable", False)
-            def_ex = type_defaults.get(pk, {}).get("default_exist",  False)
-            eff_en = ov.get(pk, {}).get("enable", def_en)
-            eff_ex = ov.get(pk, {}).get("exist",  def_ex)
+            pk     = path_key(unit, em, field)
+            td     = type_defaults.get(pk, {})
+            eff_en = ov.get(pk, {}).get("enable", td.get("default_enable", False))
+            eff_ex = ov.get(pk, {}).get("exist",  td.get("default_exist",  False))
             if eff_en != inst["enable"] or eff_ex != inst["exist"]:
                 print(f"  VERIFY FAIL [{fam_name}] {tag_label}: "
                       f"EN={eff_en}(exp {inst['enable']}) "
@@ -576,7 +713,8 @@ def write_comparison_xlsx(comparison_rows, out_path, families_cfg, job_name):
                            "border": 1, "align": "center"})
 
     fam_names    = list(families_cfg.keys())
-    COLS_PER_FAM = 9
+    COLS_PER_FAM = 16   # Excel | Type | ExpEN | ExpEX | ExpVF | ExpNO | ExpFBOPN | ExpFBCLS |
+                        #        DbEN  | DbEX  | DbVF  | DbNO  | DbFBOPN | DbFBCLS | Match | Action
     FIXED        = 4
     total_cols   = FIXED + len(fam_names) * COLS_PER_FAM
 
@@ -597,9 +735,11 @@ def write_comparison_xlsx(comparison_rows, out_path, families_cfg, job_name):
     ws.write(2, 2, "Unit",      hdr);  ws.set_column(2, 2, 14)
     ws.write(2, 3, "EM Module", hdr);  ws.set_column(3, 3, 14)
 
-    sub_cols = ["Excel\nVal", "Exp\nEN", "Exp\nEX", "Exp\nVF",
-                "DB\nEN",    "DB\nEX",  "DB\nVF", "Match", "Action"]
-    widths   = [8, 7, 7, 7, 7, 7, 7, 10, 28]
+    sub_cols = ["Excel\nVal", "Type\n(NC/NO)",
+                "Exp\nEN",  "Exp\nEX",  "Exp\nVF",  "Exp\nNO",  "Exp\nFBOPN", "Exp\nFBCLS",
+                "DB\nEN",   "DB\nEX",   "DB\nVF",   "DB\nNO",   "DB\nFBOPN",  "DB\nFBCLS",
+                "Match",    "Action"]
+    widths   = [8, 8,  7, 7, 7, 7, 8, 8,  7, 7, 7, 7, 8, 8,  10, 32]
     col = FIXED
     for fn in fam_names:
         for h, w in zip(sub_cols, widths):
@@ -621,23 +761,37 @@ def write_comparison_xlsx(comparison_rows, out_path, families_cfg, job_name):
         for fn in fam_names:
             fs     = fn.replace(" ", "")
             xval   = str(rec.get(f"{fs}_Excel", "")).upper()
-            exp_en = rec.get(f"{fs}_ExpEN", False)
-            exp_ex = rec.get(f"{fs}_ExpEX", False)
-            exp_vf = rec.get(f"{fs}_ExpVF", "N/A")
-            db_en  = rec.get(f"{fs}_DbEN",  False)
-            db_ex  = rec.get(f"{fs}_DbEX",  False)
-            db_vf  = rec.get(f"{fs}_DbVF",  "N/A")
-            match  = rec.get(f"{fs}_Match", "OK")
-            action = rec.get(f"{fs}_Action","OK")
+            typ    = str(rec.get(f"{fs}_Type",  "-"))
+            exp_en = rec.get(f"{fs}_ExpEN",    False)
+            exp_ex = rec.get(f"{fs}_ExpEX",    False)
+            exp_vf = rec.get(f"{fs}_ExpVF",    "N/A")
+            exp_no = rec.get(f"{fs}_ExpNO",    "-")
+            exp_fbopn = rec.get(f"{fs}_ExpFBOPN", "N/A")
+            exp_fbcls = rec.get(f"{fs}_ExpFBCLS", "N/A")
+            db_en  = rec.get(f"{fs}_DbEN",     False)
+            db_ex  = rec.get(f"{fs}_DbEX",     False)
+            db_vf  = rec.get(f"{fs}_DbVF",     "N/A")
+            db_no  = rec.get(f"{fs}_DbNO",     False)
+            db_fbopn = rec.get(f"{fs}_DbFBOPN","N/A")
+            db_fbcls = rec.get(f"{fs}_DbFBCLS","N/A")
+            match  = rec.get(f"{fs}_Match",    "OK")
+            action = rec.get(f"{fs}_Action",   "OK")
 
             efmt = ok if xval == "X" else (warn if xval == "O" else norm)
             ws.write(ri, col, xval if xval not in ("NONE","") else "-", efmt); col += 1
-            ws.write(ri, col, b(exp_en), ok if exp_en else norm); col += 1
-            ws.write(ri, col, b(exp_ex), ok if exp_ex else norm); col += 1
-            ws.write(ri, col, b(exp_vf), norm); col += 1
-            ws.write(ri, col, b(db_en),  ok if db_en  else norm); col += 1
-            ws.write(ri, col, b(db_ex),  ok if db_ex  else norm); col += 1
-            ws.write(ri, col, b(db_vf),  norm); col += 1
+            ws.write(ri, col, typ,  norm); col += 1
+            ws.write(ri, col, b(exp_en),   ok if exp_en else norm); col += 1
+            ws.write(ri, col, b(exp_ex),   ok if exp_ex else norm); col += 1
+            ws.write(ri, col, b(exp_vf),   norm); col += 1
+            ws.write(ri, col, b(exp_no),   norm); col += 1
+            ws.write(ri, col, b(exp_fbopn),norm); col += 1
+            ws.write(ri, col, b(exp_fbcls),norm); col += 1
+            ws.write(ri, col, b(db_en),    ok if db_en  else norm); col += 1
+            ws.write(ri, col, b(db_ex),    ok if db_ex  else norm); col += 1
+            ws.write(ri, col, b(db_vf),    norm); col += 1
+            ws.write(ri, col, b(db_no),    norm); col += 1
+            ws.write(ri, col, b(db_fbopn), norm); col += 1
+            ws.write(ri, col, b(db_fbcls), norm); col += 1
             ws.write(ri, col,
                      "OK" if match == "OK" else ("N/F" if "NOT" in action else "DIFF"),
                      ok   if match == "OK" else (warn  if "NOT" in action else fail))

@@ -158,12 +158,13 @@ Cell comments in TIA Portal-related Excel files may contain boilerplate prefixes
 
 ### Option Module Rule
 
-If a tag's DB path is under **`Options."EM - XXX"`** (TAG_MAP unit == `"Options"`):
-- ENABLE=False, EXIST=False, VLV_W_FB=False — **unconditionally**, Excel value is ignored.
+If a tag's DB path is under **`Options."EM - XXX"`** (unit == `"Options"` in auto-discovered tag map):
+- **ENABLE = False, EXIST = False** — unconditionally, Excel value is ignored.
+- VLV_W_FB, FB_OPN_EN, FB_CLS_EN, NO — follow **normal logic** (not forced to False).
 
-**Why unconditional:** The DB structure is the authority for option modules. Any instrument whose EM lives under the Options unit in the DB is considered not-installed by default, regardless of what the Excel column says.
+**Why only ENABLE/EXIST:** Option modules are physically not installed (EXIST=False). But their feedback configuration and type (NO/NC) should still reflect the hardware spec for completeness and TIA Portal correctness.
 
-**Implementation:** `option_tags = {tag for tag, info in TAG_MAP.items() if info[0] == "Options"}` — one-liner built in `parse_excel()`. Both `xlval_to_enable_exist(val, is_option)` and `has_fb(fam_vals, fam_name, is_option)` short-circuit to False/False/False when `is_option=True`.
+**Implementation:** `option_tags = {tag for tag, info in tag_map.items() if info[0] == "Options"}`. Only `xlval()` short-circuits to (False, False) when `is_option=True`. FB and NO follow standard rules.
 
 ### AV Valve multi-row processing
 
@@ -337,9 +338,47 @@ for ln in reversed(lines):
 
 ---
 
-### 7.7 VLV_W_FB is only meaningful for STAT VLV types
+### 7.7 CW_VLV vs CW_AN — two distinct Control Word structures
 
-The bit at `bits[15]` physically exists in all CW tuples in the file but only has semantic meaning for `STAT VLV` typed instruments. For DI/DO/AI/AO/MTR/VFD types it is irrelevant. The script checks `is_vlv` (set when `stat_type == "STAT VLV"`) before including VLV_W_FB in comparison or patch output.
+AV valves use `CW_VLV`; all other STAT types use `CW_AN`. The bit positions differ:
+
+**CW_VLV** (STAT VLV — AV valves):
+| Bit | Field      | Notes |
+|-----|------------|-------|
+| 3   | ENABLE     | Master enable |
+| 6   | FB_CLS_EN  | Enable Close Feedback |
+| 7   | FB_OPN_EN  | Enable Open Feedback |
+| 12  | NO         | `// NO/NC` |
+| 13  | EXIST      | Valve exist |
+| 15  | VLV_W_FB   | Valve Without Position Feedback |
+
+**CW_AN** (STAT DI/DO/AI/AO/MTR/VFD — all non-valve instruments):
+| Bit | Field  | Notes |
+|-----|--------|-------|
+| 3   | ENABLE | Master enable |
+| 12  | NO     | `// 0=NC, 1=NO` |
+| 13  | EXIST  | Exist |
+
+**Key rule:** Bits 6, 7, 15 are VLV-only. The script gates these on `is_vlv`.
+
+### 7.8 NO bit logic — NC/NO output type from Excel Type column
+
+The `Type` column in `testLBB.xlsx` (header = "Type") holds the instrument output type:
+- `NC` = Normally Closed output → `CW.NO = False`  (bit value 0 = NC)
+- `NO` = Normally Open output → `CW.NO = True`    (bit value 1 = NO)
+- `4..20MA` / empty → no override (keep type default)
+
+**DB comment:** `NO : Bool // 0=NC, 1=NO` — the bit directly encodes the output type.
+NC instruments use bit=0 (False); NO instruments use bit=1 (True).
+
+### 7.9 FB_OPN_EN and FB_CLS_EN — feedback enable bits
+
+These bits enable/disable position feedback monitoring for AV valves.
+- `FB_OPN_EN` (bit 7): set True when FB OPN cell = x or o in Excel
+- `FB_CLS_EN` (bit 6): set True when FB CLS cell = x or o in Excel
+- `VLV_W_FB` (bit 15): True when either FB_OPN_EN or FB_CLS_EN is True
+
+**Relation:** VLV_W_FB = FB_OPN_EN OR FB_CLS_EN. All three are derived from the same FB OPN / FB CLS column values.
 
 ---
 

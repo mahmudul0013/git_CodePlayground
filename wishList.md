@@ -12,22 +12,30 @@ Produce a separate comparison report and corrected updated `.db` per product —
 - `o`          → ENABLE = True,  EXIST = False
 - empty/SPARE  → ENABLE = False, EXIST = False
 
-### Option Module Rule
+### Option Module Rule (based on Function column)
 If a tag is found under **`Options."EM - XXX"`** in the DB (unit = `"Options"` in auto-discovered tag map):
-- ENABLE = False,  EXIST = False  — unconditionally, regardless of Excel value
-- VLV_W_FB = False  — unconditionally
+(if tag **is** option-type)
+- ENABLE = False,  EXIST = False  — unconditionally, regardless of Excel value.
 
-Excel value is ignored for these instruments. The DB structure determines the rule.
 
-### VLV_W_FB Logic (AV valves only, based on Function column)
-- FB OPN or FB CLS = `x` → VLV_W_FB = True
-- FB OPN or FB CLS = `o` (and **not** an option-type tag) → VLV_W_FB = True
-- FB OPN or FB CLS = `o` (and tag **is** option-type) → VLV_W_FB = False
-- Both FB OPN and FB CLS empty → VLV_W_FB = False
+### VLV_W_FB / FB_OPN_EN / FB_CLS_EN Logic (AV valves only, CW_VLV)
+- FB OPN = `x` or `o`  →  FB_OPN_EN = True  AND  VLV_W_FB = True
+- FB CLS = `x` or `o`  →  FB_CLS_EN = True  AND  VLV_W_FB = True
+- FB OPN AND FB CLS = spare or empty  →  VLV_W_FB = False, FB_OPN_EN = False, FB_CLS_EN = False
+
+### NO Tag Logic (Excel `Type` column → CW bit 12)
+Applies to both CW_VLV (AV valves) and CW_AN (analog instruments).
+DB comment: `NO : Bool // 0=NC, 1=NO`
+
+| Excel Type | CW.NO | Meaning |
+|---|---|---|
+| `NC` | False | Normally Closed output (0=NC, PLC output direct) |
+| `NO` | True  | Normally Open output (1=NO, PLC output inverted) |
+| `4..20MA` / empty | no override | Keep type default |
 
 ### Valve ENABLE/EXIST Source
 - AV valves: ENABLE/EXIST determined by the **ACT** row for that valve
-- VLV_W_FB determined by FB OPN / FB CLS rows
+- VLV_W_FB / FB_OPN_EN / FB_CLS_EN determined by FB OPN / FB CLS rows
 
 ### Non-Valve ENABLE/EXIST Source
 - Direct column value → ENABLE/EXIST
@@ -84,7 +92,8 @@ HSS documentation to confirm. Once known, fill the `"families"` dict in jobs.jso
 
 Each comparison report has:
 - Fixed columns: Tag Label, Function, Unit (e.g. "Unit Sep"), EM Module (e.g. "EM - 100")
-- Per-family columns: Excel Val, Exp EN/EX/VF, DB EN/EX/VF, Match, Action
+- Per-family columns (16 per family):
+  `Excel Val | Type | Exp EN | Exp EX | Exp VF | Exp NO | Exp FBOPN | Exp FBCLS | DB EN | DB EX | DB VF | DB NO | DB FBOPN | DB FBCLS | Match | Action`
 
 ## How to Run
 

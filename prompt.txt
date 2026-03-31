@@ -29,16 +29,33 @@ if marked 'o'
 	ENABLE = true and  EXIST = false;
 if marked enpty or sapre 
 	ENABLE = false and  EXIST = false;
-   
-for AV valve, VLV_W_FB logic based on Function column:
-    FB OPN/FB CLS = 'X' or 'o' → VLV_W_FB=True  
-    Both empty → VLV_W_FB=False
+
+for AV valve,
+VLV_W_FB, FB OPN, FB CLS Logic (AV valves only)
+- FB OPN = `x` or `o` → FB_OPN_EN = True and VLV_W_FB = True
+- FB CLS = `x` or `o` → FB_CLS_EN = True and VLV_W_FB = True
+- FB OPN AND FB CLS = spare or empty → VLV_W_FB = False
+
+### Option Module Rule (based on Function column)
+If a tag is found under **`Options."EM - XXX"`** in the DB (unit = `"Options"` in auto-discovered tag map):
+(if tag **is** option-type)
+- ENABLE = False,  EXIST = False  — unconditionally, regardless of Excel value.
+
+
+### NO tag logic for CW structure of CW_AN, CW_VLV
+if exel Type column value = 'NC'
+	tag NO = False
+if exel Type column value = NO
+	tag NO = True
 
 If excel has commens on any cell, the like tagLabel PCV22X-1 (read the comments for the value of X, this might be 0,1 ,2 or any thing what mention on the comments) 
 	then map the value what is given on BREW350 column according to the comments of the cell. 
 		e.g PCV22X-1 ( here cell comments X is 0 or 1) the corronponding column value (X with comments PCV220-1, means ENABLE=EXIST=true for PCV220-1 for BREW350)
 	
-   
+if any attibure of instrumetn AV FCV or any undet the EM struct in the DB file is empty like () then consifer it as False (default). if attibure is written as True then only consider it True. 
+e.g. AV208-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV208-1', ((), (), (), (), (), (), TRUE, TRUE, (), (), (), (), (), (), (), TRUE), (), 182, 183, 161); 
+here for the AV208-1 () filed is false for bool. and is written True as required.
+
 
 We want to read all the DB and check this two value mismatch . Example first compare for BREW350(fanily name) and Brew 450
 the hardware specification excel showing the family name (BREW350 or etc) and marked 'X' or 'o' or empty.
@@ -65,13 +82,3 @@ L-GREEN
 L-YELLOW
 L-RED
 L-BUZZ
-
-for AV valve, VLV_W_FB logic based on Function column:
-    if FB OPN/FB CLS = 'X' or 'o' → VLV_W_FB = True  
-    if FB OPN and FB CLS empty → VLV_W_FB = False
-	if FB OPN = 'X' or 'o' FB_OPN_EN = True
-	if FB OPN = 'X' or 'o' FB_OPN_EN = True
-
-if NC
-
-NO 
