@@ -24,7 +24,7 @@
 
 **What it does:** Cross-checks a Siemens TIA Portal 18 Data Block (DB) export against a hardware specification Excel file to verify that each instrument's `ENABLE`, `EXIST`, and `VLV_W_FB` booleans are set correctly for each machine family.
 
-**Why it exists:** Manually checking ~137 instruments per family across two families (BREW 350, BREW 450) against a DB file is error-prone and time-consuming. A single run of `python main.py` replaces hours of manual work and eliminates human error.
+**Why it exists:** Manually checking ~137 instruments per family across multiple families against a DB file is error-prone and time-consuming. A single run of `python run.py` replaces hours of manual work and eliminates human error.
 
 **Outputs:**
 | File | Purpose |
@@ -398,32 +398,7 @@ These bits enable/disable position feedback monitoring for AV valves.
 
 ---
 
-## 9. TAG_MAP — Legacy Manual Mapping (main.py only)
-
-> **Note:** `main.py` still uses a hardcoded `TAG_MAP`. The new `run.py` auto-discovers the tag map
-> from the DB — no manual TAG_MAP maintenance required. See Section 9a.
-
-`TAG_MAP` is the lookup table that bridges Excel tag labels to DB paths (used in `main.py`):
-
-```python
-TAG_MAP = {
-    "AV201-1": ("Unit Process", "EM - 201", "AV201-1", True),
-    #  Excel label │  Unit          │  EM module │  DB field  │ is_vlv
-}
-```
-
-**Fields:**
-1. `unit` — the unit name as it appears in the DB (e.g. `"Unit Sep"`, `"Unit Process"`, `"Unit Dch"`, `"Options"`)
-2. `em` — the EM type name as it appears in `TYPE "EM - xxx"` blocks (e.g. `"EM - 100"`)
-3. `db_field` — the exact field name inside that EM type (case-sensitive, must match the DB)
-4. `is_vlv` — `True` if this is a `STAT VLV` type (has meaningful VLV_W_FB bit)
-
-**When `NOT IN TAG_MAP`:** The comparison report shows `NOT IN TAG_MAP` in the Action column.
-**Maintenance:** Requires manual update when adding instruments. Use `run.py` instead to avoid this.
-
----
-
-## 9a. Auto-Discovery of Tag Map (run.py)
+## 9. Auto-Discovery of Tag Map (run.py)
 
 `run.py` eliminates the manual TAG_MAP entirely. `build_tag_map(db_text)` does this in two steps:
 
@@ -494,14 +469,6 @@ be found by `parse_mc_overrides` — causing 7 verify failures until fix.
 
 ---
 
-### Using main.py (legacy, Brew only)
-
-1. Add a column to `testLBB.xlsx`, add an entry to `FAMILIES` in `main.py`
-2. To add a new instrument: add to `TAG_MAP` and `EM_UNIT_MAP` in `main.py`
-3. Run `python main.py`
-
----
-
 ## 11. Known Limitations & Future Work
 
 ### Current limitations
@@ -516,11 +483,10 @@ be found by `parse_mc_overrides` — causing 7 verify failures until fix.
 
 ### Potential improvements
 
-- **Auto-detect new TAG_MAP entries** by scanning the Excel for tags not already in `TAG_MAP` and printing a warning list, so maintenance is obvious.
+- **Auto-detect unmapped rows** by scanning the Excel for tags not found in the auto-discovered tag map and printing a warning list, so coverage gaps are obvious.
 - **Summary tab in xlsx** showing totals by Unit/EM module (how many OK vs MISMATCH per EM).
 - **Diff mode** — compare two DB versions against the same Excel to see what changed between DB exports.
-- **CI/CD integration** — run `python main.py` as part of a GitHub Actions workflow on push of a new `.db` file.
-- **Config file** — move `FAMILIES`, `DB_PATH`, `EXCEL_PATH` out of `main.py` into a `config.json` or `.env` so non-coders can configure without editing Python.
+- **CI/CD integration** — run `python run.py` as part of a GitHub Actions workflow on push of a new `.db` file.
 
 ---
 
@@ -593,10 +559,6 @@ SysConfig_Lib_Brew_updated.db    ← drop into TIA Portal
 # mc_idx values: Clara=MC[0-14]/TypeNo20-34, CR=MC[0,2,3]/TypeNo40,42,43
 #                PP=MC[0,2,3]/TypeNo50,52,53, KR=MC[0,1]/TypeNo60,61
 
-# === LEGACY: main.py (Brew only) ===
-python main.py
-# Outputs: SysConfig_Lib_Brew_updated.db, InstrumentStatusComparison.xlsx
-
 # CW bit positions (0-indexed)
 bit 3  = ENABLE
 bit 13 = EXIST
@@ -616,7 +578,7 @@ ACT             → ENABLE / EXIST
 # Action column meanings in report
 OK              → DB already matches Excel
 UPDATE: ...     → DB has been corrected in updated.db
-NOT IN TAG_MAP  → Excel row not in auto-discovered map (run.py) or TAG_MAP (main.py)
+NOT IN TAG_MAP  → Excel row not in auto-discovered tag map
 NOT FOUND IN DB → Mapped but path_key absent in DB
 ```
 

@@ -3,8 +3,7 @@
 ## Architecture: Universal Multi-Product Pipeline
 
 ### Entry Points
-- `run.py` — universal runner, reads config from `jobs.json` (**recommended**)
-- `main.py` — legacy Brew-only script with hardcoded TAG_MAP (kept for reference)
+- `run.py` — universal runner, reads config from `jobs.json`
 
 ### Configuration File: jobs.json
 ```json
@@ -146,8 +145,8 @@ STAT_TYPES = {"STAT VLV", "STAT DI", "STAT DO", "STAT AI", "STAT AO", "STAT MTR"
 
 Per-family sub-columns (16 per family):
 ```
-Excel Val | Type(NC/NO) | Exp EN | Exp EX | Exp VF | Exp NO | Exp FBOPN | Exp FBCLS |
-                          DB EN  | DB EX  | DB VF  | DB NO  | DB FBOPN  | DB FBCLS  | Match | Action
+Excel Val | Type(NC/NO) | Exp EN | Exp EX | Exp VF | Exp NO | Exp FBOPN_EN | Exp FBCLS_EN |
+                          DB EN  | DB EX  | DB VF  | DB NO  | DB FBOPN_EN  | DB FBCLS_EN  | Match | Action
 ```
 
 Color coding: green = OK/True, red = MISMATCH, yellow = NOT_FOUND/warning

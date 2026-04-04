@@ -93,7 +93,7 @@ HSS documentation to confirm. Once known, fill the `"families"` dict in jobs.jso
 Each comparison report has:
 - Fixed columns: Tag Label, Function, Unit (e.g. "Unit Sep"), EM Module (e.g. "EM - 100")
 - Per-family columns (16 per family):
-  `Excel Val | Type | Exp EN | Exp EX | Exp VF | Exp NO | Exp FBOPN | Exp FBCLS | DB EN | DB EX | DB VF | DB NO | DB FBOPN | DB FBCLS | Match | Action`
+  `Excel Val | Type | Exp EN | Exp EX | Exp VF | Exp NO | Exp FBOPN_EN | Exp FBCLS_EN | DB EN | DB EX | DB VF | DB NO | DB FBOPN_EN | DB FBCLS_EN | Match | Action`
 
 ## How to Run
 
@@ -120,6 +120,3 @@ python run.py --list
 2. Add/update the job entry in `jobs.json` — set `"families": {"Family Name": mc_idx, ...}`
 3. Run `python run.py <JobName>` — no code changes needed
 
-### Legacy single-product script
-`main.py` still works for Brew only with hardcoded TAG_MAP (kept for reference).
-New work should use `run.py` + `jobs.json`.

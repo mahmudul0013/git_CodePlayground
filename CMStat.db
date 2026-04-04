@@ -1,0 +1,381 @@
+﻿TYPE "STAT VALVE"
+VERSION : 0.1
+   STRUCT
+      TAG { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : String;
+      MASTER_EN { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+      EXIST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT DI"
+VERSION : 0.1
+   STRUCT
+      TAG { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : String;
+      MASTER_EN { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+      EXIST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT MOTOR"
+VERSION : 0.1
+   STRUCT
+      TAG { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : String;
+      MASTER_EN { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+      EXIST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT DO"
+VERSION : 0.1
+   STRUCT
+      TAG { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : String;
+      MASTER_EN { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+      EXIST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT AI"
+VERSION : 0.1
+   STRUCT
+      TAG { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : String;
+      MASTER_EN { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+      EXIST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT AO"
+VERSION : 0.1
+   STRUCT
+      TAG { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : String;
+      MASTER_EN { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+      EXIST { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'True'} : Bool;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 750"
+VERSION : 0.1
+   STRUCT
+      YT750a { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('YT750', TRUE, TRUE);
+      YT750b { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('YT750b', (), TRUE);
+      YT751 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('YT751', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - P201"
+VERSION : 0.1
+   STRUCT
+      "P201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT MOTOR" := ('P201-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 201"
+VERSION : 0.1
+   STRUCT
+      "QT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT201-1', (), TRUE);
+      "LT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('LT201-1', (), FALSE);
+      "AV201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV201-1', TRUE, TRUE);
+      "PIT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT201-1', TRUE, TRUE);
+      "FIT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT201-1', TRUE, TRUE);
+      "FCV201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('FCV201-1', TRUE, TRUE);
+      "LA201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('LA201-1', TRUE, TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 340"
+VERSION : 0.1
+   STRUCT
+      "PIS340-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('PIS340-1', TRUE, TRUE);
+      "AV340-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV340-1', TRUE, TRUE);
+      "AV340-2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV340-2', (), TRUE);
+      "AV460-2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV460-2', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 221"
+VERSION : 0.1
+   STRUCT
+      "QT221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT221-1', (), TRUE);
+      "QE221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QE221-1', (), TRUE);
+      "TE221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TE221-1', (), TRUE);
+      "FIT221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT221-1', (), TRUE);
+      "PIT221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT221-1', (), TRUE);
+      "PCV221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('PCV221-1', (), TRUE);
+      "AV221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV221-1', (), TRUE);
+      "AV461-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV461-1', (), TRUE);
+      "CPM221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('CPM221-1', (), TRUE);
+      "LA221-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('LA221-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 740"
+VERSION : 0.1
+   STRUCT
+      ST740 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('ST740', (), FALSE);
+      ST741 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('ST741', (), FALSE);
+      ST741b { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('ST741b', (), FALSE);
+      "P+F PS" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('SPEED RLY', TRUE, TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 210"
+VERSION : 0.1
+   STRUCT
+      "FCV210-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('FCV210-1', (), TRUE);
+      "AV210-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV210-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 212"
+VERSION : 0.1
+   STRUCT
+      "AV212-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV212-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 208"
+VERSION : 0.1
+   STRUCT
+      "QT220-2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT220-2', (), TRUE);
+      "FIT208-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT208-1', (), TRUE);
+      "FCV208-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('FCV208-1', (), TRUE);
+      "P208-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT MOTOR" := ('P208-1', (), TRUE);
+      "AV208-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV208-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 220"
+VERSION : 0.1
+   STRUCT
+      "QT220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT220-1', (), TRUE);
+      "PIT220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT220-1', TRUE, TRUE);
+      "PCV220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('PCV220-1', TRUE, TRUE);
+      "AV460-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV460-1', TRUE, TRUE);
+      "AV220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV220-1', TRUE, TRUE);
+      "LA220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('LA220-1', TRUE, TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 730"
+VERSION : 0.1
+   STRUCT
+      TS730 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('TS730', (), FALSE);
+      TT730a { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT730a', (), TRUE);
+      TT730b { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT730b', (), TRUE);
+      TT731 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT731', (), TRUE);
+      TT733 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT733', (), TRUE);
+      TT734 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT734', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 600"
+VERSION : 0.1
+   STRUCT
+      "AV615-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV615-1', TRUE, TRUE);
+      "FIS615-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('FIS615-1', TRUE, TRUE);
+      "FIS630-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('FIS630-1', (), TRUE);
+      "FIS635-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('FIS635-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 506"
+VERSION : 0.1
+   STRUCT
+      "PV376-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('PV376-1', (), TRUE);
+      "PV376-2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('PV376-2', (), TRUE);
+      IP506a { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('IP506A', TRUE, TRUE);
+      "Z-506b" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('506B', (), ());
+      "Z-506c" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('506C', TRUE, TRUE);
+      "AV543-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV543-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 430"
+VERSION : 0.1
+   STRUCT
+      "LT406-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('LT406-1', (), FALSE);
+      "TT406-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT406-1', (), TRUE);
+      "FCV430-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('FCV430-1', (), TRUE);
+      "P406-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT MOTOR" := ('P406-1', (), TRUE);
+      "AV400-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV400-1', (), FALSE);
+      "AV430-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV430-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 460"
+VERSION : 0.1
+   STRUCT
+      "AV460d-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV460d-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 463"
+VERSION : 0.1
+   STRUCT
+      "LT463-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('LT463-1', (), TRUE);
+      "PIT463-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT463-1', (), TRUE);
+      "P463-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT MOTOR" := ('P463-1', (), TRUE);
+      "AV305-2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV305-2', (), TRUE);
+      "AV463-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV463-1', (), TRUE);
+      "AV463-2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV463-2', (), TRUE);
+      "AV470-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV470-1', (), TRUE);
+      "AV660-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV660-1', (), TRUE);
+      "AV660-2" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV660-2', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 420"
+VERSION : 0.1
+   STRUCT
+      "P403-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT MOTOR" := ('P403-1', (), TRUE);
+      "P421-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT MOTOR" := ('P421-1', (), TRUE);
+      FS421a { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('FS421a', (), TRUE);
+      FS421b { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('FS421b', (), TRUE);
+      LS422a { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('LS422a', (), TRUE);
+      LS422b { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('LS422b', (), TRUE);
+      "LS422-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('LS422-1', (), TRUE);
+      "PV421-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('PV421-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 400"
+VERSION : 0.1
+   STRUCT
+      "AV409-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV409-1', TRUE, TRUE);
+      "FIS409-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('FIS409-1', TRUE, TRUE);
+      "TT411-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT411-1', (), TRUE);
+      "TT412-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT412-1', (), TRUE);
+      "FIT409-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT409-1', (), TRUE);
+      "FIT412-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT412-1', (), TRUE);
+      "FIS412-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('FIS412-1', (), FALSE);
+      "FCV409-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('FCV409-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 375"
+VERSION : 0.1
+   STRUCT
+      "AV375-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV375-1', TRUE, TRUE);
+      "PIS375-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('PIS375-1', TRUE, TRUE);
+      "PT376-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PT376-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 300"
+VERSION : 0.1
+   STRUCT
+      "AV301-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV301-1', TRUE, TRUE);
+      "AV302-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV302-1', (), TRUE);
+      "AV303-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV303-1', TRUE, TRUE);
+      "AV304-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV304-1', TRUE, TRUE);
+      "AV305-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV305-1', TRUE, TRUE);
+      "AV306-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV306-1', (), TRUE);
+      "AV320-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV320-1', TRUE, TRUE);
+      "AV635-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV635-1', (), TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 222"
+VERSION : 0.1
+   STRUCT
+      "AV222-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VALVE" := ('AV222-1', (), TRUE);
+      "LS222-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('LS222-1', (), TRUE);
+      "P222-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT MOTOR" := ('P222-1', TRUE, TRUE);
+      "TS222-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('TS222-1', (), FALSE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "EM - 701"
+VERSION : 0.1
+   STRUCT
+      M701 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('M701', TRUE, TRUE);
+      M701_AMP : "STAT AI" := ('M701-AMP', TRUE, TRUE);
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT Sep"
+VERSION : 0.1
+   STRUCT
+      "EM - 222" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 222";
+      "EM - 300" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 300";
+      "EM - 375" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 375";
+      "EM - 400" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 400";
+      "EM - 420" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 420";
+      "EM - 430" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 430";
+      "EM - 460" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 460";
+      "EM - 463" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 463";
+      "EM - 506" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 506";
+      "EM - 600" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 600";
+      "EM - 701" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 701";
+      "EM - 730" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 730";
+      "EM - 740" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 740";
+      "EM - 750" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 750";
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT Process"
+VERSION : 0.1
+   STRUCT
+      "EM - P201" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - P201";
+      "EM - 201" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 201";
+      "EM - 208" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 208";
+      "EM - 210" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 210";
+      "EM - 212" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 212";
+      "EM - 340" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 340";
+      "EM - 220" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 220";
+      "EM - 221" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - 221";
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "STAT SYSTEM"
+VERSION : 0.1
+   STRUCT
+      UnitSepSTAT { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT Sep" := ((((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ('M701-AMP', (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ()), ((), (), ())), (((), (), ()), ((), (), ()), ((), (), ())));
+      UnitPLMSTAT { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT Process";
+   END_STRUCT;
+
+END_TYPE
+
+DATA_BLOCK "CMStat"
+{ DB_Accessible_From_OPC_UA := 'FALSE' ;
+ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR RETAIN
+      SepSTAT : "STAT SYSTEM";
+   END_VAR
+
+
+BEGIN
+
+END_DATA_BLOCK
+
