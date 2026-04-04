@@ -18,8 +18,8 @@ CW bit layout (CW_VLV / CW_AN):
   bit 15 = VLV_W_FB       (CW_VLV only — Valve Without Feedback)
 
 Excel Type column → NO bit:
-  NC  → NO = True   (Normally Closed output logic)
-  NO  → NO = False  (Normally Open output logic)
+  NC  → NO = False  (0=NC, Normally Closed)
+  NO  → NO = True   (1=NO, Normally Open)
   other/empty → no override (keep type default)
 
 Usage:
@@ -162,8 +162,8 @@ def parse_excel(path, families_cfg, tag_map):
                                         no_val, is_vlv, ...}}}
 
     Type column logic (col header = "Type"):
-      NC   → no_val = True   (Normally Closed output — NO bit = True)
-      NO   → no_val = False  (Normally Open output  — NO bit = False)
+      NC   → no_val = False  (Normally Closed output — NO bit = False, 0=NC)
+      NO   → no_val = True   (Normally Open output  — NO bit = True,  1=NO)
       other/empty → no_val = None  (no override; keep type default)
 
     VLV_W_FB / FB_OPN_EN / FB_CLS_EN (AV valves only):
@@ -553,7 +553,7 @@ def build_comparison(excel_data, type_defaults, mc_overrides_all, tag_map, famil
             all_match = en_m and ex_m and vf_m and no_m and fbopn_m and fbcls_m
             row.update({
                 f"{fs}_Excel":    raw_disp,
-                f"{fs}_Type":     "NC" if exp_no is True else ("NO" if exp_no is False else "-"),
+                f"{fs}_Type":     "NO" if exp_no is True else ("NC" if exp_no is False else "-"),
                 f"{fs}_ExpEN":    exp_en,
                 f"{fs}_ExpEX":    exp_ex,
                 f"{fs}_ExpVF":    exp_vf      if is_vlv else "N/A",
@@ -736,8 +736,8 @@ def write_comparison_xlsx(comparison_rows, out_path, families_cfg, job_name):
     ws.write(2, 3, "EM Module", hdr);  ws.set_column(3, 3, 14)
 
     sub_cols = ["Excel\nVal", "Type\n(NC/NO)",
-                "Exp\nEN",  "Exp\nEX",  "Exp\nVF",  "Exp\nNO",  "Exp\nFBOPN", "Exp\nFBCLS",
-                "DB\nEN",   "DB\nEX",   "DB\nVF",   "DB\nNO",   "DB\nFBOPN",  "DB\nFBCLS",
+                "Exp\nEN",  "Exp\nEX",  "Exp\nVF",  "Exp\nNO",  "Exp\nFBOPN_EN", "Exp\nFBCLS_EN",
+                "DB\nEN",   "DB\nEX",   "DB\nVF",   "DB\nNO",   "DB\nFBOPN_EN",  "DB\nFBCLS_EN",
                 "Match",    "Action"]
     widths   = [8, 8,  7, 7, 7, 7, 8, 8,  7, 7, 7, 7, 8, 8,  10, 32]
     col = FIXED
