@@ -42,6 +42,7 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 JOBS_FILE = "jobs.json"
+UDT_FILE  = "STAT SYSTEM.udt"
 
 # ── Low-level helpers ──────────────────────────────────────────────────────────
 
@@ -101,29 +102,69 @@ def make_db_line(mc_idx, unit, em, field, prop, value):
 
 STAT_TYPES = {"STAT VLV", "STAT DI", "STAT DO", "STAT AI", "STAT AO", "STAT MTR", "STAT VFD"}
 
-def build_tag_map(db_text):
-    """
-    Auto-build {field_name: (unit, em, field_name, is_vlv)} directly from the DB.
 
-    Step 1 — em→unit: scan any MachineConfig[N]."unit"."em". line in BEGIN section.
-             Unit names may be quoted ("Unit Sep") OR unquoted (Options, Communications).
-    Step 2 — fields:  scan TYPE "EM-xxx" blocks for STAT-typed fields.
-    No manual input needed.
+def build_em_unit_from_udt(udt_text):
     """
-    # Step 1: derive em → unit from any override path in the file.
-    # Unit names may be quoted ("Unit Sep") OR unquoted (Options, Communications).
-    # EM names are always quoted ("EM - 208").
+    Parse STAT SYSTEM.udt to build the authoritative EM → Unit mapping.
+
+    Reads the two-level hierarchy defined in the UDT:
+      TYPE "STAT SYSTEM"  →  maps each unit field name to its STAT_xxx type
+      TYPE "STAT Sep/Process/Dch/Options/Comm"  →  lists the EM modules per unit
+
+    Returns: {em_name: unit_name}
+    e.g. {"EM - 100": "Unit Sep", "EM - 208": "Options", "EM - PRU1": "Options", ...}
+
+    This is independent of any MachineConfig[N] instance data, so every EM is
+    mapped correctly even if it has no override lines in the DB file.
+    """
+    type_pat  = re.compile(r'TYPE\s+"([^"]+)".*?END_TYPE', re.DOTALL)
+    field_pat = re.compile(
+        r'(?:"([^"]+)"|([A-Za-z][A-Za-z0-9_]*))'   # grp1=quoted, grp2=unquoted field name
+        r'\s*(?:\{[^}]*\})?\s*'                     # optional { attributes } block
+        r':\s*"([^"]+)"',                            # : "TypeName"
+        re.DOTALL
+    )
+
+    # Pass 1: STAT SYSTEM block → {stat_type_name: unit_name}
+    # e.g. {"STAT Sep": "Unit Sep", "STAT Options": "Options", ...}
+    stat_type_to_unit = {}
+    for type_m in type_pat.finditer(udt_text):
+        if type_m.group(1) != "STAT SYSTEM":
+            continue
+        for fm in field_pat.finditer(type_m.group(0)):
+            unit_field = fm.group(1) or fm.group(2)
+            type_name  = fm.group(3)
+            if type_name.startswith("STAT "):   # skip Machine : "MachineConfig"
+                stat_type_to_unit[type_name] = unit_field
+        break   # only one STAT SYSTEM block
+
+    # Pass 2: for each STAT_xxx block, collect EM field names → unit_name
     em_unit = {}
-    for m in re.finditer(
-        r'MachineConfig\[\d+\]\.(?:"([^"]+)"|([A-Za-z][A-Za-z0-9_]*))\."([^"]+)"\.',
-        db_text
-    ):
-        unit = m.group(1) or m.group(2)   # quoted or unquoted unit name
-        em   = m.group(3)
-        em_unit[em] = unit                # em → unit (last occurrence wins)
+    for type_m in type_pat.finditer(udt_text):
+        type_name = type_m.group(1)
+        if type_name not in stat_type_to_unit:
+            continue
+        unit = stat_type_to_unit[type_name]
+        for fm in field_pat.finditer(type_m.group(0)):
+            em_name = fm.group(1) or fm.group(2)
+            if em_name.startswith("EM"):
+                em_unit[em_name] = unit
 
-    # Step 2: scan TYPE blocks for instrument fields
-    tag_map = {}
+    return em_unit
+
+
+def build_tag_map(db_text, em_unit):
+    """
+    Auto-build {field_name: (unit, em, field_name, is_vlv)} from DB TYPE blocks.
+
+    em_unit: {em_name: unit_name} — derived from STAT SYSTEM.udt via
+             build_em_unit_from_udt(). Replaces the old BEGIN-section scan so
+             every EM is mapped correctly regardless of whether it has any
+             MachineConfig[N] override lines in this specific DB file.
+
+    Scans TYPE "EM-xxx" blocks for STAT-typed instrument fields.
+    """
+    tag_map   = {}
     type_pat  = re.compile(r'TYPE\s+"([^"]+)".*?END_TYPE', re.DOTALL)
     # Matches both  "Quoted Name" { attrs } : "STAT XX" :=
     #           and  UnquotedName { attrs }  : "STAT XX" :=
@@ -472,6 +513,38 @@ def compute_effective(type_defaults, mc_overrides, excel_tag, tag_map):
     )
 
 
+# ── Step 4b: Resolve DB field name from Excel comment + tag label ─────────────
+
+def _resolve_db_field(resolved_raw, tag_label, tag_map, tag_map_lower):
+    """Priority-based DB field resolution.
+
+    resolved_raw : inst.get("resolved_tag", tag_label)  — may be a cell comment
+    tag_label    : the Excel Col B label (always the key in fam_data dict)
+
+    Priority:
+      1. resolved_raw exact in tag_map   → Case B exact  (e.g. TT730a)
+      2. tag_label    exact in tag_map   → Case A        (e.g. PCV22X-1)
+      3. resolved_raw case-insensitive   → Case B casing (e.g. TT731A → TT731a)
+      4. Strip "Word: " prefix, retry 1+3 (e.g. Sensor: TT733 → TT733)
+      5. Return resolved_raw as-is       → genuinely absent → NOT IN DB MAP
+    """
+    if resolved_raw in tag_map:
+        return resolved_raw
+    if tag_label in tag_map:
+        return tag_label
+    ci = tag_map_lower.get(resolved_raw.lower())
+    if ci:
+        return ci
+    stripped = re.sub(r'^\w+:\s+', '', resolved_raw).strip()
+    if stripped != resolved_raw:
+        if stripped in tag_map:
+            return stripped
+        ci2 = tag_map_lower.get(stripped.lower())
+        if ci2:
+            return ci2
+    return resolved_raw
+
+
 # ── Step 5: Build comparison rows ─────────────────────────────────────────────
 
 def build_comparison(excel_data, type_defaults, mc_overrides_all, tag_map, families_cfg):
@@ -482,15 +555,31 @@ def build_comparison(excel_data, type_defaults, mc_overrides_all, tag_map, famil
             if tag_label not in seen:
                 seen[tag_label] = info.get("function", "")
 
+    tag_map_lower = {k.lower(): k for k in tag_map}
     rows = []
     for tag_label, function in seen.items():
-        in_map = tag_label in tag_map
-        is_vlv = tag_map[tag_label][3] if in_map else False
+        # ── Resolve the base tag_map entry for fixed columns (Unit, EM, is_vlv).
+        # Case A: Excel label == DB field name → direct hit.
+        # Case B: Excel label is a display placeholder (e.g. ST74X); per-family cell
+        #         comment holds the actual DB field name (e.g. ST741/ST740).
+        #         Scan families for the first resolvable entry.
+        base_entry = tag_map.get(tag_label)
+        if base_entry is None:
+            for _fn in families_cfg:
+                _inst = excel_data.get(_fn, {}).get(tag_label)
+                if _inst:
+                    _rt = _resolve_db_field(
+                        _inst.get("resolved_tag", tag_label), tag_label,
+                        tag_map, tag_map_lower)
+                    if _rt in tag_map:
+                        base_entry = tag_map[_rt]
+                        break
+
         row = {
             "Tag Label": tag_label,
             "Function":  function,
-            "Unit": tag_map[tag_label][0] if in_map else "N/A",
-            "EM":   tag_map[tag_label][1] if in_map else "N/A",
+            "Unit": base_entry[0] if base_entry else "N/A",
+            "EM":   base_entry[1] if base_entry else "N/A",
         }
 
         for fam_name, mc_idx in families_cfg.items():
@@ -499,26 +588,36 @@ def build_comparison(excel_data, type_defaults, mc_overrides_all, tag_map, famil
             fam_data     = excel_data.get(fam_name, {})
 
             if tag_label in fam_data:
-                inst        = fam_data[tag_label]
-                exp_en      = inst["enable"]
-                exp_ex      = inst["exist"]
-                exp_vf      = inst["vlv_w_fb"]  if is_vlv else False
-                exp_no      = inst["no_val"]     # None = no override expected
-                exp_fbopn   = inst["fb_opn_en"] if is_vlv else False
-                exp_fbcls   = inst["fb_cls_en"] if is_vlv else False
-                raw_disp    = (
+                inst     = fam_data[tag_label]
+                # Priority resolution: try comment exact → tag_label exact →
+                # case-insensitive → strip prefix → as-is (see _resolve_db_field)
+                resolved = _resolve_db_field(
+                    inst.get("resolved_tag", tag_label), tag_label,
+                    tag_map, tag_map_lower)
+                in_map   = resolved in tag_map
+                is_vlv   = tag_map[resolved][3] if in_map else (base_entry[3] if base_entry else False)
+                exp_en   = inst["enable"]
+                exp_ex   = inst["exist"]
+                exp_vf   = inst["vlv_w_fb"]  if is_vlv else False
+                exp_no   = inst["no_val"]     # None = no override expected
+                exp_fbopn = inst["fb_opn_en"] if is_vlv else False
+                exp_fbcls = inst["fb_cls_en"] if is_vlv else False
+                raw_disp  = (
                     str(inst.get("raw_act", "")).upper() or "empty"
                     if inst.get("is_vlv") else
                     str(inst.get("raw_val", "")).upper() or "empty"
                 )
             else:
+                resolved  = tag_label
+                in_map    = resolved in tag_map
+                is_vlv    = base_entry[3] if base_entry else False
                 exp_en, exp_ex, exp_vf = False, False, False
                 exp_no, exp_fbopn, exp_fbcls = None, False, False
                 raw_disp = "N/A"
 
             if in_map:
                 eff_en, eff_ex, eff_vf, eff_no, eff_fbopn, eff_fbcls, found = \
-                    compute_effective(type_defaults, mc_overrides, tag_label, tag_map)
+                    compute_effective(type_defaults, mc_overrides, resolved, tag_map)
             else:
                 eff_en, eff_ex, eff_vf, eff_no, eff_fbopn, eff_fbcls, found = \
                     False, False, False, False, False, False, False
@@ -603,12 +702,16 @@ def generate_updated_db(db_text, excel_data, type_defaults, mc_overrides_all,
     }
 
     # Build fresh minimal-patch CW lines per mc_idx
+    tag_map_lower = {k.lower(): k for k in tag_map}
     new_cw = {mc_idx: [] for mc_idx in families_cfg.values()}
     for fam_name, mc_idx in families_cfg.items():
         for tag_label, inst in excel_data.get(fam_name, {}).items():
-            if tag_label not in tag_map:
+            resolved = _resolve_db_field(
+                inst.get("resolved_tag", tag_label), tag_label,
+                tag_map, tag_map_lower)
+            if resolved not in tag_map:
                 continue
-            unit, em, field, is_vlv = tag_map[tag_label]
+            unit, em, field, is_vlv = tag_map[resolved]
             pk  = path_key(unit, em, field)
             td  = type_defaults.get(pk, {})
 
@@ -674,14 +777,18 @@ def generate_updated_db(db_text, excel_data, type_defaults, mc_overrides_all,
 
 def verify_updated_db(db_text, excel_data, type_defaults, tag_map, families_cfg):
     errors = 0
+    tag_map_lower    = {k.lower(): k for k in tag_map}
     mc_overrides_new = {mc_idx: parse_mc_overrides(db_text, mc_idx)
                         for mc_idx in families_cfg.values()}
     for fam_name, mc_idx in families_cfg.items():
         ov = mc_overrides_new.get(mc_idx, {})
         for tag_label, inst in excel_data.get(fam_name, {}).items():
-            if tag_label not in tag_map:
+            resolved = _resolve_db_field(
+                inst.get("resolved_tag", tag_label), tag_label,
+                tag_map, tag_map_lower)
+            if resolved not in tag_map:
                 continue
-            unit, em, field, _ = tag_map[tag_label]
+            unit, em, field, _ = tag_map[resolved]
             pk     = path_key(unit, em, field)
             td     = type_defaults.get(pk, {})
             eff_en = ov.get(pk, {}).get("enable", td.get("default_enable", False))
@@ -825,7 +932,7 @@ def write_comparison_xlsx(comparison_rows, out_path, families_cfg, job_name):
 
 # ── Job runner ─────────────────────────────────────────────────────────────────
 
-def run_job(job):
+def run_job(job, udt_em_unit):
     name         = job["name"]
     db_path      = job["db"]
     excel_path   = job["excel"]
@@ -842,8 +949,8 @@ def run_job(job):
         db_text = f.read()
     print(f"    {len(db_text.splitlines())} lines")
 
-    print(f"\n[2] Auto-discovering instrument map from DB TYPE blocks...")
-    tag_map = build_tag_map(db_text)
+    print(f"\n[2] Building instrument map from DB TYPE blocks (unit mapping from UDT)...")
+    tag_map = build_tag_map(db_text, udt_em_unit)
     print(f"    {len(tag_map)} instruments discovered")
 
     print(f"\n[3] Reading Excel: {excel_path}")
@@ -913,6 +1020,15 @@ def main():
         print(f"ERROR: {JOBS_FILE} not found.")
         sys.exit(1)
 
+    try:
+        with open(UDT_FILE, encoding="utf-8") as f:
+            udt_text = f.read()
+    except FileNotFoundError:
+        print(f"ERROR: {UDT_FILE} not found in working directory.")
+        sys.exit(1)
+    udt_em_unit = build_em_unit_from_udt(udt_text)
+    print(f"[UDT] {len(udt_em_unit)} EM modules mapped from {UDT_FILE}")
+
     jobs = cfg.get("jobs", [])
     if not jobs:
         print("No jobs defined in jobs.json")
@@ -937,7 +1053,7 @@ def main():
         if not job.get("families"):
             print(f"\nSkipping '{job['name']}': no families configured in jobs.json")
             continue
-        run_job(job)
+        run_job(job, udt_em_unit)
         ran += 1
 
     if ran == 0:

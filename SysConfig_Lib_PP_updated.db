@@ -396,7 +396,7 @@ VERSION : 0.1
    STRUCT
       "AV220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV220-1', ((), (), (), (), (), (), TRUE, TRUE, (), (), (), (), (), TRUE, (), TRUE), (), 190, 191, 164);   // LP outlet valve
       "AV460-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV460-1', ((), (), (), (), (), (), TRUE, TRUE, (), (), (), (), TRUE, TRUE, (), TRUE), (), 210, 211, 174);   // LP outlet to drain valve
-      "SV220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('SV220-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 333);   // Back pressure air supply 
+      "SOV502-11" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('S0V502-11', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 333);   // Back pressure air supply 
       "FIT22X-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT220-1', ((), (), (), True, (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), (), (), ());   // LP outlet flowmeter
       "PIT22X-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT220-1', ((), (), (), True, (), (), (), (), (), (), (), (), (), True, (), ()), 0, 66, 0.0, 1000.0, (), ());   // LP outlet pressure
       "QT220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT220-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), 0, 70, 0.0, 100.0, (), ());   // LP outlet turbidity
@@ -464,7 +464,7 @@ VERSION : 0.1
    STRUCT
       GS794 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('GS794', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), 64, (), 100.0, (), ());   // Centrizoom Position 
       IP508b { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('IP508B', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), 70, (), 100.0, (), ());   // Centrizoom Positioner
-      "SV508b-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('SV508b-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 336);   // Centrizoom air supply
+      "SOV502-12" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('SOV502-12', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 336);   // Centrizoom air supply
    END_STRUCT;
 
 END_TYPE
@@ -871,17 +871,17 @@ BEGIN
    MachineConfig[2]."Unit Dch"."EM - 506".IP506a.Address := 68;
    MachineConfig[2]."Unit Dch"."EM - 506".IP506a.Max := 100.0;
    // === CW auto-patched for MachineConfig[2] ===
-   MachineConfig[2]."Unknown"."EM - 208"."AV208-1".CW.VLV_W_FB := False;
-   MachineConfig[2]."Unknown"."EM - 208"."AV208-1".CW.FB_OPN_EN := False;
-   MachineConfig[2]."Unknown"."EM - 208"."AV208-1".CW.FB_CLS_EN := False;
-   MachineConfig[2]."Unknown"."EM - 210"."AV210-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 210"."AV210-1".CW.VLV_W_FB := False;
-   MachineConfig[2]."Unknown"."EM - 210"."AV210-1".CW.FB_OPN_EN := False;
-   MachineConfig[2]."Unknown"."EM - 210"."AV210-1".CW.FB_CLS_EN := False;
-   MachineConfig[2]."Unknown"."EM - 212"."AV212-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 212"."AV212-1".CW.VLV_W_FB := False;
-   MachineConfig[2]."Unknown"."EM - 212"."AV212-1".CW.FB_OPN_EN := False;
-   MachineConfig[2]."Unknown"."EM - 212"."AV212-1".CW.FB_CLS_EN := False;
+   MachineConfig[2]."Options"."EM - 208"."AV208-1".CW.VLV_W_FB := False;
+   MachineConfig[2]."Options"."EM - 208"."AV208-1".CW.FB_OPN_EN := False;
+   MachineConfig[2]."Options"."EM - 208"."AV208-1".CW.FB_CLS_EN := False;
+   MachineConfig[2]."Options"."EM - 210"."AV210-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 210"."AV210-1".CW.VLV_W_FB := False;
+   MachineConfig[2]."Options"."EM - 210"."AV210-1".CW.FB_OPN_EN := False;
+   MachineConfig[2]."Options"."EM - 210"."AV210-1".CW.FB_CLS_EN := False;
+   MachineConfig[2]."Unit Process"."EM - 212"."AV212-1".CW.EXIST := False;
+   MachineConfig[2]."Unit Process"."EM - 212"."AV212-1".CW.VLV_W_FB := False;
+   MachineConfig[2]."Unit Process"."EM - 212"."AV212-1".CW.FB_OPN_EN := False;
+   MachineConfig[2]."Unit Process"."EM - 212"."AV212-1".CW.FB_CLS_EN := False;
    MachineConfig[2]."Unit Process"."EM - 22X"."AV220-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Process"."EM - 22Y"."AV221-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Dch"."EM - 222"."AV222-1".CW.EXIST := False;
@@ -898,18 +898,16 @@ BEGIN
    MachineConfig[2]."Unit Process"."EM - 340"."AV460-2".CW.VLV_W_FB := False;
    MachineConfig[2]."Unit Process"."EM - 340"."AV460-2".CW.FB_OPN_EN := False;
    MachineConfig[2]."Unit Process"."EM - 340"."AV460-2".CW.FB_CLS_EN := False;
-   MachineConfig[2]."Unknown"."EM - 460"."AV460d-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 460"."AV460d-1".CW.VLV_W_FB := False;
-   MachineConfig[2]."Unknown"."EM - 460"."AV460d-1".CW.FB_OPN_EN := False;
-   MachineConfig[2]."Unknown"."EM - 460"."AV460d-1".CW.FB_CLS_EN := False;
+   MachineConfig[2]."Unit Sep"."EM - 460"."AV460d-1".CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 460"."AV460d-1".CW.VLV_W_FB := False;
+   MachineConfig[2]."Unit Sep"."EM - 460"."AV460d-1".CW.FB_OPN_EN := False;
+   MachineConfig[2]."Unit Sep"."EM - 460"."AV460d-1".CW.FB_CLS_EN := False;
    MachineConfig[2]."Unit Dch"."EM - 506"."AV543-1".CW.EXIST := False;
    MachineConfig[2]."Unit Dch"."EM - 506"."AV543-1".CW.VLV_W_FB := False;
    MachineConfig[2]."Unit Dch"."EM - 506"."AV543-1".CW.FB_OPN_EN := False;
    MachineConfig[2]."Unit Dch"."EM - 506"."AV543-1".CW.FB_CLS_EN := False;
-   MachineConfig[2]."Unknown"."EM - 463"."AV463-1".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."AV463-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 463"."AV463-2".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."AV463-2".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 463"."AV463-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 463"."AV463-2".CW.EXIST := False;
    MachineConfig[2]."Unit Process"."EM - 22Y"."AV461-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Sep"."EM - 600"."FIS615-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Sep"."EM - 600"."FIS635-1".CW.ENABLE := True;
@@ -917,6 +915,8 @@ BEGIN
    MachineConfig[2]."Unit Process"."EM - 340"."PIS340-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Process"."EM - 22X"."QT220-1_OK".CW.ENABLE := True;
    MachineConfig[2]."Unit Process"."EM - 22X"."QT220-1_OK".CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 100".EWON.CW.ENABLE := True;
+   MachineConfig[2]."Unit Sep"."EM - 100".EWON.CW.EXIST := True;
    MachineConfig[2]."Unit Process"."EM - 201"."LA201-1".CW.ENABLE := False;
    MachineConfig[2]."Unit Process"."EM - 201"."LA201-1".CW.EXIST := False;
    MachineConfig[2]."Unit Process"."EM - 22X"."LA220-1".CW.ENABLE := True;
@@ -925,29 +925,29 @@ BEGIN
    MachineConfig[2]."Unit Process"."EM - 22Y"."LA221-1".CW.EXIST := False;
    MachineConfig[2]."Unit Process"."EM - 22X"."QT220-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Process"."EM - 22Y"."PIT22Y-1".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."LT463-1".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."PIT463-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Sep"."EM - 400"."FIT409-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Process"."EM - 201"."FCV201-1".CW.EXIST := False;
    MachineConfig[2]."Unit Process"."EM - 22X"."PCV22X-1".CW.NO := True;
+   MachineConfig[2]."Unit Dch"."EM - 506".IP506a.CW.ENABLE := True;
    MachineConfig[2]."Unit Process"."EM - 22Y"."PCV22Y-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Sep"."EM - 400"."FCV409-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Sep"."EM - 100".UPS.CW.EXIST := True;
    MachineConfig[2]."Unit Sep"."EM - 730".TS730.CW.ENABLE := True;
    MachineConfig[2]."Unit Dch"."EM - 222"."LS222-1".CW.EXIST := False;
    MachineConfig[2]."Unit Dch"."EM - 222"."P222-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 420"."P403-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 430"."P406-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 463"."P463-1".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."P463-1".CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420"."P403-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 430"."P406-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 463"."P463-1".CW.EXIST := False;
    MachineConfig[2]."Options"."EM - P201"."P201-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 208"."P208-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 208"."P208-1".CW.EXIST := False;
    MachineConfig[2]."Unit Sep"."EM - 100"."CA ERROR".CW.NO := True;
    MachineConfig[2]."Unit Sep"."EM - 100"."CA WD".CW.NO := True;
    MachineConfig[2]."Unit Sep"."EM - 400"."FIS412-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 420".LS422a.CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 420"."LS42X(b)".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 420"."LS422-1".CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420".FS421a.CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420".FS421b.CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420".LS422a.CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420"."LS42X(b)".CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420"."LS422-1".CW.EXIST := False;
    MachineConfig[2]."Unit Sep"."EM - 400"."FIT412-1".CW.EXIST := False;
    MachineConfig[2]."Unit Dch"."EM - 375"."PT37X-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Dch"."EM - 375"."PT37X-1".CW.EXIST := False;
@@ -964,22 +964,18 @@ BEGIN
    MachineConfig[2]."Unit Sep"."EM - 600"."AV615-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Dch"."EM - 300"."AV635-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Sep"."EM - 600"."AV63X/441-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 420"."PV421-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 420"."P421-1".CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420"."PV421-1".CW.EXIST := False;
+   MachineConfig[2]."Unit Sep"."EM - 420"."P421-1".CW.EXIST := False;
    MachineConfig[2]."Unit Dch"."EM - 506"."PV376-1".CW.ENABLE := True;
    MachineConfig[2]."Unit Dch"."EM - 506"."PV376-1".CW.EXIST := False;
    MachineConfig[2]."Unit Dch"."EM - 506"."PV376-2".CW.ENABLE := True;
    MachineConfig[2]."Unit Dch"."EM - 506"."PV376-2".CW.EXIST := False;
    MachineConfig[2]."Unit Dch"."EM - 506"."PV376-2".CW.NO := True;
-   MachineConfig[2]."Unknown"."EM - 463"."AV660-1".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."AV660-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 463"."AV470-1".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."AV470-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 430"."AV430-1".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 463"."AV305-2".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."AV305-2".CW.EXIST := False;
-   MachineConfig[2]."Unknown"."EM - 463"."AV660-2".CW.ENABLE := True;
-   MachineConfig[2]."Unknown"."EM - 463"."AV660-2".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 463"."AV660-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 463"."AV470-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 430"."AV430-1".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 463"."AV305-2".CW.EXIST := False;
+   MachineConfig[2]."Options"."EM - 463"."AV660-2".CW.EXIST := False;
    MachineConfig[2]."Unit Process"."EM - 22Y"."FIT22Y-1".CW.ENABLE := True;
    MachineConfig[3].Machine."Family" := 4;
    MachineConfig[3].Machine.TypeNo := 53;
@@ -1012,17 +1008,17 @@ BEGIN
    MachineConfig[3]."Unit Dch"."EM - 506".IP506a.Address := 68;
    MachineConfig[3]."Unit Dch"."EM - 506".IP506a.Max := 100.0;
    // === CW auto-patched for MachineConfig[3] ===
-   MachineConfig[3]."Unknown"."EM - 208"."AV208-1".CW.VLV_W_FB := False;
-   MachineConfig[3]."Unknown"."EM - 208"."AV208-1".CW.FB_OPN_EN := False;
-   MachineConfig[3]."Unknown"."EM - 208"."AV208-1".CW.FB_CLS_EN := False;
-   MachineConfig[3]."Unknown"."EM - 210"."AV210-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 210"."AV210-1".CW.VLV_W_FB := False;
-   MachineConfig[3]."Unknown"."EM - 210"."AV210-1".CW.FB_OPN_EN := False;
-   MachineConfig[3]."Unknown"."EM - 210"."AV210-1".CW.FB_CLS_EN := False;
-   MachineConfig[3]."Unknown"."EM - 212"."AV212-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 212"."AV212-1".CW.VLV_W_FB := False;
-   MachineConfig[3]."Unknown"."EM - 212"."AV212-1".CW.FB_OPN_EN := False;
-   MachineConfig[3]."Unknown"."EM - 212"."AV212-1".CW.FB_CLS_EN := False;
+   MachineConfig[3]."Options"."EM - 208"."AV208-1".CW.VLV_W_FB := False;
+   MachineConfig[3]."Options"."EM - 208"."AV208-1".CW.FB_OPN_EN := False;
+   MachineConfig[3]."Options"."EM - 208"."AV208-1".CW.FB_CLS_EN := False;
+   MachineConfig[3]."Options"."EM - 210"."AV210-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 210"."AV210-1".CW.VLV_W_FB := False;
+   MachineConfig[3]."Options"."EM - 210"."AV210-1".CW.FB_OPN_EN := False;
+   MachineConfig[3]."Options"."EM - 210"."AV210-1".CW.FB_CLS_EN := False;
+   MachineConfig[3]."Unit Process"."EM - 212"."AV212-1".CW.EXIST := False;
+   MachineConfig[3]."Unit Process"."EM - 212"."AV212-1".CW.VLV_W_FB := False;
+   MachineConfig[3]."Unit Process"."EM - 212"."AV212-1".CW.FB_OPN_EN := False;
+   MachineConfig[3]."Unit Process"."EM - 212"."AV212-1".CW.FB_CLS_EN := False;
    MachineConfig[3]."Unit Process"."EM - 22X"."AV220-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Process"."EM - 22Y"."AV221-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Dch"."EM - 222"."AV222-1".CW.EXIST := False;
@@ -1039,18 +1035,16 @@ BEGIN
    MachineConfig[3]."Unit Process"."EM - 340"."AV460-2".CW.VLV_W_FB := False;
    MachineConfig[3]."Unit Process"."EM - 340"."AV460-2".CW.FB_OPN_EN := False;
    MachineConfig[3]."Unit Process"."EM - 340"."AV460-2".CW.FB_CLS_EN := False;
-   MachineConfig[3]."Unknown"."EM - 460"."AV460d-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 460"."AV460d-1".CW.VLV_W_FB := False;
-   MachineConfig[3]."Unknown"."EM - 460"."AV460d-1".CW.FB_OPN_EN := False;
-   MachineConfig[3]."Unknown"."EM - 460"."AV460d-1".CW.FB_CLS_EN := False;
+   MachineConfig[3]."Unit Sep"."EM - 460"."AV460d-1".CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 460"."AV460d-1".CW.VLV_W_FB := False;
+   MachineConfig[3]."Unit Sep"."EM - 460"."AV460d-1".CW.FB_OPN_EN := False;
+   MachineConfig[3]."Unit Sep"."EM - 460"."AV460d-1".CW.FB_CLS_EN := False;
    MachineConfig[3]."Unit Dch"."EM - 506"."AV543-1".CW.EXIST := False;
    MachineConfig[3]."Unit Dch"."EM - 506"."AV543-1".CW.VLV_W_FB := False;
    MachineConfig[3]."Unit Dch"."EM - 506"."AV543-1".CW.FB_OPN_EN := False;
    MachineConfig[3]."Unit Dch"."EM - 506"."AV543-1".CW.FB_CLS_EN := False;
-   MachineConfig[3]."Unknown"."EM - 463"."AV463-1".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."AV463-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 463"."AV463-2".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."AV463-2".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 463"."AV463-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 463"."AV463-2".CW.EXIST := False;
    MachineConfig[3]."Unit Process"."EM - 22Y"."AV461-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Sep"."EM - 600"."FIS615-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Sep"."EM - 600"."FIS635-1".CW.ENABLE := True;
@@ -1058,6 +1052,8 @@ BEGIN
    MachineConfig[3]."Unit Process"."EM - 340"."PIS340-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Process"."EM - 22X"."QT220-1_OK".CW.ENABLE := True;
    MachineConfig[3]."Unit Process"."EM - 22X"."QT220-1_OK".CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 100".EWON.CW.ENABLE := True;
+   MachineConfig[3]."Unit Sep"."EM - 100".EWON.CW.EXIST := True;
    MachineConfig[3]."Unit Process"."EM - 201"."LA201-1".CW.ENABLE := False;
    MachineConfig[3]."Unit Process"."EM - 201"."LA201-1".CW.EXIST := False;
    MachineConfig[3]."Unit Process"."EM - 22X"."LA220-1".CW.ENABLE := True;
@@ -1066,29 +1062,29 @@ BEGIN
    MachineConfig[3]."Unit Process"."EM - 22Y"."LA221-1".CW.EXIST := False;
    MachineConfig[3]."Unit Process"."EM - 22X"."QT220-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Process"."EM - 22Y"."PIT22Y-1".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."LT463-1".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."PIT463-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Sep"."EM - 400"."FIT409-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Process"."EM - 201"."FCV201-1".CW.EXIST := False;
    MachineConfig[3]."Unit Process"."EM - 22X"."PCV22X-1".CW.NO := True;
+   MachineConfig[3]."Unit Dch"."EM - 506".IP506a.CW.ENABLE := True;
    MachineConfig[3]."Unit Process"."EM - 22Y"."PCV22Y-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Sep"."EM - 400"."FCV409-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Sep"."EM - 100".UPS.CW.EXIST := True;
    MachineConfig[3]."Unit Sep"."EM - 730".TS730.CW.ENABLE := True;
    MachineConfig[3]."Unit Dch"."EM - 222"."LS222-1".CW.EXIST := False;
    MachineConfig[3]."Unit Dch"."EM - 222"."P222-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 420"."P403-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 430"."P406-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 463"."P463-1".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."P463-1".CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420"."P403-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 430"."P406-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 463"."P463-1".CW.EXIST := False;
    MachineConfig[3]."Options"."EM - P201"."P201-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 208"."P208-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 208"."P208-1".CW.EXIST := False;
    MachineConfig[3]."Unit Sep"."EM - 100"."CA ERROR".CW.NO := True;
    MachineConfig[3]."Unit Sep"."EM - 100"."CA WD".CW.NO := True;
    MachineConfig[3]."Unit Sep"."EM - 400"."FIS412-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 420".LS422a.CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 420"."LS42X(b)".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 420"."LS422-1".CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420".FS421a.CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420".FS421b.CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420".LS422a.CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420"."LS42X(b)".CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420"."LS422-1".CW.EXIST := False;
    MachineConfig[3]."Unit Sep"."EM - 400"."FIT412-1".CW.EXIST := False;
    MachineConfig[3]."Unit Dch"."EM - 375"."PT37X-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Dch"."EM - 375"."PT37X-1".CW.EXIST := False;
@@ -1105,22 +1101,18 @@ BEGIN
    MachineConfig[3]."Unit Sep"."EM - 600"."AV615-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Dch"."EM - 300"."AV635-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Sep"."EM - 600"."AV63X/441-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 420"."PV421-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 420"."P421-1".CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420"."PV421-1".CW.EXIST := False;
+   MachineConfig[3]."Unit Sep"."EM - 420"."P421-1".CW.EXIST := False;
    MachineConfig[3]."Unit Dch"."EM - 506"."PV376-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Dch"."EM - 506"."PV376-1".CW.EXIST := False;
    MachineConfig[3]."Unit Dch"."EM - 506"."PV376-2".CW.ENABLE := True;
    MachineConfig[3]."Unit Dch"."EM - 506"."PV376-2".CW.EXIST := False;
    MachineConfig[3]."Unit Dch"."EM - 506"."PV376-2".CW.NO := True;
-   MachineConfig[3]."Unknown"."EM - 463"."AV660-1".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."AV660-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 463"."AV470-1".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."AV470-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 430"."AV430-1".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 463"."AV305-2".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."AV305-2".CW.EXIST := False;
-   MachineConfig[3]."Unknown"."EM - 463"."AV660-2".CW.ENABLE := True;
-   MachineConfig[3]."Unknown"."EM - 463"."AV660-2".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 463"."AV660-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 463"."AV470-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 430"."AV430-1".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 463"."AV305-2".CW.EXIST := False;
+   MachineConfig[3]."Options"."EM - 463"."AV660-2".CW.EXIST := False;
    MachineConfig[3]."Unit Process"."EM - 22Y"."FIT22Y-1".CW.ENABLE := True;
 
 END_DATA_BLOCK

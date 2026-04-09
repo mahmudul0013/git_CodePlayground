@@ -382,11 +382,18 @@ VERSION : 0.1
 
 END_TYPE
 
-TYPE "EM - 206"
+TYPE "EM - 201"
 VERSION : 0.1
    STRUCT
-      "AV206-1" : "STAT VLV" := ('AV206-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), 8, 8, 161);   // Brine/Centrate on/off valve
-      "PIT206-1" : "STAT AI" := ('PIT206-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), 0, 86, 0.0, 1000.0, (), ());   // Brine/Centrate pressure
+      "AV201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV201-1', ((), (), (), TRUE, (), (), TRUE, TRUE, (), (), (), (), (), TRUE, (), TRUE), (), 180, 181, 160);   // Inlet on/off valve
+      "AV460a-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV460a-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), (), (), 172);   // Inlet to drain
+      "FCV201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('FCV201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), FALSE, TRUE, (), ()), 0, 64, (), 100.0, (), 5);   // Inlet flow control valve
+      "FIT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), (), TRUE, (), ()), (), (), (), (), (), ());   // Inlet flow meter
+      "LA201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('LA201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), (), TRUE, (), ()), 191);   // Inlet sight glass backlight
+      "PIT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), (), TRUE, (), ()), 0, 64, 0.0, 1000.0, (), ());   // Inlet pressure
+      "QT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT201-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), 0, 68, 0.0, 100.0, (), ());   // Inlet turbidity
+      "TT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT201-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 200.0, (), ());   // Inlet temperature
+      "QT201-1_OK" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('QT201-1 OK', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), 171);   // Turbidity sensor OK
    END_STRUCT;
 
 END_TYPE
@@ -547,18 +554,11 @@ VERSION : 0.1
 
 END_TYPE
 
-TYPE "EM - 201"
+TYPE "EM - 206"
 VERSION : 0.1
    STRUCT
-      "AV201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV201-1', ((), (), (), TRUE, (), (), TRUE, TRUE, (), (), (), (), (), TRUE, (), TRUE), (), 180, 181, 160);   // Inlet on/off valve
-      "AV460a-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV460a-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), (), (), 172);   // Inlet to drain
-      "FCV201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('FCV201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), FALSE, TRUE, (), ()), 0, 64, (), 100.0, (), 5);   // Inlet flow control valve
-      "FIT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), (), TRUE, (), ()), (), (), (), (), (), ());   // Inlet flow meter
-      "LA201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DO" := ('LA201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), (), TRUE, (), ()), 191);   // Inlet sight glass backlight
-      "PIT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT201-1', ((), (), (), TRUE, (), (), (), (), (), (), (), (), (), TRUE, (), ()), 0, 64, 0.0, 1000.0, (), ());   // Inlet pressure
-      "QT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT201-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), 0, 68, 0.0, 100.0, (), ());   // Inlet turbidity
-      "TT201-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('TT201-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 200.0, (), ());   // Inlet temperature
-      "QT201-1_OK" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT DI" := ('QT201-1 OK', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), 171);   // Turbidity sensor OK
+      "AV206-1" : "STAT VLV" := ('AV206-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), 8, 8, 161);   // Brine/Centrate on/off valve
+      "PIT206-1" : "STAT AI" := ('PIT206-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), 0, 86, 0.0, 1000.0, (), ());   // Brine/Centrate pressure
    END_STRUCT;
 
 END_TYPE
@@ -629,6 +629,15 @@ VERSION : 0.1
 
 END_TYPE
 
+TYPE "STAT Comm"
+VERSION : 0.1
+   STRUCT
+      "EM - BC-COMM" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - BC-COMM";
+      "EM - RCB" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - RCB";
+   END_STRUCT;
+
+END_TYPE
+
 TYPE "STAT Options"
 VERSION : 0.1
    STRUCT
@@ -657,15 +666,6 @@ VERSION : 0.1
 
 END_TYPE
 
-TYPE "STAT Comm"
-VERSION : 0.1
-   STRUCT
-      "EM - BC-COMM" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - BC-COMM";
-      "EM - RCB" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "EM - RCB";
-   END_STRUCT;
-
-END_TYPE
-
 TYPE "STAT SYSTEM"
 VERSION : 0.1
    STRUCT
@@ -678,222 +678,4 @@ VERSION : 0.1
    END_STRUCT;
 
 END_TYPE
-
-DATA_BLOCK "SysConfig_Lib_KR"
-TITLE = System configuration library - KR
-{ DB_Accessible_From_OPC_UA := 'FALSE' ;
- S7_Optimized_Access := 'TRUE' }
-AUTHOR : DBV
-FAMILY : FactorySettings
-VERSION : 0.1
-UNLINKED
-NON_RETAIN
-   VAR 
-      MachineConfig { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : Array[0..5] of "STAT SYSTEM";
-   END_VAR
-
-
-BEGIN
-   MachineConfig[0].Machine."Family" := 5;
-   MachineConfig[0].Machine.TypeNo := 60;
-   MachineConfig[0].Machine.Range := 2;
-   MachineConfig[0].Machine.SepType := 1;
-   MachineConfig[0].Machine.Frame := 1;
-   MachineConfig[0].Machine.DchSystem := 2;
-   MachineConfig[0].Machine.FeedPump := 1;
-   MachineConfig[0].Machine.eWON := 1;
-   MachineConfig[0]."Unit Sep"."EM - 100"."L-GREEN".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."L-GREEN".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."L-YELLOW".Tag := 'L-BLUE';
-   MachineConfig[0]."Unit Sep"."EM - 100"."L-RED".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."L-RED".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."L-BUZZ".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."L-BUZZ".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 100".EMS.CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 100".EMS.CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 100".EMS.Address := 180;
-   MachineConfig[0]."Unit Sep"."EM - 100".UPS.CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 100".UPS.CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 100".UPS.Address := 181;
-   MachineConfig[0]."Unit Sep"."EM - 100".EWON.CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."PS502-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."PS502-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 100"."LT BUF".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."AV409-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."AV409-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."AV409-1".ACT_OUT_ADD := 170;
-   MachineConfig[0]."Unit Sep"."EM - 400"."FCV409-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."FCV409-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."FIS409-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Sep"."EM - 400"."FIT409-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."FIT409-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."TT41X-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."TT41X-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 400"."TT41X-1"."Type" := 0;
-   MachineConfig[0]."Unit Sep"."EM - 400"."TT41X-1".Address := 86;
-   MachineConfig[0]."Unit Sep"."EM - 400"."TT41X-1".Min := -50.0;
-   MachineConfig[0]."Unit Sep"."EM - 400"."TT41X-1".Max := 150.0;
-   MachineConfig[0]."Unit Sep"."EM - 600"."AV63X/441-1".TAG := 'AV441-1';
-   MachineConfig[0]."Unit Sep"."EM - 600"."AV63X/441-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 600"."AV63X/441-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 600"."AV63X/441-1".ACT_OUT_ADD := 174;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.CW.FB_RDY_EN := True;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.CW.FB_RUN_EN := True;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701."TYPE" := 2;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.FB_RUN_ADD := 8;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.FB_RDY_ADD := 8;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.OUT_ACT_ADD := 512;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701.OUT_RST_ADD := 8;
-   MachineConfig[0]."Unit Sep"."EM - 701".M701_SPEED_REF.Address := 72;
-   MachineConfig[0]."Unit Sep"."EM - 730".TS730.CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 730".TS730.CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 730".TS730.Address := 184;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F PS".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F PS".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F PS".Address := 180;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F OS".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F OS".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F OS".Address := 182;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F ERROR".CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F ERROR".CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 740"."P+F ERROR".Address := 183;
-   MachineConfig[0]."Unit Sep"."EM - 750".YT75X.CW.ENABLE := True;
-   MachineConfig[0]."Unit Sep"."EM - 750".YT75X.CW.EXIST := True;
-   MachineConfig[0]."Unit Sep"."EM - 750".YT75X.Address := 78;
-   MachineConfig[0]."Unit Process"."EM - 201"."AV201-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Process"."EM - 201"."AV201-1".CW.FB_CLS_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 201"."AV201-1".CW.FB_OPN_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 201"."AV201-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Process"."EM - 201"."AV201-1".CW.VLV_W_FB := False;
-   MachineConfig[0]."Unit Process"."EM - 201"."AV201-1".FB_OPN_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 201"."AV201-1".FB_CLS_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 201"."FCV201-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Process"."EM - 201"."FCV201-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Process"."EM - 201"."FIT201-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Process"."EM - 201"."FIT201-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Process"."EM - 201"."FIT201-1".Address := 88;
-   MachineConfig[0]."Unit Process"."EM - 201"."FIT201-1".Max := 40000.0;
-   MachineConfig[0]."Unit Process"."EM - 201"."LA201-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Process"."EM - 201"."PIT201-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".CW.FB_CLS_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".CW.FB_OPN_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".CW.VLV_W_FB := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".FB_OPN_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".FB_CLS_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV220-1".ACT_OUT_ADD := 162;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".CW.FB_CLS_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".CW.FB_OPN_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".CW.VLV_W_FB := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".FB_OPN_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".FB_CLS_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 22X"."AV460-1".ACT_OUT_ADD := 171;
-   MachineConfig[0]."Unit Process"."EM - 22X"."FIT22X-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."PIT22X-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Process"."EM - 22X"."PCV22X-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".CW.FB_CLS_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".CW.FB_OPN_EN := False;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".CW.VLV_W_FB := False;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".FB_OPN_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".FB_CLS_ADD := 8;
-   MachineConfig[0]."Unit Process"."EM - 340"."AV340-1".ACT_OUT_ADD := 165;
-   MachineConfig[0]."Unit Dch"."EM - 222"."LS222-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Dch"."EM - 222"."LS222-1".Address := 185;
-   MachineConfig[0]."Unit Dch"."EM - 222"."P222-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Dch"."EM - 222"."P222-1".CW.FB_RDY_EN := True;
-   MachineConfig[0]."Unit Dch"."EM - 222"."P222-1".CW.FB_RUN_EN := True;
-   MachineConfig[0]."Unit Dch"."EM - 222"."P222-1".CW.EXIST := False;
-   MachineConfig[0]."Unit Dch"."EM - 222"."P222-1".FB_RUN_ADD := 194;
-   MachineConfig[0]."Unit Dch"."EM - 222"."P222-1".FB_RDY_ADD := 195;
-   MachineConfig[0]."Unit Dch"."EM - 222"."P222-1".OUT_ACT_ADD := 182;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".CW.FB_CLS_EN := False;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".CW.FB_OPN_EN := False;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".CW.VLV_W_FB := False;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".FB_OPN_ADD := 8;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".FB_CLS_ADD := 8;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV301-1".ACT_OUT_ADD := 163;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".CW.FB_CLS_EN := False;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".CW.FB_OPN_EN := False;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".CW.VLV_W_FB := False;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".FB_OPN_ADD := 8;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".FB_CLS_ADD := 8;
-   MachineConfig[0]."Unit Dch"."EM - 300"."AV320-1".ACT_OUT_ADD := 164;
-   MachineConfig[0]."Unit Dch"."EM - 375"."AV37X-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Dch"."EM - 375"."AV37X-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Dch"."EM - 375"."AV37X-1".ACT_OUT_ADD := 166;
-   MachineConfig[0]."Unit Dch"."EM - 375"."PIS375-1".CW.ENABLE := False;
-   MachineConfig[0]."Unit Dch"."EM - 375"."PT37X-1".CW.ENABLE := True;
-   MachineConfig[0]."Unit Dch"."EM - 375"."PT37X-1".CW.EXIST := True;
-   MachineConfig[0]."Unit Dch"."EM - 375"."PT37X-1".Address := 76;
-   MachineConfig[0]."Unit Dch"."EM - 375"."PT37X-1".Max := 600.0;
-   MachineConfig[0]."Unit Dch"."EM - 506".IP506a.CW.ENABLE := True;
-   MachineConfig[0]."Unit Dch"."EM - 506".IP506a.CW.EXIST := True;
-   MachineConfig[0]."Unit Dch"."EM - 506".AVDCH.TAG := '506b';
-   MachineConfig[0]."Unit Dch"."EM - 506".AVDCH.CW.ENABLE := True;
-   MachineConfig[0]."Unit Dch"."EM - 506".AVDCH.CW.EXIST := True;
-   MachineConfig[0]."Unit Dch"."EM - 506".AVDCH.ACT_OUT_ADD := 167;
-   MachineConfig[0].Options."EM - P201"."P201-1".FB_RUN_ADD := 196;
-   MachineConfig[0].Options."EM - P201"."P201-1".FB_RDY_ADD := 197;
-   MachineConfig[0].Options."EM - P201"."P201-1".OUT_ACT_ADD := 183;
-   MachineConfig[0].Options."EM - P201"."P201-1".OUT_RST_ADD := 184;
-   MachineConfig[0].Options."EM - P201"."P201-1_SPEED_REF".Address := 70;
-   MachineConfig[1].Machine."Family" := 5;
-   MachineConfig[1].Machine.TypeNo := 61;
-   MachineConfig[1].Machine.Range := 2;
-   MachineConfig[1].Machine.SepType := 1;
-   MachineConfig[1].Machine.Frame := 1;
-   MachineConfig[1].Machine.DchSystem := 2;
-   MachineConfig[1].Machine.Spare_1 := 3;
-   MachineConfig[1].Machine.FeedPump := 1;
-   MachineConfig[1].Machine.Spare_2 := 1;
-   MachineConfig[1].Machine.ConditionAlert := 1;
-   MachineConfig[1].Machine.eWON := 1;
-   MachineConfig[1]."Unit Sep"."EM - 400"."AV409-1".CW.ENABLE := true;
-   MachineConfig[1]."Unit Sep"."EM - 400"."FCV409-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Sep"."EM - 400"."FIT409-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Sep"."EM - 400"."TT41X-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Sep"."EM - 600"."FIS615-1".CW.ENABLE := False;
-   MachineConfig[1]."Unit Sep"."EM - 730".TS730.CW.ENABLE := true;
-   MachineConfig[1]."Unit Sep"."EM - 730".TT731a.CW.ENABLE := True;
-   MachineConfig[1]."Unit Sep"."EM - 750".YT75X.CW.ENABLE := TRUE;
-   MachineConfig[1]."Unit Process"."EM - 201"."AV201-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 201"."FIT201-1"."Type" := 2;
-   MachineConfig[1]."Unit Process"."EM - 201"."FIT201-1".Address := 256;
-   MachineConfig[1]."Unit Process"."EM - 201"."FIT201-1".Max := 50000.0;
-   MachineConfig[1]."Unit Process"."EM - 212"."AV212-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 22X"."AV220-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 22X"."AV460-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 22X"."PCV22X-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 22X"."PCV22X-1".CW.EXIST := True;
-   MachineConfig[1]."Unit Process"."EM - 22X"."PCV22X-1".Address := 66;
-   MachineConfig[1]."Unit Process"."EM - 22X"."LA220-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 340"."AV340-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 340"."AV340-2".CW.ENABLE := True;
-   MachineConfig[1]."Unit Process"."EM - 340"."AV460-2".CW.ENABLE := true;
-   MachineConfig[1]."Unit Dch"."EM - 222"."P222-1".CW.EXIST := False;
-   MachineConfig[1]."Unit Dch"."EM - 222"."TS222-1".CW.ENABLE := true;
-   MachineConfig[1]."Unit Dch"."EM - 300"."AV301-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Dch"."EM - 300"."AV303-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Dch"."EM - 300"."AV304-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Dch"."EM - 300"."AV305-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Dch"."EM - 300"."AV320-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Dch"."EM - 375"."AV37X-1".CW.ENABLE := True;
-   MachineConfig[1]."Unit Dch"."EM - 506".IP506a.CW.ENABLE := True;
-   MachineConfig[1]."Unit Dch"."EM - 506".AVDCH.CW.ENABLE := True;
-   MachineConfig[5]."Unit Process"."EM - 22X"."FIT22X-1".CW.ENABLE := True;
-   MachineConfig[5]."Unit Process"."EM - 22X"."FIT22X-1".CW.EXIST := false;
-   MachineConfig[5]."Unit Process"."EM - 22X"."FIT22X-1".Address := 276;
-
-END_DATA_BLOCK
 

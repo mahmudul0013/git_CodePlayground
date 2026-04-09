@@ -396,7 +396,7 @@ VERSION : 0.1
    STRUCT
       "AV220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV220-1', ((), (), (), (), (), (), TRUE, TRUE, (), (), (), (), (), TRUE, (), TRUE), (), 190, 191, 164);   // LP outlet valve
       "AV460-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('AV460-1', ((), (), (), (), (), (), TRUE, TRUE, (), (), (), (), TRUE, TRUE, (), TRUE), (), 210, 211, 174);   // LP outlet to drain valve
-      "SV220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('SV220-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 333);   // Back pressure air supply 
+      "SOV502-11" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('S0V502-11', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 333);   // Back pressure air supply 
       "FIT22X-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('FIT220-1', ((), (), (), True, (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), (), (), ());   // LP outlet flowmeter
       "PIT22X-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('PIT220-1', ((), (), (), True, (), (), (), (), (), (), (), (), (), True, (), ()), 0, 66, 0.0, 1000.0, (), ());   // LP outlet pressure
       "QT220-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('QT220-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), 0, 70, 0.0, 100.0, (), ());   // LP outlet turbidity
@@ -464,7 +464,7 @@ VERSION : 0.1
    STRUCT
       GS794 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AI" := ('GS794', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), 64, (), 100.0, (), ());   // Centrizoom Position 
       IP508b { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT AO" := ('IP508B', ((), (), (), (), (), (), (), (), (), (), (), (), (), True, (), ()), (), 70, (), 100.0, (), ());   // Centrizoom Positioner
-      "SV508b-1" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('SV508b-1', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 336);   // Centrizoom air supply
+      "SOV502-12" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "STAT VLV" := ('SOV502-12', ((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ()), (), (), (), 336);   // Centrizoom air supply
    END_STRUCT;
 
 END_TYPE
@@ -1071,6 +1071,8 @@ BEGIN
    MachineConfig[3]."Unit Sep"."EM - 750".YT75X.Tag := 'YT752';
    MachineConfig[3]."Unit Sep"."EM - 750".YT75X.CW.ENABLE := True;
    MachineConfig[3]."Unit Sep"."EM - 750".YT75X.Address := 78;
+   MachineConfig[3]."Unit Sep"."EM - 750".YT75X.Min := 2.3;
+   MachineConfig[3]."Unit Sep"."EM - 750".YT75X.Max := 5.5;
    MachineConfig[3]."Unit Process"."EM - 201"."AV201-1".CW.ENABLE := True;
    MachineConfig[3]."Unit Process"."EM - 201"."AV201-1".CW.FB_CLS_EN := False;
    MachineConfig[3]."Unit Process"."EM - 201"."AV201-1".CW.FB_OPN_EN := False;
@@ -1198,6 +1200,8 @@ BEGIN
    MachineConfig[4]."Unit Sep"."EM - 750".YT75X.Tag := 'YT752';
    MachineConfig[4]."Unit Sep"."EM - 750".YT75X.CW.ENABLE := True;
    MachineConfig[4]."Unit Sep"."EM - 750".YT75X.Address := 78;
+   MachineConfig[4]."Unit Sep"."EM - 750".YT75X.Min := 2.3;
+   MachineConfig[4]."Unit Sep"."EM - 750".YT75X.Max := 5.5;
    MachineConfig[4]."Unit Process"."EM - 201"."AV201-1".CW.ENABLE := True;
    MachineConfig[4]."Unit Process"."EM - 201"."AV201-1".CW.FB_CLS_EN := False;
    MachineConfig[4]."Unit Process"."EM - 201"."AV201-1".CW.FB_OPN_EN := False;
