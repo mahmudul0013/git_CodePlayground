@@ -302,6 +302,10 @@ Then re-run: python nordnet_sync.py
         stocks = [p for p in all_pos if p.get('instrument', {}).get('instrument_type') != 'FUND']
         funds  = [p for p in all_pos if p.get('instrument', {}).get('instrument_type') == 'FUND']
 
+        # Save current portfolio as baseline BEFORE overwriting, so the dashboard
+        # can detect new buys by comparing old vs new on next load
+        if STOCKS_OUT.exists():
+            save_baseline()
         write_csv(positions_to_csv_rows(stocks, is_fund=False), STOCKS_OUT)
         write_csv(positions_to_csv_rows(funds,  is_fund=True),  FUNDS_OUT)
         print('[api] Done. The dashboard will pick up new files within 5 minutes.')
@@ -334,12 +338,14 @@ def copy_existing():
     copied = False
 
     if len(all_stocks) >= 2:
+        import time as _time
         old_stocks, new_stocks = all_stocks[-2], all_stocks[-1]
         baseline_funds = all_funds[-2] if len(all_funds) >= 2 else None
         print(f'[baseline] Using {old_stocks.name} as previous snapshot')
         snap = build_baseline_json(old_stocks, baseline_funds)
+        snap['__ts'] = int(_time.time() * 1000)
         BASELINE_OUT.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding='utf-8')
-        print(f'[baseline] Saved {len(snap)} positions -> {BASELINE_OUT.name}')
+        print(f'[baseline] Saved {len(snap) - 1} positions -> {BASELINE_OUT.name}')
         shutil.copy2(new_stocks, STOCKS_OUT)
         print(f'[copy] {new_stocks.name} -> {STOCKS_OUT.name}')
         copied = True

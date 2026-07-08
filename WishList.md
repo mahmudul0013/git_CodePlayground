@@ -79,7 +79,7 @@ Funds section below stocks section.
 
 ### Nordnet Portfolio Sync (`nordnet_sync.py`)
 - **File-watch mode**: Monitors your Downloads folder for newly exported Nordnet CSVs
-  (`aktier_kontonummer-{account}_*_stocks.csv` / `fonder_kontonummer-{account}_*_funds.csv`)
+  (`aktier_kontonummer-{account}_*.csv` / `fonder_kontonummer-{account}_*.csv`)
   and copies the newest file to `portfolio_stocks.csv` / `portfolio_funds.csv`.
 - **API mode**: Fetches live positions from Nordnet REST API using a session token
   (obtained from browser DevTools after logging in with BankID).

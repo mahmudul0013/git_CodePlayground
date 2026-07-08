@@ -16,8 +16,8 @@ const CFG = {
   // Fixed-name files written by nordnet_sync.py; fallback = last Nordnet export
   stocksFile:         'portfolio_stocks.csv',
   fundsFile:          'portfolio_funds.csv',
-  stocksFileFallback: 'aktier_kontonummer-66262387_2026-03-26_stocks.csv',
-  fundsFileFallback:  'fonder_kontonummer-66262387_2026-03-26_funds.csv',
+  stocksFileFallback: 'aktier_kontonummer-66262387_2026-03-31.csv',
+  fundsFileFallback:  'fonder_kontonummer-66262387_2026-03-31.csv',
 
   // On localhost: /yahoo/* is proxied by server.py — no CORS issues
   // On remote:    direct Yahoo URL (browser/proxy fallbacks in yahooGet)
@@ -48,29 +48,40 @@ const TICKER_MAP = {
   'Analog Devices':             'ADI',
   'Apple':                      'AAPL',
   'Applied Materials':          'AMAT',
+  'Arm Holdings ADR':           'ARM',
+  'ASML HOLDING':               'ASML',
   'Assa Abloy B':               'ASSA-B.ST',
   'AstraZeneca':                { USD: 'AZN', SEK: 'AZN.ST', default: 'AZN' },
   'Atlas Copco A':              'ATCO-A.ST',
   'Axfood':                     'AXFO.ST',
+  'BlackRock':                  'BLK',
+  'Bloom Energy A':             'BE',
   'Boston Scientific':          'BSX',
   'Broadcom':                   'AVGO',
   'Chevron':                    'CVX',
+  'Cisco Systems':              'CSCO',
+  'Coherent':                   'COHR',
   'Clas Ohlson B':              'CLAS-B.ST',
   'Coca-Cola':                  'KO',
   'ConAgra Brands':             'CAG',
   'Delta Air Lines':            'DAL',
+  'Eli Lilly':                  'LLY',
   'GE Aerospace':               'GE',
   'General Dynamics':           'GD',
   'Handelsbanken A':            'SHB-A.ST',
+
   'IBM':                        'IBM',
+  'Infineon Technologies AG':   'IFX.DE',
   'Intel':                      'INTC',
   'Investor A':                 'INVE-A.ST',
   'iShares Core MSCI EM IMI UCITS ETF USD (Acc)':                          'EIMI.L',
   'iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)':         'SUSL.L',
   'JP Morgan Chase':            'JPM',
+  'KLA':                        'KLAC',
   'Kongsberg Gruppen':          'KOG.OL',
   'Lockheed Martin Corp.':      'LMT',
   'Lululemon Athletica':        'LULU',
+  'Lumentum':                   'LITE',
   'Lundin Gold':                'LUG.ST',
   'Lundin Mining Corporation':  'LUMI.ST',
   'Meta Platforms A':           'META',
@@ -78,6 +89,8 @@ const TICKER_MAP = {
   'Microsoft':                  'MSFT',
   'Nebius Group':               'NBIS',
   'Netflix':                    'NFLX',
+  'Nike':                       'NKE',
+  'Nokia':                      'NOKIA.HE',
   'Nordea Bank':                'NDA-FI.HE',
   'Novo Nordisk B':             'NOVO-B.CO',
   'NVIDIA':                     'NVDA',
@@ -88,13 +101,18 @@ const TICKER_MAP = {
   'Rivian Automotive A':        'RIVN',
   'RTX':                        'RTX',
   'SAAB B':                     'SAAB-B.ST',
+  'Sandisk':                    'SNDK',
+  'Schneider Electric SE':      'SU.PA',
+  'Seagate Technology':         'STX',
   'SEB A':                      'SEB-A.ST',
   'Siemens AG':                 'SIE.DE',
   'Siemens Energy AG':          'ENR.DE',
   'SKF B':                      'SKF-B.ST',
   'SoFi Technologies':          'SOFI',
   'SPDR S&P 500 ETF USD Acc':   'SPY5.DE',
+  'SPDR S&P 500 UCITS ETF (Acc)': 'SPY5.DE',
   'Spotify':                    'SPOT',
+  'STMicroelectronics NV':      'STM.PA',
   'SS SPDR Dow Jones Global Real Estate UCITS ETF': 'GLRE.L',
   'Swedbank A':                 'SWED-A.ST',
   'TE Connectivity':            'TEL',
@@ -113,6 +131,7 @@ const TICKER_MAP = {
   'XACT OMXS30 ESG ETF':        'XACT30.ST',
   'Xetra-Gold':                 '4GLD.DE',
   'Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C': 'XAIX.DE',
+  'Xtrackers Russell 2000 ETF 1C': 'XRU2.DE',
 };
 
 // ────────────────────────────────────────────────────────────
@@ -130,33 +149,45 @@ const DOMAIN_MAP = {
   'Analog Devices':         'analog.com',
   'Apple':                  'apple.com',
   'Applied Materials':      'appliedmaterials.com',
+  'Arm Holdings ADR':       'arm.com',
+  'ASML HOLDING':           'asml.com',
   'Assa Abloy B':           'assaabloy.com',
   'AstraZeneca':            'astrazeneca.com',
   'Atlas Copco A':          'atlascopco.com',
   'Axfood':                 'axfood.se',
+  'BlackRock':              'blackrock.com',
+  'Bloom Energy A':         'bloomenergy.com',
   'Boston Scientific':      'bostonscientific.com',
   'Broadcom':               'broadcom.com',
   'Chevron':                'chevron.com',
+  'Cisco Systems':          'cisco.com',
+  'Coherent':               'coherent.com',
   'Clas Ohlson B':          'clasohlson.com',
   'Coca-Cola':              'coca-cola.com',
   'ConAgra Brands':         'conagrabrands.com',
   'Delta Air Lines':        'delta.com',
+  'Eli Lilly':              'lilly.com',
   'GE Aerospace':           'ge.com',
   'General Dynamics':       'gd.com',
   'Handelsbanken A':        'handelsbanken.se',
   'IBM':                    'ibm.com',
+  'Infineon Technologies AG': 'infineon.com',
   'Intel':                  'intel.com',
   'Investor A':             'investorab.com',
   'JP Morgan Chase':        'jpmorganchase.com',
+  'KLA':                    'kla.com',
   'Kongsberg Gruppen':      'kongsberg.com',
   'Lockheed Martin Corp.':  'lockheedmartin.com',
   'Lululemon Athletica':    'lululemon.com',
+  'Lumentum':               'lumentum.com',
   'Lundin Gold':            'lundingold.com',
   'Lundin Mining Corporation': 'lundinmining.com',
   'Meta Platforms A':       'meta.com',
   'Micron Technology':      'micron.com',
   'Microsoft':              'microsoft.com',
   'Netflix':                'netflix.com',
+  'Nike':                   'nike.com',
+  'Nokia':                  'nokia.com',
   'Nordea Bank':            'nordea.com',
   'Novo Nordisk B':         'novonordisk.com',
   'NVIDIA':                 'nvidia.com',
@@ -167,12 +198,17 @@ const DOMAIN_MAP = {
   'Rivian Automotive A':    'rivian.com',
   'RTX':                    'rtx.com',
   'SAAB B':                 'saab.com',
+  'Sandisk':                'sandisk.com',
+  'Schneider Electric SE':  'se.com',
+  'Seagate Technology':     'seagate.com',
   'SEB A':                  'seb.se',
   'Siemens AG':             'siemens.com',
   'Siemens Energy AG':      'siemens-energy.com',
   'SKF B':                  'skf.com',
   'SoFi Technologies':      'sofi.com',
+  'SpaceX':                 'spacex.com',
   'Spotify':                'spotify.com',
+  'STMicroelectronics NV':  'st.com',
   'Swedbank A':             'swedbank.se',
   'Tesla':                  'tesla.com',
   'The Trade Desk A':       'thetradedesk.com',
@@ -219,7 +255,7 @@ function parseSE(str) {
 }
 
 async function loadCSV(filename) {
-  const resp = await fetch(filename);
+  const resp = await fetch(filename + '?t=' + Date.now());
   if (!resp.ok) throw new Error(`Cannot load ${filename}: HTTP ${resp.status}`);
 
   const buf  = await resp.arrayBuffer();
@@ -330,22 +366,39 @@ async function loadLastBuyData() {
       const baselineTs = baseline.__ts || 0;
       const localTs    = Number(localStorage.getItem('portfolio_snapshot_ts') || 0);
       if (baselineTs > localTs || !Object.keys(S._snapshot).length) {
-        // Baseline is fresher than what's in localStorage — use it
+        // Baseline is fresher than localStorage — replace snapshot AND wipe stale
+        // lastBuy so detectAndSaveBuys() starts clean from this known-good baseline
         const clean = Object.fromEntries(
           Object.entries(baseline).filter(([k]) => k !== '__ts'));
         S._snapshot = clean;
+        S.lastBuy   = {};
         console.log('[snapshot] Seeded from portfolio_baseline.json (ts=' + baselineTs + ')');
       }
     }
   } catch (_) {}
 }
 
-/** Compare current holdings to snapshot; record any qty increases as new buys. */
+/** Compare current holdings to snapshot; record any qty increases or new positions as buys. */
 function detectAndSaveBuys() {
-  const snap = S._snapshot;
+  const snap        = S._snapshot;
+  const hasSnapshot = Object.keys(snap).length > 0;
+
+  // Clear lastBuy for positions no longer held
+  const currentNames = new Set([...S.stocks, ...S.funds].map(item => item.name));
+  Object.keys(S.lastBuy).forEach(name => {
+    if (!currentNames.has(name)) delete S.lastBuy[name];
+  });
+
   [...S.stocks, ...S.funds].forEach(item => {
     const prev = snap[item.name];
-    if (prev && item.qty > prev.qty + 0.0001) {
+    if (hasSnapshot && !prev) {
+      // Brand-new position not in previous snapshot — entire qty is the buy
+      S.lastBuy[item.name] = {
+        qty:   item.qty,
+        price: item.gav,
+        date:  new Date().toLocaleDateString('sv-SE'),
+      };
+    } else if (prev && item.qty > prev.qty + 0.0001) {
       const added    = item.qty - prev.qty;
       // Derive last-buy price from the shift in weighted-average:
       // newAvg * newQty = oldAvg * oldQty + buyPrice * added
@@ -355,7 +408,11 @@ function detectAndSaveBuys() {
         price: buyPrice > 0 ? buyPrice : item.gav,
         date:  new Date().toLocaleDateString('sv-SE'),
       };
+    } else if (prev && item.qty < prev.qty - 0.0001) {
+      // Qty decreased (partial sale) — clear stale annotation
+      delete S.lastBuy[item.name];
     }
+    // qty unchanged: preserve existing lastBuy (last-buy context still relevant)
   });
   localStorage.setItem('portfolio_lastbuy', JSON.stringify(S.lastBuy));
   // Save new snapshot for next comparison

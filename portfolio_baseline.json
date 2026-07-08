@@ -9,7 +9,7 @@
   },
   "Advanced Micro Devices": {
     "qty": 1.0,
-    "gav": 219.5583
+    "gav": 207.8992
   },
   "Alfa Laval": {
     "qty": 10.0,
@@ -17,30 +17,18 @@
   },
   "Alphabet A": {
     "qty": 1.0,
-    "gav": 329.6925
+    "gav": 301.5263
   },
   "Amazon.com": {
-    "qty": 2.0,
-    "gav": 217.1365
-  },
-  "American Express": {
     "qty": 1.0,
-    "gav": 303.23
+    "gav": 217.1365
   },
   "Amphenol": {
     "qty": 2.0,
     "gav": 143.695
   },
-  "Analog Devices": {
-    "qty": 1.0,
-    "gav": 343.66
-  },
-  "Apple": {
-    "qty": 1.0,
-    "gav": 261.578
-  },
   "Applied Materials": {
-    "qty": 2.0,
+    "qty": 1.0,
     "gav": 355.235
   },
   "Assa Abloy B": {
@@ -48,36 +36,32 @@
     "gav": 360.68
   },
   "AstraZeneca": {
-    "qty": 2.0,
-    "gav": 1774.6768
+    "qty": 1.0,
+    "gav": 1764.4512
   },
   "Atlas Copco A": {
     "qty": 4.0,
     "gav": 189.8
   },
   "Axfood": {
-    "qty": 8.0,
+    "qty": 6.0,
     "gav": 316.1875
   },
-  "Boston Scientific": {
-    "qty": 1.0,
-    "gav": 93.23
-  },
-  "Broadcom": {
-    "qty": 1.0,
-    "gav": 338.33
+  "CF Industries": {
+    "qty": 3.0,
+    "gav": 132.2733
   },
   "Chevron": {
-    "qty": 4.0,
-    "gav": 198.1608
+    "qty": 5.0,
+    "gav": 199.6847
   },
   "Clas Ohlson B": {
     "qty": 5.0,
     "gav": 358.8
   },
   "Coca-Cola": {
-    "qty": 1.0,
-    "gav": 76.74
+    "qty": 2.0,
+    "gav": 76.3875
   },
   "ConAgra Brands": {
     "qty": 4.0,
@@ -107,24 +91,24 @@
     "qty": 2.0,
     "gav": 44.7087
   },
+  "International Petroleum Corp.": {
+    "qty": 4.0,
+    "gav": 247.75
+  },
   "Investor A": {
     "qty": 9.0,
     "gav": 346.1
   },
   "iShares Core MSCI EM IMI UCITS ETF USD (Acc)": {
-    "qty": 7.0,
-    "gav": 41.1871
+    "qty": 8.0,
+    "gav": 40.9231
   },
   "iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)": {
     "qty": 3.0,
     "gav": 78.3967
   },
-  "JP Morgan Chase": {
-    "qty": 1.0,
-    "gav": 299.44
-  },
   "Kongsberg Gruppen": {
-    "qty": 6.0,
+    "qty": 5.0,
     "gav": 387.5727
   },
   "Lockheed Martin Corp.": {
@@ -136,32 +120,16 @@
     "gav": 165.83
   },
   "Lundin Gold": {
-    "qty": 6.0,
-    "gav": 726.9999
+    "qty": 7.0,
+    "gav": 708.7499
   },
   "Lundin Mining Corporation": {
     "qty": 6.0,
-    "gav": 229.2358
-  },
-  "Meta Platforms A": {
-    "qty": 1.0,
-    "gav": 597.15
+    "gav": 226.1768
   },
   "Micron Technology": {
-    "qty": 3.0,
-    "gav": 398.2033
-  },
-  "Microsoft": {
-    "qty": 1.0,
-    "gav": 417.7189
-  },
-  "Nebius Group": {
-    "qty": 1.0,
-    "gav": 115.97
-  },
-  "Netflix": {
-    "qty": 1.0,
-    "gav": 92.525
+    "qty": 2.0,
+    "gav": 373.3856
   },
   "Nordea Bank": {
     "qty": 3.0,
@@ -171,21 +139,21 @@
     "qty": 20.0,
     "gav": 297.5015
   },
+  "NuScale Power": {
+    "qty": 5.0,
+    "gav": 10.784
+  },
   "NVIDIA": {
     "qty": 3.0,
     "gav": 187.9905
   },
   "Oklo A": {
-    "qty": 2.0,
+    "qty": 1.0,
     "gav": 57.19
   },
   "Oracle": {
     "qty": 2.0,
     "gav": 174.8942
-  },
-  "Palantir Technologies": {
-    "qty": 1.0,
-    "gav": 153.5283
   },
   "QUALCOMM": {
     "qty": 2.0,
@@ -196,12 +164,12 @@
     "gav": 15.62
   },
   "RTX": {
-    "qty": 2.0,
+    "qty": 1.0,
     "gav": 191.6467
   },
   "SAAB B": {
-    "qty": 6.0,
-    "gav": 658.6009
+    "qty": 7.0,
+    "gav": 650.8007
   },
   "SEB A": {
     "qty": 7.0,
@@ -212,12 +180,8 @@
     "gav": 239.0696
   },
   "Siemens Energy AG": {
-    "qty": 2.0,
-    "gav": 152.1731
-  },
-  "SKF B": {
-    "qty": 2.0,
-    "gav": 252.4
+    "qty": 3.0,
+    "gav": 152.5921
   },
   "SoFi Technologies": {
     "qty": 2.0,
@@ -227,24 +191,16 @@
     "qty": 4.0,
     "gav": 15.0875
   },
-  "Spotify": {
-    "qty": 1.0,
-    "gav": 498.205
-  },
   "SS SPDR Dow Jones Global Real Estate UCITS ETF": {
-    "qty": 5.0,
-    "gav": 32.796
+    "qty": 6.0,
+    "gav": 32.415
   },
   "Swedbank A": {
     "qty": 6.0,
-    "gav": 328.1667
-  },
-  "TE Connectivity": {
-    "qty": 1.0,
-    "gav": 209.01
+    "gav": 328.5
   },
   "Tesla": {
-    "qty": 2.0,
+    "qty": 1.0,
     "gav": 390.45
   },
   "The Trade Desk A": {
@@ -252,12 +208,12 @@
     "gav": 26.4825
   },
   "VanEck Defense ETF A USD Acc": {
-    "qty": 6.0,
-    "gav": 60.7555
+    "qty": 8.0,
+    "gav": 59.8266
   },
   "VanEck Semiconductor ETF": {
-    "qty": 6.0,
-    "gav": 53.0377
+    "qty": 7.0,
+    "gav": 53.408
   },
   "Vanguard FTSE All-World High Dividend Yield UCITS ETF - (USD) Acc": {
     "qty": 5.0,
@@ -268,15 +224,19 @@
     "gav": 105.965
   },
   "Vår Energi": {
-    "qty": 9.0,
+    "qty": 7.0,
     "gav": 39.025
+  },
+  "Visa": {
+    "qty": 1.0,
+    "gav": 299.94
   },
   "Volvo B": {
     "qty": 5.0,
     "gav": 317.0
   },
   "Walmart": {
-    "qty": 5.0,
+    "qty": 4.0,
     "gav": 122.334
   },
   "Wärtsilä B": {
@@ -284,7 +244,7 @@
     "gav": 32.122
   },
   "Western Digital": {
-    "qty": 2.0,
+    "qty": 1.0,
     "gav": 289.7783
   },
   "Workday A": {
@@ -300,8 +260,8 @@
     "gav": 132.41
   },
   "Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C": {
-    "qty": 4.0,
-    "gav": 148.7144
+    "qty": 5.0,
+    "gav": 147.3955
   },
   "AstraZeneca Allemansfond": {
     "qty": 0.3642,
@@ -330,5 +290,6 @@
   "Nordnet USA Index": {
     "qty": 8.7317,
     "gav": 229.0402
-  }
+  },
+  "__ts": 1782251626369
 }

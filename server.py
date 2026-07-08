@@ -120,6 +120,12 @@ def _handle_v7_quote(query_string: str) -> bytes:
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
+    def end_headers(self):
+        # Prevent browser from caching CSV/JSON data files — always serve fresh
+        if not self.path.startswith('/yahoo/'):
+            self.send_header('Cache-Control', 'no-store')
+        super().end_headers()
+
     def do_GET(self):
         if self.path.startswith('/yahoo/'):
             self._proxy_yahoo()
