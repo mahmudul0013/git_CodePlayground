@@ -315,6 +315,12 @@ function renderTable(d) {
     <td>${fmt(sum(r => r.a.fees))}</td><td>${sgn(sum(r => r.a.realized))}</td><td>${sgn(sum(r => r.a.unrealized))}</td><td>${sgn(sum(r => r.a.total_pnl))}</td></tr>`;
   $('asset-table').innerHTML = `<thead><tr>${th}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:var(--text-dim)">No assets match this filter.</td></tr>`}</tbody><tfoot>${foot}</tfoot>`;
   $('table-title').textContent = `${v.label} — ${list.length} assets`;
+  if (window.AssetChart) {
+    document.querySelectorAll('.asset-chart[data-chart]').forEach(el => {
+      const a = S.data.assets.find(x => x.isin === el.dataset.chart);
+      if (a) AssetChart.render(el, a);
+    });
+  }
   S.lastList = list;
 }
 
@@ -323,7 +329,7 @@ function detail(a) {
     <td>${t.date}</td><td class="${t.side === 'BUY' ? 'buy-t' : 'sell-t'}">${t.side === 'BUY' ? 'Buy' : 'Sell'}</td>
     <td>${t.qty}</td><td>${t.price == null ? '—' : fmt2(t.price) + ' ' + esc(t.ccy)}</td><td>${fmt(t.amount)}</td><td>${fmt2(t.fee)}</td>
     <td class="${cls(t.realized)}">${t.realized == null ? '—' : sgn(t.realized)}</td><td>${t.hold_days == null ? '—' : t.hold_days + ' d'}</td><td>${t.pos_after}</td></tr>`).join('');
-  return `<div class="detail-inner"><table><thead><tr><th>Date</th><th>Side</th><th>Qty</th><th>Price</th><th>Amount kr</th><th>Fee kr</th><th>Realised kr</th><th>Held</th><th>Position after</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="asset-chart" data-chart="${esc(a.isin)}"></div><div class="detail-inner"><table><thead><tr><th>Date</th><th>Side</th><th>Qty</th><th>Price</th><th>Amount kr</th><th>Fee kr</th><th>Realised kr</th><th>Held</th><th>Position after</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function exportCsv() {
@@ -364,6 +370,8 @@ function renderHabits() {
     ['warn', 'Win rate on sells', pct(sq.win_rate),
       `${sq.wins} winners / ${sq.losses} losers. Avg win ${sgn(sq.avg_win)} kr, avg loss ${sgn(sq.avg_loss)} kr (payoff ${sq.payoff_ratio ?? '—'}×, profit factor ${sq.profit_factor ?? '—'}).`],
   ].map(([k, t, b, p]) => `<div class="vcard ${k}"><div class="t">${t}</div><div class="big">${b}</div><p>${p}</p></div>`).join('');
+
+  renderScore();
 
   // ---- findings
   const sizeRows = I.fee_by_size;
@@ -475,6 +483,65 @@ function renderHabits() {
     'Split-order, small-order and re-buy figures are estimates meant to show where behaviour costs money, not exact savings.',
     'Not investment advice — this describes your past activity only.',
   ].map(x => `<li>${x}</li>`).join('');
+}
+
+// ───────── benchmark score + good practice ─────────
+const tone = sc => sc == null ? '' : sc >= 70 ? 'good' : sc >= 40 ? 'mid' : 'bad';
+
+function renderScore() {
+  const sc = S.data.insights.scorecard;
+  $('score-head').innerHTML = `<div class="score-head"><div class="grade ${tone(sc.overall)}"><b>${sc.grade || '—'}</b><span>${sc.overall ?? '—'} / 100</span></div>
+    <p>Overall habit score, weighted by how much each item matters. Averages used: ${fmt(sc.avg_deposited)} kr deposited over ${sc.years} years.</p></div>`;
+  const valFmt = i => i.value == null ? '—' : (i.key === 'profit_factor' || i.key === 'turnover_ratio' ? i.value.toFixed(2) + '×' : pct(i.value, 2));
+  table('tb-score', ['Measure', 'You', 'Target', 'Poor at', 'Score'],
+    sc.items.map(i => [`<span title="${esc(i.why)}">${esc(i.label)}</span><br><span class="tag">${esc(i.unit)}</span>`, valFmt(i),
+      `${i.lower_is_better ? '≤' : '≥'} ${i.good}`, `${i.lower_is_better ? '≥' : '≤'} ${i.poor}`,
+      { v: `<span class="bar"><i class="${tone(i.score)}" style="width:${i.score ?? 0}%"></i></span>${i.score ?? '—'}` }]));
+
+  // ---- practice list: biggest shortfall x weight first
+  const by = Object.fromEntries(sc.items.map(i => [i.key, i]));
+  const I = S.data.insights;
+  const rtCost = 2 * sc.avg_courtage;
+  const num = (k, d = 1) => by[k].value == null ? '—' : by[k].value.toFixed(d);
+  const tips = {
+    fee_drag: ['Cut the total number of trades', `Costs run at ${num('fee_drag')}% of your deposited money per year. Decide a trade budget (for example 3–5 trades a week) and a monthly fee budget, and stop trading when it is used.`],
+    fee_turnover: ['Trade in larger, fewer orders', `Fees took ${num('fee_turnover', 2)}% of everything traded. Save deposits and buy once a week or fortnight instead of whenever cash arrives.`],
+    fees_vs_gain: ['Sell only for a gain that clearly beats the round-trip cost', `A buy plus a sell costs about ${fmt(rtCost)} kr. On a 2 000 kr position that is ${pct(rtCost / 2000 * 100, 1)}; require a target well above it (many use 3× the round-trip cost) before entering short-term trades.`],
+    small_orders: [`Set a minimum order size of about ${fmt(sc.min_order_for_0_3pct)} kr`, `With about ${fmt2(sc.avg_courtage)} kr courtage per order, ${fmt(sc.min_order_for_0_3pct)} kr keeps commission near 0.3%. ${num('small_orders', 0)}% of your paid trades were under 1 000 kr.`],
+    split_rate: ['One order per asset per day', `${I.split_orders.extra_orders} extra same-day orders cost about ${fmt(I.split_orders.avoidable_fees)} kr. Work out the total quantity first and place a single (limit) order.`],
+    short_holds: ['Add a cooling-off rule', `${num('short_holds', 0)}% of your sells were within 7 days; the 0–1 day sells lost ${fmt(Math.abs((I.hold_buckets[0] || {}).net || 0))} kr net. Write down a reason and a price level before each buy and avoid selling within a week unless that level is hit.`],
+    turnover_ratio: ['Move the core into low-turnover holdings', `You turn over about ${num('turnover_ratio')}× your money each year. Your ledger shows fund purchases (such as the Nordnet index funds) carried 0 kr courtage; a broad index core plus a small active part limits both fees and effort.`],
+    profit_factor: ['Review how you cut losers', `Winners and losers roughly cancel (profit factor ${num('profit_factor', 2)}). Your average win is ${fmt(I.sell_quality.avg_win)} kr and average loss ${fmt(Math.abs(I.sell_quality.avg_loss))} kr; define the loss level in advance.`],
+    top_weight: ['Watch concentration', `Your largest position is ${num('top_weight', 0)}% of holdings.`],
+    fragmentation: ['Consolidate tiny positions', `${num('fragmentation', 0)}% of your holdings are under 2 000 kr. Each was built with several fee-heavy orders; fewer, larger positions are cheaper to manage.`],
+  };
+  const todo = sc.items.filter(i => i.score != null && i.score < 70 && tips[i.key])
+    .sort((a, b) => (100 - b.score) * b.weight - (100 - a.score) * a.weight);
+  const good = sc.items.filter(i => i.score != null && i.score >= 70);
+  const cards = todo.map((i, n) => `<div class="finding"><h4><span class="sev ${i.score < 40 ? 'high' : 'med'}">#${n + 1}</span>${esc(tips[i.key][0])}</h4>
+      <div class="num">${esc(i.label)}: score ${i.score}</div><p>${tips[i.key][1]}</p></div>`);
+  if (good.length) cards.push(`<div class="finding"><h4><span class="sev info">KEEP</span>Already good</h4><p>${good.map(i => esc(i.label) + ' (' + i.score + ')').join(' · ')}</p></div>`);
+  $('practice').innerHTML = cards.join('');
+  loadBenchmark();
+}
+
+async function loadBenchmark() {
+  const note = $('bench-note');
+  try {
+    const b = await getJSON('/api/benchmark');
+    if (!b.indices || !b.indices.length) throw new Error(b.error || 'unavailable');
+    const o = S.data.insights.overview;
+    const labels = ['Net deposited', ...b.indices.map(i => 'If in ' + i.name), 'Your account'];
+    const vals = [o.net_deposits, ...b.indices.map(i => i.value), o.total_value];
+    mkChart('h-bench', { type: 'bar', data: { labels, datasets: [{ data: vals,
+        backgroundColor: [C.other, ...b.indices.map((_, k) => C.s[k === 0 ? 0 : 2]), C.s[1]], borderRadius: 4, maxBarThickness: 46 }] },
+      options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed.y)} kr` } } },
+        scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: C.grid }, ticks: { callback: v => fmt(v) } } } } });
+    note.innerHTML = b.indices.map(i => `${esc(i.name)}: ${sgn(i.pnl)} kr (${pct(i.pct)}) — your account is <b class="${cls(i.account_minus_index)}">${sgn(i.account_minus_index)} kr</b> ${i.account_minus_index < 0 ? 'behind' : 'ahead'}.`).join('<br>') +
+      `<br><span class="tag">Each deposit/withdrawal invested at the next daily close; price indices (no dividends, no fees); data to ${esc(b.as_of || '?')}${b.stale ? ' — offline, using saved data' : ''}.</span>`;
+  } catch (e) {
+    note.textContent = 'Index comparison unavailable (' + e.message + ').';
+  }
 }
 
 // ───────── events ─────────

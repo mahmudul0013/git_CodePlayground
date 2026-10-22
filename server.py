@@ -29,6 +29,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import trade_analytics   # Nordnet CSV -> analytics JSON (Analytics page)
+import symbols           # ISIN/name -> Yahoo symbol (cached)
+import benchmark         # index buy-and-hold comparison (Yahoo daily closes)
 
 PORT = 8000
 
@@ -131,7 +133,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/yahoo/'):
             self._proxy_yahoo()
-        elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status'):
+        elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status', '/api/benchmark', '/api/symbol'):
             self._serve_trades()
         else:
             super().do_GET()
@@ -139,8 +141,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def _serve_trades(self):
         """Analytics data. Re-parses the Nordnet CSVs only when they change on disk."""
         try:
-            if self.path.split('?')[0].endswith('/status'):
+            route = self.path.split('?')[0]
+            if route.endswith('/status'):
                 body = trade_analytics.signature()
+            elif route == '/api/symbol':
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                body = symbols.get(q.get('isin', [''])[0], q.get('name', [''])[0], q.get('ccy', [''])[0])
+            elif route == '/api/benchmark':
+                p = trade_analytics.get_payload()
+                flows = [{'date': c['date'], 'amount': c['amount']} for c in p.get('cashflows', [])]
+                body = benchmark.compute(flows, p['insights']['overview']['total_value'])
             else:
                 body = trade_analytics.get_payload()
             data, code = json.dumps(body).encode('utf-8'), 200

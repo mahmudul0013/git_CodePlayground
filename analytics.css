@@ -139,6 +139,21 @@ tr.detail > td { padding: 0; background: var(--bg) !important; text-align: left;
 .method ul { margin-left: 18px; color: var(--text-dim); font-size: 12.5px; }
 .method li { margin: 3px 0; }
 
+/* benchmark score */
+.score-head { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
+.grade { width: 74px; height: 74px; border-radius: 12px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; border: 2px solid var(--border); background: var(--bg); flex: none; }
+.grade b { font-size: 30px; line-height: 1; color: var(--white); }
+.grade span { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.grade.good { border-color: var(--green); } .grade.mid { border-color: var(--gold); } .grade.bad { border-color: var(--red); }
+.score-head p { color: var(--text); font-size: 12.5px; }
+.bar { display: inline-block; width: 70px; height: 6px; background: var(--border); border-radius: 3px; vertical-align: middle; margin-right: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; }
+.bar i.good { background: var(--green); } .bar i.mid { background: var(--gold); } .bar i.bad { background: var(--red); }
+code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+.asset-chart { padding: 8px 4px 10px; }
+.asset-chart canvas { max-height: 260px; }
+
 /* narrow screens: let the header wrap instead of overflowing */
 #top { flex-wrap: wrap; height: auto; min-height: 50px; padding: 6px 16px; row-gap: 4px; }
 .sync { min-width: 0; flex-wrap: wrap; }

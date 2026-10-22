@@ -75,6 +75,17 @@
     <!-- ============== HABITS ============== -->
     <div id="tab-habits" hidden>
       <section id="verdict" class="verdict"></section>
+      <h2 class="sec">Benchmark score</h2>
+      <p class="hint">Your habits scored against rule-of-thumb targets for a long-term investor (100 = at or better than target, 0 = at or worse than the poor limit). Targets live in <code>BENCHMARKS</code> in trade_analytics.py.</p>
+      <section class="grid g2">
+        <div class="panel"><div id="score-head"></div><div class="table-wrap short"><table id="tb-score"></table></div></div>
+        <div class="panel"><h3>If every deposit had gone into an index instead (SEK)</h3><div class="cv"><canvas id="h-bench"></canvas></div><p class="hint" id="bench-note">Loading index data…</p></div>
+      </section>
+
+      <h2 class="sec">Good practice — what to change</h2>
+      <p class="hint">Ordered by how much each item is holding your score back. General guidance based on your own numbers, not investment advice.</p>
+      <section id="practice" class="findings"></section>
+
       <h2 class="sec">Where trading is unnecessary or expensive</h2>
       <p class="hint">Estimates overlap (one trade can sit in several findings), so do not add them up.</p>
       <section id="findings" class="findings"></section>
@@ -112,6 +123,7 @@
     </div>
   </main>
 
+  <script src="asset_chart.js"></script>
   <script src="analytics.js"></script>
 </body>
 </html>

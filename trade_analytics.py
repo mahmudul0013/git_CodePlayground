@@ -761,8 +761,106 @@ def analyse(trades, assets, cash, cash_events, balance, holdings):
                 open_set.discard(t['isin'])
         series.append({'date': d, 'held': len(open_set)})
     out['held_over_time'] = series
+    out['scorecard'] = build_scorecard(out, trades, assets, cum)
     return out
 
+
+
+# --------------------------------------------------------------------------
+# benchmark scorecard
+# --------------------------------------------------------------------------
+# Rule-of-thumb targets chosen for a long-term retail investor. They are NOT
+# an official standard - tune them here. score = 100 at `good`, 0 at `poor`
+# (linear in between); lower_is_better flips the direction.
+BENCHMARKS = [
+    # key, label, unit, good, poor, lower_is_better, weight, why
+    ('fee_drag', 'Annual cost drag', '% of avg. deposited / yr', 1.0, 5.0, True, 3,
+     'Every krona of fees must be earned back before you make a profit. Low-cost investing usually stays near or below 1% a year.'),
+    ('fee_turnover', 'Fees vs. amount traded', '% of turnover', 0.10, 0.40, True, 2,
+     'Courtage plus FX cost per krona traded. Large, infrequent orders sit near the low end.'),
+    ('fees_vs_gain', 'Fees vs. profit from selling', '% of gross sell profit', 20, 100, True, 3,
+     'Above 100% the broker earned more from your sells than you did.'),
+    ('small_orders', 'Small orders', '% of paid trades < 1 000 kr', 10, 50, True, 2,
+     'A flat ~9 kr courtage on a small order is a high percentage cost.'),
+    ('split_rate', 'Split orders', '% of trades that were extra same-day orders', 2, 15, True, 2,
+     'Several orders for the same asset on the same day each pay courtage.'),
+    ('short_holds', 'Quick sells', '% of sells within 7 days', 10, 40, True, 2,
+     'Very short holds mostly pay fees twice for small price moves.'),
+    ('turnover_ratio', 'Portfolio turnover', 'x avg. deposited / yr', 1.0, 6.0, True, 2,
+     'Buy volume plus sell volume, halved, per year relative to money in the account. Long-term portfolios often run near 1x or less.'),
+    ('profit_factor', 'Profit factor on sells', 'wins / losses', 1.5, 1.0, False, 2,
+     'Total gains divided by total losses on closed sells (after fees). Below 1.0 means losers outweigh winners.'),
+    ('top_weight', 'Largest position', '% of holdings', 10, 30, True, 1,
+     'Concentration risk: how much one holding can hurt you.'),
+    ('fragmentation', 'Tiny positions', '% of positions < 2 000 kr', 10, 50, True, 1,
+     'Many very small holdings cost attention and each has been bought and sold with its own fees.'),
+]
+
+
+def _score(value, good, poor, lower_better):
+    if value is None:
+        return None
+    if lower_better:
+        t = (poor - value) / (poor - good) if poor != good else 1.0
+    else:
+        t = (value - poor) / (good - poor) if good != poor else 1.0
+    return round(max(0.0, min(1.0, t)) * 100)
+
+
+def _grade(score):
+    return 'A' if score >= 85 else 'B' if score >= 70 else 'C' if score >= 55 else 'D' if score >= 40 else 'E' if score >= 25 else 'F'
+
+
+def build_scorecard(out, trades, assets, cum):
+    o, c, sq = out['overview'], out['costs'], out['sell_quality']
+    years = max(o['days_span'], 1) / 365.0
+    # time-weighted average of net deposits over the whole period
+    avg_dep, prev_d, prev_v, acc = 0.0, None, 0.0, 0.0
+    if cum:
+        d0 = date.fromisoformat(o['first_date'])
+        d1 = date.fromisoformat(o['last_date'])
+        prev_d = d0
+        for e in cum:
+            d = date.fromisoformat(e['date'])
+            acc += prev_v * (d - prev_d).days
+            prev_d, prev_v = d, e['net_deposits']
+        acc += prev_v * (d1 - prev_d).days + prev_v
+        avg_dep = acc / max((d1 - d0).days + 1, 1)
+    paid = [t for t in trades if t['fee'] > 0]
+    held = [a for a in assets if a['held'] and a['value']]
+    tot = sum(a['value'] for a in held)
+    vals = {
+        'fee_drag': (c['trade_fees'] + c['interest'] + c['other_fees'] - c['fee_refunds']) / years / avg_dep * 100 if avg_dep else None,
+        'fee_turnover': c['pct_of_turnover'],
+        'fees_vs_gain': c['fee_vs_realized_gross'],
+        'small_orders': sum(1 for t in paid if t['amount'] < 1000) / len(paid) * 100 if paid else None,
+        'split_rate': out['split_orders']['extra_orders'] / len(trades) * 100 if trades else None,
+        'short_holds': sq['sold_within_7d'] / sq['sells'] * 100 if sq['sells'] else None,
+        'turnover_ratio': (o['turnover'] / 2) / years / avg_dep if avg_dep else None,
+        'profit_factor': sq['profit_factor'],
+        'top_weight': max(a['value'] for a in held) / tot * 100 if held and tot else None,
+        'fragmentation': sum(1 for a in held if a['value'] < 2000) / len(held) * 100 if held else None,
+    }
+    items, wsum, ssum = [], 0, 0.0
+    for key, label, unit, good, poor, lower, weight, why in BENCHMARKS:
+        v = vals.get(key)
+        sc = _score(v, good, poor, lower)
+        items.append({'key': key, 'label': label, 'unit': unit, 'value': None if v is None else round(v, 2),
+                      'good': good, 'poor': poor, 'lower_is_better': lower, 'weight': weight,
+                      'score': sc, 'why': why})
+        if sc is not None:
+            wsum += weight
+            ssum += sc * weight
+    total = round(ssum / wsum) if wsum else None
+    avg_courtage = (c['courtage'] / len(paid)) if paid else 9.0
+    return {
+        'overall': total, 'grade': _grade(total) if total is not None else None, 'items': items,
+        'avg_deposited': round(avg_dep, 2), 'years': round(years, 2),
+        'min_order_for_0_3pct': round(avg_courtage / 0.003, -2),
+        'avg_courtage': round(avg_courtage, 2),
+        'note': 'Targets are rule-of-thumb values chosen for a long-term retail investor, not an official standard. '
+                'Edit BENCHMARKS in trade_analytics.py to change them.',
+    }
 
 # --------------------------------------------------------------------------
 # public entry
@@ -791,6 +889,7 @@ def get_payload():
         'trades': trades,
         'assets': assets,
         'insights': insights,
+        'cashflows': [{'date': d, 'kind': k, 'amount': round(a, 2)} for d, k, a in cash_events if k in ('deposit', 'withdrawal')],
     }
     _cache.update(key=key, data=payload)
     return payload

@@ -1,0 +1,66 @@
+{
+  "GB0009895292": {
+    "checked": 1792710220.7306423,
+    "currency": null,
+    "exchange": null,
+    "name": "AstraZeneca",
+    "source": "ticker_map",
+    "symbol": "AZN.ST"
+  },
+  "IE00BFMXXD54": {
+    "checked": 1792710220.7406397,
+    "currency": null,
+    "exchange": null,
+    "name": "Vanguard S&P 500 UCITS ETF - (USD) Acc",
+    "source": "ticker_map",
+    "symbol": "VUSA.L"
+  },
+  "IE00BK5BR626": {
+    "checked": 1792710366.7887113,
+    "currency": null,
+    "exchange": null,
+    "name": "Vanguard FTSE All-World High Dividend Yield UCITS ETF - (USD) Acc",
+    "source": "ticker_map",
+    "symbol": "VHYL.L"
+  },
+  "IE00BMC38736": {
+    "checked": 1792710220.7516413,
+    "currency": null,
+    "exchange": null,
+    "name": "VanEck Semiconductor ETF",
+    "source": "ticker_map",
+    "symbol": "SMH"
+  },
+  "LU1829221024": {
+    "checked": 1792710220.7573602,
+    "currency": "EUR",
+    "exchange": "PAR",
+    "name": "Amundi Nasdaq-100 II UCITS ETF Acc",
+    "source": "yahoo_search",
+    "symbol": "UST.PA"
+  },
+  "SE0000695876": {
+    "checked": 1792710220.7066844,
+    "currency": null,
+    "exchange": null,
+    "name": "Alfa Laval",
+    "source": "ticker_map",
+    "symbol": "ALFA.ST"
+  },
+  "US5951121038": {
+    "checked": 1792710220.7066844,
+    "currency": null,
+    "exchange": null,
+    "name": "Micron Technology",
+    "source": "ticker_map",
+    "symbol": "MU"
+  },
+  "US80004C2008": {
+    "checked": 1792710386.609496,
+    "currency": null,
+    "exchange": null,
+    "name": "Sandisk",
+    "source": "ticker_map",
+    "symbol": "SNDK"
+  }
+}
