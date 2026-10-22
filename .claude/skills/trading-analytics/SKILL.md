@@ -22,7 +22,7 @@ Newest-mtime match in the project folder wins, so the user just drops fresh expo
 - `transactions-and-notes-export*.csv` — full ledger (UTF-16, tab separated, Swedish headers).
 - `Innehav*Export*.csv` — current holdings (prices, GAV, value). No ISIN column -> matched to ledger assets by name.
 The old `aktier_*/fonder_*/portfolio_*.csv` files belong to the original Portfolio page (`nordnet_sync.py`) — untouched.
-**Privacy:** the two new CSVs are NOT committed (full financial history). Do not `git add` them unless the user says so.
+**Data in git:** user confirmed (personal repo) the ledger and holdings CSVs are committed.
 
 ## Architecture
 | File | Role |
