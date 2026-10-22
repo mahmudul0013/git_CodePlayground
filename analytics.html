@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="analytics.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header id="top">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect width="20" height="20" rx="4" fill="#2962FF"/>
+        <polyline points="3,14 7,9 11,12 17,5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="logo-text">TradeView</span>
+    </div>
+    <nav class="nav-tabs">
+      <a class="nav-link" href="index.html">Portfolio</a>
+      <a class="nav-link active" href="analytics.html">Analytics</a>
+    </nav>
+    <div class="sync">
+      <span class="dot" id="sync-dot"></span>
+      <span id="sync-text">Loading…</span>
+      <button id="reload-btn" class="btn" title="Re-read the CSV files now">&#8635; Sync now</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="banner" class="banner" hidden></div>
+
+    <section id="kpis" class="kpi-row"></section>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="assets" role="tab">Assets</button>
+      <button class="tab" data-tab="habits" role="tab">Trading habits &amp; costs</button>
+    </div>
+
+    <!-- ============== ASSETS ============== -->
+    <div id="tab-assets">
+      <div class="filters">
+        <div class="chips" id="view-chips" role="group" aria-label="Asset view"></div>
+        <div class="selects">
+          <label>Type <select id="f-type"></select></label>
+          <label>Currency <select id="f-ccy"></select></label>
+          <label>Country (ISIN) <select id="f-dom"></select></label>
+          <input id="f-q" type="search" placeholder="Search asset…" aria-label="Search asset">
+        </div>
+      </div>
+      <p class="hint" id="view-hint"></p>
+
+      <section id="asset-kpis" class="kpi-row small"></section>
+
+      <section class="grid g4">
+        <div class="panel"><h3 id="t-type">By type</h3><div class="cv"><canvas id="c-type"></canvas></div></div>
+        <div class="panel"><h3 id="t-ccy">By currency</h3><div class="cv"><canvas id="c-ccy"></canvas></div></div>
+        <div class="panel"><h3 id="t-dom">By country</h3><div class="cv"><canvas id="c-dom"></canvas></div></div>
+        <div class="panel"><h3 id="t-top">Top assets</h3><div class="cv"><canvas id="c-top"></canvas></div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h3 id="table-title">Assets</h3>
+          <button id="csv-btn" class="btn">Download filtered list (.csv)</button>
+        </div>
+        <div class="table-wrap"><table id="asset-table"></table></div>
+      </section>
+    </div>
+
+    <!-- ============== HABITS ============== -->
+    <div id="tab-habits" hidden>
+      <section id="verdict" class="verdict"></section>
+      <h2 class="sec">Where trading is unnecessary or expensive</h2>
+      <p class="hint">Estimates overlap (one trade can sit in several findings), so do not add them up.</p>
+      <section id="findings" class="findings"></section>
+
+      <h2 class="sec">Patterns over time</h2>
+      <section class="grid g2">
+        <div class="panel"><h3>Cumulative fees vs realised P&amp;L (SEK)</h3><div class="cv tall"><canvas id="h-cum"></canvas></div></div>
+        <div class="panel"><h3>Positions held over time</h3><div class="cv tall"><canvas id="h-held"></canvas></div></div>
+        <div class="panel"><h3>Trades per month</h3><div class="cv"><canvas id="h-trades"></canvas></div></div>
+        <div class="panel"><h3>Fees per month (SEK)</h3><div class="cv"><canvas id="h-fees"></canvas></div></div>
+        <div class="panel"><h3>Buy vs sell volume per month (SEK)</h3><div class="cv"><canvas id="h-vol"></canvas></div></div>
+        <div class="panel"><h3>Trades by weekday</h3><div class="cv"><canvas id="h-wd"></canvas></div></div>
+      </section>
+
+      <h2 class="sec">Fees and results by trade size and holding time</h2>
+      <section class="grid g2">
+        <div class="panel"><h3>Fee as % of trade value, by trade size (SEK)</h3><div class="cv"><canvas id="h-size"></canvas></div><div class="table-wrap short"><table id="tb-size"></table></div></div>
+        <div class="panel"><h3>Realised P&amp;L by holding time (SEK, after fees)</h3><div class="cv"><canvas id="h-hold"></canvas></div><div class="table-wrap short"><table id="tb-hold"></table></div></div>
+      </section>
+
+      <h2 class="sec">Details</h2>
+      <section class="grid g2">
+        <div class="panel"><h3>Cost breakdown</h3><div class="table-wrap short"><table id="tb-costs"></table></div></div>
+        <div class="panel"><h3>Most-traded assets (6+ trades)</h3><div class="table-wrap short"><table id="tb-churn"></table></div></div>
+        <div class="panel"><h3>Largest split orders (same day, same asset, same side)</h3><div class="table-wrap short"><table id="tb-split"></table></div></div>
+        <div class="panel"><h3>Costliest same-day round trips</h3><div class="table-wrap short"><table id="tb-sameday"></table></div></div>
+        <div class="panel"><h3>Worst sell-then-rebuy (within 14 days)</h3><div class="table-wrap short"><table id="tb-rebuy"></table></div></div>
+        <div class="panel"><h3>Busiest days</h3><div class="table-wrap short"><table id="tb-busy"></table></div></div>
+      </section>
+
+      <section class="panel method">
+        <h3>Data &amp; method</h3>
+        <ul id="method"></ul>
+      </section>
+    </div>
+  </main>
+
+  <script src="analytics.js"></script>
+</body>
+</html>

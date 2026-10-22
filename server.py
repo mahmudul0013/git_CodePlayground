@@ -28,6 +28,8 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import trade_analytics   # Nordnet CSV -> analytics JSON (Analytics page)
+
 PORT = 8000
 
 YAHOO_HEADERS = {
@@ -129,8 +131,27 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/yahoo/'):
             self._proxy_yahoo()
+        elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status'):
+            self._serve_trades()
         else:
             super().do_GET()
+
+    def _serve_trades(self):
+        """Analytics data. Re-parses the Nordnet CSVs only when they change on disk."""
+        try:
+            if self.path.split('?')[0].endswith('/status'):
+                body = trade_analytics.signature()
+            else:
+                body = trade_analytics.get_payload()
+            data, code = json.dumps(body).encode('utf-8'), 200
+        except Exception as e:
+            data, code = json.dumps({'error': f'{type(e).__name__}: {e}'}).encode('utf-8'), 500
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def _proxy_yahoo(self):
         raw_path = self.path[7:]   # strip '/yahoo/'
@@ -185,6 +206,7 @@ def main():
 
     with socketserver.TCPServer(('', args.port), DashboardHandler) as httpd:
         print(f'\n  Dashboard  ->  http://localhost:{args.port}')
+        print(f'  Analytics   ->  http://localhost:{args.port}/analytics.html')
         print(f'  Yahoo proxy: /yahoo/v7/quote -> v8/chart (no auth required)')
         print('  Press Ctrl+C to stop\n')
         try:

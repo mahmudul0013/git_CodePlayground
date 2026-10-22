@@ -777,3 +777,10 @@ html, body {
   #summary-cards { grid-template-columns: 1fr; }
   .table-controls { flex-direction: column; align-items: flex-start; }
 }
+
+/* Link to the Analytics page (styled like a nav tab) */
+a.nav-link-out {
+  text-decoration: none; display: inline-block; font-size: 13px; font-weight: 500;
+  color: var(--text-dim); padding: 5px 14px; border-radius: 4px; transition: all 0.15s;
+}
+a.nav-link-out:hover { background: var(--border); color: var(--text); }
