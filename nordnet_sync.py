@@ -1,44 +1,37 @@
 #!/usr/bin/env python3
 """
-nordnet_sync.py — Nordnet Portfolio CSV Sync
-=============================================
-Fetches your current holdings from Nordnet and writes two CSV files
-that the trading dashboard picks up automatically:
-  portfolio_stocks.csv
-  portfolio_funds.csv
+nordnet_sync.py — Nordnet holdings export sync
+==============================================
+Nordnet now exports ALL holdings (stocks, ETFs, funds) in one file:
+  Innehav Tabell Export, accno 66262387, YYYY-MM-DD.csv
+The dashboard and the Analytics page always use the NEWEST such file in this
+folder (date in the file name wins, file mtime breaks ties).
+
+This script:
+  * copies new exports from your Downloads folder into the project folder
+  * saves the previous export's positions as portfolio_baseline.json so the
+    Portfolio page can show "last buy" (qty / price) after a new export
 
 USAGE
 -----
-  # One-shot fetch
-  python nordnet_sync.py
-
-  # Watch your Downloads folder for new Nordnet exports and copy them
-  python nordnet_sync.py --watch
-
-  # Run once, then every N minutes (no Nordnet credentials needed)
+  python nordnet_sync.py              # rebuild baseline from the 2 newest exports in this folder
+  python nordnet_sync.py --watch      # watch Downloads, copy new exports here (+ baseline)
   python nordnet_sync.py --watch --interval 60
+  python nordnet_sync.py --api        # fetch live positions via a Nordnet session token (.env)
+  python nordnet_sync.py --baseline   # same as the default
 
-CREDENTIALS (for API mode)
---------------------------
-Create a file called .env in the same folder:
-  NORDNET_USER=your-username-or-email
-  NORDNET_PASS=your-password
-  NORDNET_ACCOUNT=66262387   # your account number
-
-Or set these as environment variables before running.
-
-NOTE: Nordnet uses BankID / 2FA for web login, which makes full
-automation difficult.  The --watch mode is the recommended approach:
-  1. Export CSVs from nordnet.se (Mitt Nordnet -> Depå -> Exportera)
-  2. Save them to your Downloads folder
-  3. This script detects the new files and copies them here.
+CREDENTIALS (API mode only)
+---------------------------
+.env in this folder:
+  NORDNET_SESSION_TOKEN=<SESSION cookie from a logged-in browser>
+  NORDNET_ACCOUNT=66262387
 """
 
 import os
 import sys
 import time
 import shutil
-import glob
+import re
 import csv
 import json
 import argparse
@@ -48,8 +41,6 @@ from pathlib import Path
 # ── Configuration ──────────────────────────────────────────────────────────────
 
 SCRIPT_DIR    = Path(__file__).parent.resolve()
-STOCKS_OUT    = SCRIPT_DIR / 'portfolio_stocks.csv'
-FUNDS_OUT     = SCRIPT_DIR / 'portfolio_funds.csv'
 ACCOUNT_NUM   = os.environ.get('NORDNET_ACCOUNT', '66262387')
 DOWNLOADS_DIR = Path.home() / 'Downloads'
 
@@ -67,9 +58,8 @@ def load_env():
 
 # ── File-watcher mode ──────────────────────────────────────────────────────────
 
-STOCKS_PATTERN  = f'aktier_kontonummer-{ACCOUNT_NUM}_*.csv'
-FUNDS_PATTERN   = f'fonder_kontonummer-{ACCOUNT_NUM}_*.csv'
-BASELINE_OUT    = SCRIPT_DIR / 'portfolio_baseline.json'
+HOLDINGS_PATTERN = f'Innehav*Export*{ACCOUNT_NUM}*.csv'
+BASELINE_OUT     = SCRIPT_DIR / 'portfolio_baseline.json'
 
 # ── CSV parser (matches app.js: UTF-16LE/BE + Swedish decimals) ────────────────
 
@@ -105,82 +95,77 @@ def parse_nordnet_csv(path: Path) -> list[dict]:
             rows.append(row)
     return rows
 
-def build_baseline_json(stocks_path: Path | None, funds_path: Path | None) -> dict:
+def export_date(p: Path) -> str:
+    """YYYY-MM-DD from the export file name ('' if absent)."""
+    m = re.search(r'\d{4}-\d{2}-\d{2}', p.name)
+    return m.group(0) if m else ''
+
+def sort_exports(paths) -> list[Path]:
+    """Oldest -> newest: date in the file name first, mtime as tie-breaker."""
+    return sorted(paths, key=lambda p: (export_date(p), p.stat().st_mtime))
+
+def list_exports(folder: Path) -> list[Path]:
+    return sort_exports(p for p in folder.glob(HOLDINGS_PATTERN) if p.is_file())
+
+def build_baseline_json(path: Path) -> dict:
     """
-    Parse old CSV files into the snapshot format used by app.js:
+    Parse one holdings export into the snapshot format used by app.js:
       { "Stock Name": { "qty": 5.0, "gav": 250.0 }, ... }
     """
     snap = {}
-    sources = []
-    if stocks_path and stocks_path.exists():
-        sources.append((stocks_path, 'GAV'))
-    if funds_path and funds_path.exists():
-        sources.append((funds_path, 'Snittkurs'))
-
-    for path, gav_col_hint in sources:
-        rows = parse_nordnet_csv(path)
-        if not rows:
+    for row in parse_nordnet_csv(path):
+        name = row.get('Namn', '').strip()
+        if not name:
             continue
-        keys = list(rows[0].keys())
-        # Find qty and gav column names flexibly
+        keys = list(row.keys())
         qty_key = next((k for k in keys if 'antal' in k.lower()), None)
-        gav_key = next((k for k in keys if k.strip() == gav_col_hint), None) \
-               or next((k for k in keys if 'snittkurs' in k.lower() or k.strip() == 'GAV'), None)
-        for row in rows:
-            name = row.get('Namn', '').strip()
-            if not name or not qty_key:
-                continue
-            snap[name] = {
-                'qty': parse_se(row.get(qty_key, '0')),
-                'gav': parse_se(row.get(gav_key, '0')) if gav_key else 0.0,
-            }
+        gav_key = next((k for k in keys if k.strip() == 'GAV/snittkurs'
+                        or 'snittkurs' in k.lower() or k.strip() == 'GAV'), None)
+        snap[name] = {
+            'qty': parse_se(row.get(qty_key, '0')) if qty_key else 0.0,
+            'gav': parse_se(row.get(gav_key, '0')) if gav_key else 0.0,
+        }
     return snap
 
-def save_baseline(stocks_src: Path | None = None, funds_src: Path | None = None):
-    """Build baseline JSON from given (or current portfolio) CSV files."""
-    import time as _time
-    s = stocks_src or STOCKS_OUT
-    f = funds_src  or FUNDS_OUT
-    snap = build_baseline_json(s if s.exists() else None,
-                               f if f.exists() else None)
-    if snap:
-        # __ts (Unix ms) lets app.js know this baseline is newer than localStorage
-        snap['__ts'] = int(_time.time() * 1000)
-        BASELINE_OUT.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding='utf-8')
-        print(f'[baseline] Saved {len(snap)} positions -> {BASELINE_OUT.name}')
-    else:
-        print('[baseline] Nothing to save (no readable CSV found).')
-
-def find_latest(folder: Path, pattern: str) -> Path | None:
-    matches = sorted(folder.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
-    return matches[0] if matches else None
-
-def copy_if_newer(src: Path, dst: Path) -> bool:
-    """Copy src -> dst if src is newer.  Saves baseline BEFORE overwriting.  Returns True if copied."""
-    if not src.exists():
+def save_baseline(src: Path | None = None) -> bool:
+    """Write portfolio_baseline.json from `src` (default: second-newest export in the folder)."""
+    if src is None:
+        exports = list_exports(SCRIPT_DIR)
+        if len(exports) < 2:
+            print('[baseline] Need at least two Innehav exports to build a baseline '
+                  f'(found {len(exports)}).')
+            return False
+        src = exports[-2]
+    snap = build_baseline_json(src)
+    if not snap:
+        print(f'[baseline] {src.name} has no readable rows.')
         return False
-    if dst.exists() and src.stat().st_mtime <= dst.stat().st_mtime:
-        return False
-    # Save the CURRENT (about-to-be-replaced) portfolio as baseline so app.js
-    # can detect the diff on next load
-    if dst == STOCKS_OUT and STOCKS_OUT.exists():
-        save_baseline()   # reads current STOCKS_OUT + FUNDS_OUT
-    shutil.copy2(src, dst)
-    print(f'[sync] Copied {src.name} -> {dst.name}')
+    # __ts (Unix ms) lets app.js know this baseline is newer than localStorage
+    snap['__ts'] = int(time.time() * 1000)
+    BASELINE_OUT.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(f'[baseline] {src.name} -> {BASELINE_OUT.name} ({len(snap) - 1} positions)')
     return True
 
+def copy_new_exports(src_folder: Path) -> bool:
+    """Copy exports from src_folder that are not yet in the project folder. Rebuild baseline if any."""
+    copied = False
+    for src in list_exports(src_folder):
+        dst = SCRIPT_DIR / src.name
+        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+            continue
+        shutil.copy2(src, dst)
+        print(f'[sync] Copied {src.name}')
+        copied = True
+    if copied:
+        save_baseline()
+    return copied
+
 def watch_mode(interval_seconds: int = 60):
-    print(f'[watch] Monitoring {DOWNLOADS_DIR} every {interval_seconds}s …')
-    print(f'        Looking for:  {STOCKS_PATTERN}')
-    print(f'                      {FUNDS_PATTERN}')
+    print(f'[watch] Monitoring {DOWNLOADS_DIR} every {interval_seconds}s ...')
+    print(f'        Looking for:  {HOLDINGS_PATTERN}')
     print('        Press Ctrl+C to stop.\n')
     while True:
-        stocks_src = find_latest(DOWNLOADS_DIR, STOCKS_PATTERN)
-        funds_src  = find_latest(DOWNLOADS_DIR, FUNDS_PATTERN)
-        if stocks_src:
-            copy_if_newer(stocks_src, STOCKS_OUT)
-        if funds_src:
-            copy_if_newer(funds_src, FUNDS_OUT)
+        copy_new_exports(DOWNLOADS_DIR)
         time.sleep(interval_seconds)
 
 # ── Nordnet REST API mode ──────────────────────────────────────────────────────
@@ -225,42 +210,26 @@ def fetch_positions_api(session_token: str, account_id: str) -> dict:
     data = api_get(f'/accounts/{account_id}/positions', session_token)
     return data
 
-def positions_to_csv_rows(positions: list, is_fund: bool) -> list[dict]:
-    """Convert Nordnet position objects to rows matching the CSV format."""
+HOLDINGS_COLUMNS = ['Namn', 'Valuta', 'Antal', 'GAV/snittkurs', 'Idag %', 'Senaste kurs',
+                    'Belåningsv. SEK', 'Värde SEK', 'Avkast. %', 'Avkast. SEK']
+
+def positions_to_csv_rows(positions: list) -> list[dict]:
+    """Convert Nordnet position objects to rows in the combined 'Innehav' export format."""
     rows = []
     for pos in positions:
         instr = pos.get('instrument', {})
-        name  = instr.get('name', '')
-        cur   = instr.get('currency', 'SEK')
-        qty   = pos.get('qty', 0)
-        avg   = pos.get('average_purchase_price', {}).get('value', 0)
-        price = pos.get('main_market_price', {}).get('value', 0)
         val   = pos.get('market_value_acc', {}).get('value', 0)
         ret   = pos.get('profit_loss_acc', {}).get('value', 0)
         ret_pct = (ret / (val - ret) * 100) if (val - ret) > 0 else 0
-
-        if is_fund:
-            rows.append({
-                'Namn': name, 'Valuta': cur, 'Antal': qty,
-                'Snittkurs': avg, '1 dag %': 0,
-                'Senaste NAV': price,
-                'Belåningsvärde SEK': 0,
-                'Inköpsvärde SEK': val - ret,
-                'Värde SEK': val,
-                'Avkast. %': round(ret_pct, 2),
-                'Avkast. SEK': ret,
-            })
-        else:
-            rows.append({
-                'Namn': name, 'Valuta': cur, 'Antal': qty,
-                'GAV': avg, 'Idag %': 0,
-                'Senaste kurs': price,
-                'Belåningsvärde SEK': 0,
-                'Värde': qty * price,
-                'Värde SEK': val,
-                'Avkast. %': round(ret_pct, 2),
-                'Avkast. SEK': ret,
-            })
+        rows.append({
+            'Namn': instr.get('name', ''), 'Valuta': instr.get('currency', 'SEK'),
+            'Antal': pos.get('qty', 0),
+            'GAV/snittkurs': pos.get('average_purchase_price', {}).get('value', 0),
+            'Idag %': 0,
+            'Senaste kurs': pos.get('main_market_price', {}).get('value', 0),
+            'Belåningsv. SEK': 0, 'Värde SEK': val,
+            'Avkast. %': round(ret_pct, 2), 'Avkast. SEK': ret,
+        })
     return rows
 
 def write_csv(rows: list[dict], out_path: Path):
@@ -268,7 +237,7 @@ def write_csv(rows: list[dict], out_path: Path):
         print(f'[api] No data to write to {out_path.name}')
         return
     with open(out_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()), delimiter='\t')
+        writer = csv.DictWriter(f, fieldnames=HOLDINGS_COLUMNS, delimiter='\t')
         writer.writeheader()
         writer.writerows(rows)
     print(f'[api] Wrote {len(rows)} rows -> {out_path.name}')
@@ -298,17 +267,10 @@ Then re-run: python nordnet_sync.py
         positions = fetch_positions_api(session_token, account_id)
         all_pos   = positions if isinstance(positions, list) else positions.get('positions', [])
 
-        # Nordnet instrument types: 1=equity, 2=fund
-        stocks = [p for p in all_pos if p.get('instrument', {}).get('instrument_type') != 'FUND']
-        funds  = [p for p in all_pos if p.get('instrument', {}).get('instrument_type') == 'FUND']
-
-        # Save current portfolio as baseline BEFORE overwriting, so the dashboard
-        # can detect new buys by comparing old vs new on next load
-        if STOCKS_OUT.exists():
-            save_baseline()
-        write_csv(positions_to_csv_rows(stocks, is_fund=False), STOCKS_OUT)
-        write_csv(positions_to_csv_rows(funds,  is_fund=True),  FUNDS_OUT)
-        print('[api] Done. The dashboard will pick up new files within 5 minutes.')
+        out = SCRIPT_DIR / f'Innehav Tabell Export, accno {account_id}, {date.today().isoformat()}.csv'
+        write_csv(positions_to_csv_rows(all_pos), out)
+        save_baseline()   # baseline = the export before this one
+        print('[api] Done. The dashboard picks it up within 5 minutes.')
 
     except urllib.error.HTTPError as e:
         if e.code == 401:
@@ -320,55 +282,6 @@ Then re-run: python nordnet_sync.py
         print(f'[api] Error: {e}')
         sys.exit(1)
 
-# ── Quick copy of existing dated files ─────────────────────────────────────────
-
-def copy_existing():
-    """
-    Find all dated Nordnet CSVs in the project folder, pick the two newest
-    (old vs new), save baseline from the older one, then promote the newer
-    one to the fixed output filenames.
-    """
-    all_stocks = sorted(SCRIPT_DIR.glob(STOCKS_PATTERN), key=lambda p: p.stat().st_mtime)
-    all_funds  = sorted(SCRIPT_DIR.glob(FUNDS_PATTERN),  key=lambda p: p.stat().st_mtime)
-
-    # Filter out the fixed output files themselves
-    all_stocks = [p for p in all_stocks if p.name != STOCKS_OUT.name]
-    all_funds  = [p for p in all_funds  if p.name != FUNDS_OUT.name]
-
-    copied = False
-
-    if len(all_stocks) >= 2:
-        import time as _time
-        old_stocks, new_stocks = all_stocks[-2], all_stocks[-1]
-        baseline_funds = all_funds[-2] if len(all_funds) >= 2 else None
-        print(f'[baseline] Using {old_stocks.name} as previous snapshot')
-        snap = build_baseline_json(old_stocks, baseline_funds)
-        snap['__ts'] = int(_time.time() * 1000)
-        BASELINE_OUT.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding='utf-8')
-        print(f'[baseline] Saved {len(snap) - 1} positions -> {BASELINE_OUT.name}')
-        shutil.copy2(new_stocks, STOCKS_OUT)
-        print(f'[copy] {new_stocks.name} -> {STOCKS_OUT.name}')
-        copied = True
-    elif len(all_stocks) == 1:
-        # Only one file — no diff possible, just promote it
-        shutil.copy2(all_stocks[0], STOCKS_OUT)
-        print(f'[copy] {all_stocks[0].name} -> {STOCKS_OUT.name}')
-        copied = True
-
-    if len(all_funds) >= 2:
-        new_funds = all_funds[-1]
-        shutil.copy2(new_funds, FUNDS_OUT)
-        print(f'[copy] {new_funds.name} -> {FUNDS_OUT.name}')
-        copied = True
-    elif len(all_funds) == 1:
-        shutil.copy2(all_funds[0], FUNDS_OUT)
-        print(f'[copy] {all_funds[0].name} -> {FUNDS_OUT.name}')
-        copied = True
-
-    if not copied:
-        print('[copy] No dated Nordnet CSV files found in project folder.')
-    return copied
-
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
 def main():
@@ -379,7 +292,7 @@ def main():
     parser.add_argument('--api',      action='store_true',
                         help='Fetch live data via Nordnet API (needs SESSION token)')
     parser.add_argument('--baseline', action='store_true',
-                        help='(Re)generate portfolio_baseline.json from current portfolio_stocks/funds.csv')
+                        help='Rebuild portfolio_baseline.json from the second-newest export')
     parser.add_argument('--interval', type=int, default=60,
                         help='Watch interval in seconds (default: 60)')
     args = parser.parse_args()
@@ -388,15 +301,9 @@ def main():
         watch_mode(args.interval)
     elif args.api:
         api_mode()
-    elif args.baseline:
-        save_baseline()
     else:
-        # Default: copy newest dated files already in the project folder
-        if not copy_existing():
-            print('\nOptions:')
-            print('  python nordnet_sync.py --watch      (auto-copy from Downloads)')
-            print('  python nordnet_sync.py --api        (fetch via Nordnet API)')
-            print('  python nordnet_sync.py --baseline   (rebuild baseline snapshot)')
+        # Default (and --baseline): exports are already in this folder - refresh the baseline
+        save_baseline()
 
 if __name__ == '__main__':
     main()

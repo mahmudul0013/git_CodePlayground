@@ -51,18 +51,30 @@ EPS = 1e-9
 # --------------------------------------------------------------------------
 # file discovery + reading
 # --------------------------------------------------------------------------
+def _file_date(path):
+    """YYYY-MM-DD in the file name (Nordnet puts the export date there), else ''."""
+    m = re.search(r'\d{4}-\d{2}-\d{2}', os.path.basename(path))
+    return m.group(0) if m else ''
+
+
 def _newest(patterns):
+    """Latest export: date in the file name wins, file mtime breaks ties / covers undated names."""
     hits = []
     for p in patterns:
         hits += glob.glob(os.path.join(HERE, p))
     hits = [h for h in hits if os.path.isfile(h)]
-    return max(hits, key=os.path.getmtime) if hits else None
+    return max(hits, key=lambda h: (_file_date(h), os.path.getmtime(h))) if hits else None
+
+
+def newest_holdings():
+    """Path of the latest 'Innehav ... Export' file (the single source for current holdings)."""
+    return _newest(['Innehav*Export*.csv'])
 
 
 def find_sources():
     return {
         'transactions': _newest(['transactions-and-notes-export*.csv']),
-        'holdings': _newest(['Innehav*Export*.csv']),
+        'holdings': newest_holdings(),
     }
 
 

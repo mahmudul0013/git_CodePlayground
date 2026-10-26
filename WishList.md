@@ -79,16 +79,17 @@ Funds section below stocks section.
 
 ### Nordnet Portfolio Sync (`nordnet_sync.py`)
 - **File-watch mode**: Monitors your Downloads folder for newly exported Nordnet CSVs
-  (`aktier_kontonummer-{account}_*.csv` / `fonder_kontonummer-{account}_*.csv`)
-  and copies the newest file to `portfolio_stocks.csv` / `portfolio_funds.csv`.
+  (`Innehav*Export*{account}*.csv`, one combined file for stocks, ETFs and funds)
+  and copies new ones into the project folder. *(Updated 2026-10-26: replaces the old
+  `aktier_kontonummer-*` / `fonder_kontonummer-*` pair and the fixed `portfolio_*.csv` copies.)*
 - **API mode**: Fetches live positions from Nordnet REST API using a session token
   (obtained from browser DevTools after logging in with BankID).
-- **One-shot copy**: Detects existing dated CSVs in the project folder and promotes
-  the newest ones to the fixed filenames used by the dashboard.
+- **One-shot baseline**: Builds `portfolio_baseline.json` from the second-newest `Innehav` export
+  in the project folder. The dashboard itself always reads the newest export via `/api/holdings`.
 
 Usage:
 ```
-python nordnet_sync.py            # copy newest existing CSVs
+python nordnet_sync.py            # rebuild last-buy baseline from the 2 newest exports
 python nordnet_sync.py --watch    # auto-copy from Downloads (keep running)
 python nordnet_sync.py --api      # live fetch via Nordnet API
 ```
@@ -96,7 +97,7 @@ python nordnet_sync.py --api      # live fetch via Nordnet API
 ### Auto Portfolio Reload
 - Dashboard re-reads CSVs every **5 minutes** automatically (no browser refresh needed).
 - **Refresh Portfolio** button in the header triggers an immediate reload + price update.
-- Falls back gracefully from `portfolio_stocks.csv` to the last Nordnet-dated export.
+- Always reads the single newest `Innehav ... Export` file (served by `server.py` at `/api/holdings`).
 
 ### Last Buy Tracking
 - After each CSV reload the dashboard compares the new holdings against the previous

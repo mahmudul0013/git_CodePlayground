@@ -18,10 +18,10 @@ python benchmark.py         # prints the index buy-and-hold comparison
 Restarting on Windows: `pkill` does not work; use PowerShell `Get-CimInstance Win32_Process -Filter "Name='python.exe'" | ? CommandLine -match server.py | % { Stop-Process -Id $_.ProcessId -Force }`.
 
 ## Ground-truth data (the heart of everything)
-Newest-mtime match in the project folder wins, so the user just drops fresh exports there:
+Newest match wins (ledger: newest mtime; holdings: date in the file name, then mtime), so the user just drops fresh exports there:
 - `transactions-and-notes-export*.csv` — full ledger (UTF-16, tab separated, Swedish headers).
-- `Innehav*Export*.csv` — current holdings (prices, GAV, value). No ISIN column -> matched to ledger assets by name.
-The old `aktier_*/fonder_*/portfolio_*.csv` files belong to the original Portfolio page (`nordnet_sync.py`) — untouched.
+- `Innehav*Export*.csv` — current holdings for ALL instruments (stocks, ETFs, funds in ONE file, `Innehav Tabell Export, accno N, YYYY-MM-DD.csv`; prices, GAV, value). No ISIN column -> matched to ledger assets by name. Only the newest file is used. Headers have non-breaking spaces.
+The Portfolio page (`app.js`) reads the same file through `server.py` `/api/holdings` and splits funds/stocks with `isFundName()`. `nordnet_sync.py` only copies exports and writes `portfolio_baseline.json` (previous export). The legacy `aktier_*/fonder_*/portfolio_*.csv` files are no longer read by any code (kept in git as history).
 **Data in git:** user confirmed (personal repo) the ledger and holdings CSVs are committed.
 
 ## Architecture

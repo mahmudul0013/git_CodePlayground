@@ -28,9 +28,8 @@ No frameworks — plain HTML + CSS + Vanilla JS, served locally via Python.
 ├── style.css             ← TradingView dark theme styles
 ├── app.js                ← All dashboard logic (data, live prices, signals)
 ├── server.py             ← Local HTTP server + Yahoo Finance CORS proxy
-├── nordnet_sync.py       ← Nordnet CSV sync (watch/API mode)
-├── portfolio_stocks.csv  ← Active stocks holdings (auto-generated)
-├── portfolio_funds.csv   ← Active funds holdings (auto-generated)
+├── nordnet_sync.py       ← Nordnet export sync (baseline/watch/API)
+├── Innehav Tabell Export, accno N, DATE.csv ← holdings (stocks+ETFs+funds); newest file is used
 ├── portfolio_baseline.json ← Last-buy snapshot (persisted to disk)
 ├── WishList.md           ← Feature requirements
 ├── DesignGuide.md        ← Visual design spec
@@ -122,27 +121,31 @@ No frameworks — plain HTML + CSS + Vanilla JS, served locally via Python.
 
 ## Source of Truth
 
-**The latest CSV is always the source of truth for the stock list and quantities.**
-`portfolio_stocks.csv` and `portfolio_funds.csv` are the files the dashboard reads.
-They are always the latest Nordnet export, maintained by `nordnet_sync.py`.
+**The newest `Innehav Tabell Export, accno N, YYYY-MM-DD.csv` is always the source of truth** for the stock list and quantities
+(one file holds stocks, ETFs and funds; older exports are ignored — only the second-newest feeds the last-buy baseline).
+"Newest" = date in the file name, then mtime (`_newest()` in `trade_analytics.py`, `list_exports()` in `nordnet_sync.py`).
+
+Columns: Namn | Valuta | Antal | GAV/snittkurs | Idag % | Senaste kurs | Belåningsv. SEK | Värde SEK | Avkast. % | Avkast. SEK
+(headers contain non-breaking spaces — normalise them). No instrument type column: `isFundName()` in `app.js` splits the
+6 Nordnet mutual funds (index/indeks/allemansfond/auag) from stocks+ETFs.
 
 ## Data Flow
 
 ```
 Nordnet Website
-  → Export CSV  (aktier_kontonummer-{account}_YYYY-MM-DD.csv)
-                (fonder_kontonummer-{account}_YYYY-MM-DD.csv)
+  → Export holdings CSV  (Innehav Tabell Export, accno {account}, YYYY-MM-DD.csv)
   → nordnet_sync.py
-      (default) → saves 2nd-newest as portfolio_baseline.json
-                → promotes newest to portfolio_stocks.csv / portfolio_funds.csv
-      --watch   → monitors ~/Downloads, auto-copies on new export
-      --api     → Nordnet REST API (session token) → same fixed files
+      (default) → portfolio_baseline.json from the 2nd-newest export in the folder
+      --watch   → monitors ~/Downloads, copies new exports here, rebuilds baseline
+      --api     → Nordnet REST API (session token) → writes a dated Innehav file
 
-portfolio_stocks.csv / portfolio_funds.csv   ← source of truth
-  → app.js loadCSVWithFallback()
+newest Innehav file   ← source of truth
+  → server.py /api/holdings (raw bytes of the newest file)
+  → app.js loadHoldings() → stocks / funds
       → detectAndSaveBuys()   → localStorage + portfolio_baseline.json
       → Yahoo Finance proxy   → live prices (60s refresh)
       → CSV auto-reload       → every 5 minutes (csvRefreshMs)
+  → trade_analytics.py parse_holdings() (Analytics page, same newest file)
 ```
 
 ---

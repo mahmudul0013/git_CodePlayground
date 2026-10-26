@@ -39,6 +39,14 @@
     "source": "yahoo_search",
     "symbol": "UST.PA"
   },
+  "NL0010273215": {
+    "checked": 1792710679.2520125,
+    "currency": null,
+    "exchange": null,
+    "name": "ASML HOLDING",
+    "source": "ticker_map",
+    "symbol": "ASML"
+  },
   "SE0000695876": {
     "checked": 1792710220.7066844,
     "currency": null,
@@ -46,6 +54,30 @@
     "name": "Alfa Laval",
     "source": "ticker_map",
     "symbol": "ALFA.ST"
+  },
+  "US0378331005": {
+    "checked": 1793053251.9694586,
+    "currency": null,
+    "exchange": null,
+    "name": "Apple",
+    "source": "ticker_map",
+    "symbol": "AAPL"
+  },
+  "US09290D1019": {
+    "checked": 1792710686.8698528,
+    "currency": null,
+    "exchange": null,
+    "name": "BlackRock",
+    "source": "ticker_map",
+    "symbol": "BLK"
+  },
+  "US36828A1016": {
+    "checked": 1792710651.686265,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "GE Vernova",
+    "source": "yahoo_search",
+    "symbol": "GEV"
   },
   "US5951121038": {
     "checked": 1792710220.7066844,
@@ -62,5 +94,13 @@
     "name": "Sandisk",
     "source": "ticker_map",
     "symbol": "SNDK"
+  },
+  "US9741551033": {
+    "checked": 1793057757.1539016,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Wingstop",
+    "source": "yahoo_search",
+    "symbol": "WING"
   }
 }

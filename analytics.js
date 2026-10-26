@@ -76,9 +76,11 @@ async function load(force) {
 function setSync(ok, err) {
   $('sync-dot').className = 'dot ' + (ok ? 'live' : 'err');
   if (!ok) { $('sync-text').textContent = 'Offline — ' + (err || ''); return; }
-  const s = S.data.sources, t = s.transactions;
-  const when = t ? new Date(t.mtime * 1000).toLocaleString('sv-SE').slice(0, 16) : '—';
-  $('sync-text').textContent = `Synced ${new Date().toLocaleTimeString('sv-SE')} · ${t ? t.file : 'no file'} (saved ${when})`;
+  const s = S.data.sources, t = s.transactions, h = s.holdings;
+  const stamp = x => x ? new Date(x.mtime * 1000).toLocaleString('sv-SE').slice(0, 16) : '—';
+  const stale = t && h && t.mtime < h.mtime - 60;   // ledger older than holdings -> quantities may differ
+  $('sync-text').textContent = `Synced ${new Date().toLocaleTimeString('sv-SE')} · holdings: ${h ? h.file : 'none'} (${stamp(h)})`
+    + ` · ledger: ${t ? t.file : 'none'} (${stamp(t)})` + (stale ? ' — ledger is older than holdings, export transactions again' : '');
 }
 
 function showBanner(html, isErr) {

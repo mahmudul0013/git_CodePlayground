@@ -30,21 +30,20 @@ cd "c:\Users\Administrator\Documents\Agentic World\testTrading"
 
 ### 2. Get your holdings data (Nordnet CSVs)
 
-The dashboard reads `portfolio_stocks.csv` and `portfolio_funds.csv`. The latest Nordnet export is the source of truth for your holdings.
+Nordnet now exports **all holdings (stocks, ETFs and funds) in one file**, named like `Innehav Tabell Export, accno 66262387, YYYY-MM-DD.csv`. Both the Portfolio page and the Analytics page use only the **newest** such file in the project folder (the date in the file name wins, file modified time breaks ties). Older exports are ignored for all calculations; the second-newest one is only used as the "previous state" for last-buy tracking.
 
-1. Log in at nordnet.se and open **Mitt Nordnet → Depå → Exportera**.
-2. Export both files. They are named like `aktier_kontonummer-66262387_YYYY-MM-DD.csv` and `fonder_kontonummer-66262387_YYYY-MM-DD.csv`.
-3. Sync them into the fixed filenames the dashboard uses (pick one):
+1. Log in at nordnet.se and export your holdings table (**Innehav → Exportera**).
+2. Put the file in the project folder (or let the watcher copy it from Downloads):
 
 ```powershell
-python nordnet_sync.py            # promote the newest CSVs in the project folder
+python nordnet_sync.py            # rebuild portfolio_baseline.json from the 2 newest exports in the folder
 python nordnet_sync.py --watch    # keep running, auto-copy new exports from Downloads
 python nordnet_sync.py --api      # fetch live from the Nordnet API (needs .env, see below)
 ```
 
-The default mode saves the second-newest export as `portfolio_baseline.json` and promotes the newest export to `portfolio_stocks.csv` / `portfolio_funds.csv`. This is what powers last-buy tracking.
+The export has no instrument type, so the Portfolio page puts Nordnet mutual funds (names containing index/indeks/allemansfond/AuAg...) in the **Funds** table and everything else (stocks, ETFs, ETCs) in **Stocks**. The rule is `isFundName()` in `app.js`, matching `classify_type()` in `trade_analytics.py`.
 
-Skip this step if `portfolio_stocks.csv` and `portfolio_funds.csv` already exist and are current.
+Skip this step if an `Innehav ... Export` file already exists and is current.
 
 ### 3. Start the server
 
@@ -97,8 +96,8 @@ The session token expires, so repeat these steps when it does.
 | Live prices or ticker bar are empty | You are not using `server.py`. Stop any other server and run `python server.py`. |
 | Port already in use | Run `python server.py --port 9000`, or stop the old process with `taskkill /IM python.exe /F`. |
 | A stock shows `—` for price | Add its name to `TICKER_MAP` in `app.js` with the Yahoo Finance symbol. |
-| Last-buy tags missing or stale | Run `python nordnet_sync.py` after a new export so `portfolio_baseline.json` is refreshed. |
-| Dashboard shows old holdings | Re-run `nordnet_sync.py` and click **Refresh Portfolio**. |
+| Last-buy tags missing or stale | Run `python nordnet_sync.py` after a new export (needs at least two `Innehav` files in the folder) so `portfolio_baseline.json` is refreshed. |
+| Dashboard shows old holdings | Drop the new `Innehav ... Export` file in the folder (or run `nordnet_sync.py --watch`) and click **Refresh Portfolio**. Restart `server.py` once if you updated from an older version (it needs the `/api/holdings` route). |
 
 Yahoo symbol suffixes: `.ST` Sweden, `.OL` Norway, `.HE` Finland, `.CO` Denmark, `.L` London, `.DE` Germany, `.PA` Paris. US stocks use the plain ticker.
 
@@ -110,9 +109,8 @@ testTrading/
 ├── style.css                TradingView dark theme styles
 ├── app.js                   Dashboard logic (data, live prices, signals)
 ├── server.py                Local HTTP server + Yahoo Finance proxy
-├── nordnet_sync.py          Nordnet CSV sync (one-shot, watch, API)
-├── portfolio_stocks.csv     Active stocks holdings (generated)
-├── portfolio_funds.csv      Active funds holdings (generated)
+├── nordnet_sync.py          Nordnet export sync (baseline, watch, API)
+├── Innehav Tabell Export, accno N, DATE.csv   Holdings export (newest one is used)
 ├── portfolio_baseline.json  Previous-state snapshot for last-buy tracking
 ├── WishList.md              Feature requirements
 ├── DesignGuide.md           Visual design spec

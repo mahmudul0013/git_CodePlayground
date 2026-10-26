@@ -13,11 +13,9 @@ const IS_LOCAL = ['localhost', '127.0.0.1', ''].includes(location.hostname);
 // CONFIG
 // ────────────────────────────────────────────────────────────
 const CFG = {
-  // Fixed-name files written by nordnet_sync.py; fallback = last Nordnet export
-  stocksFile:         'portfolio_stocks.csv',
-  fundsFile:          'portfolio_funds.csv',
-  stocksFileFallback: 'aktier_kontonummer-66262387_2026-03-31.csv',
-  fundsFileFallback:  'fonder_kontonummer-66262387_2026-03-31.csv',
+  // One Nordnet export holds every holding: 'Innehav Tabell Export, accno N, DATE.csv'.
+  // server.py serves the newest one at /api/holdings (latest file only is ever used).
+  holdingsUrl: '/api/holdings',
 
   // On localhost: /yahoo/* is proxied by server.py — no CORS issues
   // On remote:    direct Yahoo URL (browser/proxy fallbacks in yahooGet)
@@ -255,8 +253,11 @@ function parseSE(str) {
 }
 
 async function loadCSV(filename) {
-  const resp = await fetch(filename + '?t=' + Date.now());
+  const resp = await fetch(filename + (filename.includes('?') ? '&' : '?') + 't=' + Date.now());
   if (!resp.ok) throw new Error(`Cannot load ${filename}: HTTP ${resp.status}`);
+
+  const src = resp.headers.get('X-Source-File');   // set by /api/holdings
+  if (src) S.holdingsFile = decodeURIComponent(src);
 
   const buf  = await resp.arrayBuffer();
   const bytes = new Uint8Array(buf);
@@ -276,7 +277,8 @@ async function loadCSV(filename) {
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split('\t').map(h => h.trim());
+  // Nordnet writes non-breaking spaces in headers ('Värde SEK') - normalise them
+  const headers = lines[0].split('\t').map(h => h.replace(/ /g, ' ').trim());
   return lines.slice(1).map(line => {
     const cols = line.split('\t').map(c => c.trim());
     const obj  = {};
@@ -285,61 +287,38 @@ async function loadCSV(filename) {
   }).filter(r => r[headers[0]]); // skip empty rows
 }
 
-function buildStock(raw) {
-  // Stocks columns: Namn | Valuta | Antal | GAV | Idag % | Senaste kurs |
-  //                 Belåningsvärde SEK | Värde | Värde SEK | Avkast. % | Avkast. SEK
+// Combined export columns: Namn | Valuta | Antal | GAV/snittkurs | Idag % | Senaste kurs |
+//                          Belåningsv. SEK | Värde SEK | Avkast. % | Avkast. SEK
+function buildHolding(raw) {
+  const qty   = parseSE(raw['Antal']);
+  const price = parseSE(raw['Senaste kurs']);
+  const valueSEK  = parseSE(raw['Värde SEK']);
+  const returnSEK = parseSE(raw['Avkast. SEK']);
   return {
     name:       (raw['Namn'] || '').trim(),
     currency:   (raw['Valuta'] || 'SEK').trim(),
-    qty:        parseSE(raw['Antal']),
-    gav:        parseSE(raw['GAV']),
+    qty,
+    gav:        parseSE(raw['GAV/snittkurs']),
     dayChange:  parseSE(raw['Idag %']),
-    price:      parseSE(raw['Senaste kurs']),
-    value:      parseSE(raw['Värde']),
-    valueSEK:   parseSE(raw['Värde SEK']),
+    price,
+    value:      qty * price,
+    valueSEK,
+    purchaseValueSEK: valueSEK - returnSEK,
     returnPct:  parseSE(raw['Avkast. %']),
-    returnSEK:  parseSE(raw['Avkast. SEK']),
+    returnSEK,
     ticker:     null,
     livePrice:  null,
     liveDayPct: null,
   };
 }
 
-function buildFund(raw) {
-  // Funds columns: Namn | Valuta | Antal | Snittkurs | 1 dag % | Senaste NAV |
-  //                Belåningsvärde SEK | Inköpsvärde SEK | Värde SEK | Avkast. % | Avkast. SEK
-  const keys = Object.keys(raw);
-
-  // Flexible column detection (handles encoding nuances)
-  const find = (...pats) => {
-    for (const p of pats) {
-      const k = keys.find(k => k.toLowerCase().includes(p.toLowerCase()));
-      if (k) return k;
-    }
-    return null;
-  };
-
-  const snittCol    = find('snittkurs', 'snitt', 'avg');
-  const navCol      = find('senaste nav', 'nav');
-  const dayCol      = find('1 dag', 'idag', 'dag %');
-  const purchaseCol = find('inköpsvärde', 'purchase');
-  const valueSEKCol = find('värde sek', 'value sek');
-  const retPctCol   = find('avkast. %', 'return %', 'avkast %');
-  const retAbsCol   = find('avkast. sek', 'return sek', 'avkast sek');
-
-  return {
-    name:             (raw['Namn'] || '').trim(),
-    currency:         (raw['Valuta'] || 'SEK').trim(),
-    qty:              parseSE(raw['Antal']),
-    gav:              parseSE(snittCol    ? raw[snittCol]    : '0'),
-    dayChange:        parseSE(dayCol      ? raw[dayCol]      : '0'),
-    price:            parseSE(navCol      ? raw[navCol]      : '0'),
-    purchaseValueSEK: parseSE(purchaseCol ? raw[purchaseCol] : '0'),
-    valueSEK:         parseSE(valueSEKCol ? raw[valueSEKCol] : '0'),
-    returnPct:        parseSE(retPctCol   ? raw[retPctCol]   : '0'),
-    returnSEK:        parseSE(retAbsCol   ? raw[retAbsCol]   : '0'),
-    ticker: null,
-  };
+// The export has no instrument type. Mutual funds (Nordnet index funds, Allemansfond, AuAg)
+// go to the Funds table; stocks, ETFs and ETCs go to Stocks. Same rule as trade_analytics.py.
+function isFundName(name) {
+  const n = name.toLowerCase();
+  if (/(etf|etc|ucits)/.test(n) || n.includes('xetra-gold')) return false;
+  return ['index', 'indeks', 'indeksi', 'allemansfond', ' fund', 'fond', 'auag',
+          'nordea alfa', 'global index'].some(w => n.includes(w));
 }
 
 // ────────────────────────────────────────────────────────────
@@ -429,24 +408,21 @@ function detectAndSaveBuys() {
 // ────────────────────────────────────────────────────────────
 // CSV LOADING WITH FALLBACK + PORTFOLIO RELOAD
 // ────────────────────────────────────────────────────────────
-async function loadCSVWithFallback(primary, fallback) {
-  try { return await loadCSV(primary); }
-  catch (_) {
-    if (fallback) return await loadCSV(fallback);
-    throw _;
-  }
+/** Load the newest holdings export and split it into { stocks, funds }. */
+async function loadHoldings() {
+  const rows = await loadCSV(CFG.holdingsUrl);
+  const all  = rows.map(buildHolding).filter(h => h.name);
+  return { stocks: all.filter(h => !isFundName(h.name)),
+           funds:  all.filter(h =>  isFundName(h.name)) };
 }
 
 /** Re-fetch CSVs, detect new buys, re-render tables + refresh prices. */
 async function reloadPortfolio() {
   setStatus('loading', 'Refreshing portfolio…');
   try {
-    const [stockRows, fundRows] = await Promise.all([
-      loadCSVWithFallback(CFG.stocksFile, CFG.stocksFileFallback),
-      loadCSVWithFallback(CFG.fundsFile,  CFG.fundsFileFallback),
-    ]);
-    S.stocks = stockRows.map(buildStock).filter(s => s.name);
-    S.funds  = fundRows.map(buildFund).filter(f => f.name);
+    const { stocks, funds } = await loadHoldings();
+    S.stocks = stocks;
+    S.funds  = funds;
     S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
     S.funds.forEach(f  => { f.ticker = resolveTickerFor(f); });
     detectAndSaveBuys();
@@ -583,7 +559,7 @@ async function refreshPrices() {
 
   renderAll();
   renderWatchlist();
-  setStatus('live', 'Live · ' + new Date().toLocaleTimeString());
+  setStatus('live', 'Live · ' + new Date().toLocaleTimeString() + (S.holdingsFile ? ' · ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
 }
 
 // Sparklines — fetched lazily in the background after first render
@@ -1470,14 +1446,10 @@ async function init() {
   await loadLastBuyData();
 
   try {
-    // Load and parse both CSV files in parallel (try fixed names, fallback to dated)
-    const [stockRows, fundRows] = await Promise.all([
-      loadCSVWithFallback(CFG.stocksFile, CFG.stocksFileFallback),
-      loadCSVWithFallback(CFG.fundsFile,  CFG.fundsFileFallback),
-    ]);
-
-    S.stocks = stockRows.map(buildStock).filter(s => s.name);
-    S.funds  = fundRows.map(buildFund).filter(f => f.name);
+    // Load the newest holdings export (stocks + funds in one file)
+    const { stocks, funds } = await loadHoldings();
+    S.stocks = stocks;
+    S.funds  = funds;
 
     // Resolve Yahoo Finance tickers
     S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
@@ -1503,7 +1475,7 @@ async function init() {
     // Auto-refresh prices every minute
     setInterval(refreshPrices, CFG.refreshMs);
 
-    // Auto-reload portfolio CSVs every 5 minutes (picks up nordnet_sync.py output)
+    // Auto-reload portfolio CSVs every 5 minutes (picks up the newest Innehav export)
     setInterval(reloadPortfolio, CFG.csvRefreshMs);
 
   } catch (err) {

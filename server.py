@@ -133,10 +133,27 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/yahoo/'):
             self._proxy_yahoo()
+        elif self.path.split('?')[0] == '/api/holdings':
+            self._serve_holdings()
         elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status', '/api/benchmark', '/api/symbol'):
             self._serve_trades()
         else:
             super().do_GET()
+
+    def _serve_holdings(self):
+        """Raw bytes of the latest 'Innehav ... Export' CSV (one file holds stocks, ETFs and funds)."""
+        path = trade_analytics.newest_holdings()
+        if not path:
+            data, code = b'No Innehav*Export*.csv in project folder', 404
+        else:
+            data, code = Path(path).read_bytes(), 200
+        self.send_response(code)
+        self.send_header('Content-Type', 'text/csv')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Source-File', urllib.parse.quote(os.path.basename(path)) if path else '')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def _serve_trades(self):
         """Analytics data. Re-parses the Nordnet CSVs only when they change on disk."""
