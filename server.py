@@ -22,15 +22,18 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import json
+import time
 import sys
 import os
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from datetime import datetime
 
 import trade_analytics   # Nordnet CSV -> analytics JSON (Analytics page)
 import symbols           # ISIN/name -> Yahoo symbol (cached)
 import benchmark         # index buy-and-hold comparison (Yahoo daily closes)
+import sectors           # sector / fund category per holding (Yahoo)
 
 PORT = 8000
 
@@ -122,6 +125,47 @@ def _handle_v7_quote(query_string: str) -> bytes:
     }).encode()
 
 
+_live = {'at': 0.0, 'key': None, 'data': None}
+
+
+def _live_quote(symbol: str) -> dict | None:
+    """Last price, previous close and currency of one symbol (v8 chart, no login needed)."""
+    try:
+        meta = json.loads(_fetch_yahoo(f'v8/finance/chart/{urllib.parse.quote(symbol)}?interval=1d&range=5d&includePrePost=false'))['chart']['result'][0]['meta']
+        price = meta.get('regularMarketPrice')
+        prev = meta.get('chartPreviousClose') or meta.get('previousClose')
+        if not price:
+            return None
+        return {'symbol': meta.get('symbol', symbol), 'price': price, 'prev': prev, 'currency': meta.get('currency'),
+                'change_pct': round((price / prev - 1) * 100, 4) if prev else None,
+                'time': meta.get('regularMarketTime'), 'state': meta.get('marketState')}
+    except Exception:
+        return None
+
+
+def _live_quotes(assets) -> dict:
+    """Yahoo quotes for every held asset that has a Yahoo symbol; cached 25 s so several open pages share one fetch."""
+    key = tuple(sorted(a['isin'] for a in assets))
+    if _live['data'] is not None and _live['key'] == key and time.time() - _live['at'] < 25:
+        return _live['data']
+    syms = {}
+    for a in assets:
+        r = symbols.resolve(a['isin'], a['name'], a.get('ccy'))
+        if r and r.get('symbol'):
+            syms[a['isin']] = r['symbol']
+    futs = {EXECUTOR.submit(_live_quote, sym): isin for isin, sym in syms.items()}
+    out = {}
+    for f in as_completed(futs):
+        try:
+            q = f.result()
+            if q:
+                out[futs[f]] = q
+        except Exception:
+            pass
+    _live.update(at=time.time(), key=key, data=out)
+    return out
+
+
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def end_headers(self):
@@ -135,7 +179,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self._proxy_yahoo()
         elif self.path.split('?')[0] == '/api/holdings':
             self._serve_holdings()
-        elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status', '/api/benchmark', '/api/symbol'):
+        elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status', '/api/benchmark', '/api/overlay', '/api/sectors', '/api/assets', '/api/live', '/api/symbol'):
             self._serve_trades()
         else:
             super().do_GET()
@@ -168,6 +212,23 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 p = trade_analytics.get_payload()
                 flows = [{'date': c['date'], 'amount': c['amount']} for c in p.get('cashflows', [])]
                 body = benchmark.compute(flows, p['insights']['overview']['total_value'])
+            elif route == '/api/live':
+                p = trade_analytics.get_payload()
+                held = [{'isin': x['isin'], 'name': x['name'], 'ccy': x.get('ccy')} for x in p['assets'] if x.get('value') and x.get('isin')]
+                body = {'ok': True, 'asof': datetime.now().isoformat(timespec='seconds'), 'quotes': _live_quotes(held)}
+            elif route == '/api/assets':
+                p = trade_analytics.get_payload()
+                body = {'generated': p['generated'], 'sources': p['sources'], 'assets': p['assets']}
+            elif route == '/api/sectors':
+                p = trade_analytics.get_payload()
+                held = [{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy')} for a in p['assets'] if (a.get('held') or a.get('value')) and a.get('isin')]
+                info, pending = sectors.batch(held)
+                body = {'ok': True, 'pending': pending, 'sectors': info}
+            elif route == '/api/overlay':
+                p = trade_analytics.get_payload()
+                ser = p['insights']['deposit_behavior']['series']
+                flows = [{'date': c['date'], 'amount': c['amount']} for c in p.get('cashflows', [])]
+                body = benchmark.overlay(flows, ser[0]['date'], ser[-1]['date'])
             else:
                 body = trade_analytics.get_payload()
             data, code = json.dumps(body).encode('utf-8'), 200

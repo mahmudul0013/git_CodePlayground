@@ -26,7 +26,7 @@ HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
                          '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
            'Accept': 'application/json, */*', 'Referer': 'https://finance.yahoo.com/'}
 TTL = 6 * 3600
-SERIES = {'omx': ('^OMX', 'OMXS30 (SEK)'), 'spx': ('^GSPC', 'S&P 500 (USD->SEK)'), 'fx': ('USDSEK=X', 'USD/SEK')}
+SERIES = {'omx': ('^OMX', 'OMXS30 (SEK)'), 'spx': ('^GSPC', 'S&P 500 (USD->SEK)'), 'nq': ('NQ=F', 'Nasdaq 100 futures NQ=F (USD->SEK)'), 'fx': ('USDSEK=X', 'USD/SEK')}
 
 _mem = {'at': 0, 'key': None, 'data': None}
 
@@ -95,7 +95,13 @@ def compute(flows, account_value):
     p1 = int(datetime.strptime(first, '%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()) - 7 * 86400
     p2 = int(time.time()) + 86400
     try:
-        series = {k: _fetch_closes(sym, p1, p2) for k, (sym, _) in SERIES.items()}
+        series = {}
+        for k, (sym, _) in SERIES.items():
+            try:
+                series[k] = _fetch_closes(sym, p1, p2)
+            except Exception:
+                if k in ('omx', 'fx'):          # the others may fail alone
+                    raise
         fresh = True
     except Exception as e:
         if os.path.exists(CACHE_FILE):
@@ -111,7 +117,9 @@ def compute(flows, account_value):
     flows = sorted(flows, key=lambda f: f['date'])
     res = {'ok': True, 'stale': False, 'computed': datetime.now().isoformat(timespec='seconds'),
            'as_of': sdates['omx'][-1], 'flows': len(flows), 'indices': []}
-    for k, mult in (('omx', None), ('spx', ('fx',))):
+    for k, mult in (('omx', None), ('spx', ('fx',)), ('nq', ('fx',))):
+        if k not in series:
+            continue
         inv, val = _simulate(flows, sdates[k], series[k], (sdates['fx'], series['fx']) if mult else None)
         if val is None:
             continue
@@ -133,6 +141,88 @@ def _with_account(res, account_value):
         for ix in res.get('indices', []):
             ix['account_minus_index'] = round(account_value - ix['value'], 2)
     return res
+
+
+OVERLAY_FILE = os.path.join(HERE, 'benchmark_overlay_cache.json')
+OVERLAY_INDICES = [('omx', '^OMX', 'OMXS30', False), ('spx', '^GSPC', 'S&P 500', True),
+                   ('nq', 'NQ=F', 'Nasdaq 100 futures (NQ=F)', True)]      # (id, Yahoo symbol, label, USD -> convert)
+_ov = {'at': 0, 'key': None, 'data': None}
+
+
+def overlay(flows, first, last):
+    """Daily index curves in SEK for the Deposit behaviour chart, one value per calendar day first..last.
+    perf: price return in % since `first` (weekends carry the last close).
+    dca:  value of 'every deposit/withdrawal bought the index that day' (same idea as compute()).
+    Never raises; falls back to the last saved copy when Yahoo is unreachable."""
+    key = (first, last, round(sum(f['amount'] for f in flows), 2), len(flows))
+    if _ov['data'] and _ov['key'] == key and time.time() - _ov['at'] < TTL:
+        return _ov['data']
+    from datetime import date, timedelta
+    try:
+        p1 = int(datetime.strptime(first, '%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()) - 7 * 86400
+        p2 = int(time.time()) + 86400
+        fx = _fetch_closes('USDSEK=X', p1, p2)
+        raw = {}
+        for iid, sym, _, _ in OVERLAY_INDICES:
+            try:
+                raw[iid] = _fetch_closes(sym, p1, p2)
+            except Exception:
+                raw[iid] = None             # one failing index must not hide the others
+        if not any(raw.values()):
+            raise RuntimeError('Yahoo returned no index data')
+        days = []
+        d, end = date.fromisoformat(first), date.fromisoformat(last)
+        while d <= end:
+            days.append(d.isoformat())
+            d += timedelta(days=1)
+        by_day = {}
+        for f in flows:
+            by_day[f['date']] = by_day.get(f['date'], 0.0) + f['amount']
+
+        def filled(series):                 # calendar-day close, carrying the last known one forward
+            ks, cur, out = sorted(series), None, []
+            i = 0
+            # seed with the last close before `first`
+            while i < len(ks) and ks[i] <= days[0]:
+                cur = series[ks[i]]
+                i += 1
+            for day in days:
+                while i < len(ks) and ks[i] <= day:
+                    cur = series[ks[i]]
+                    i += 1
+                out.append(cur)
+            return out
+        fxd = filled(fx)
+        res = {'ok': True, 'stale': False, 'computed': datetime.now().isoformat(timespec='seconds'),
+               'dates': days, 'indices': []}
+        for iid, _, label, usd in OVERLAY_INDICES:
+            if not raw[iid]:
+                continue
+            px = filled(raw[iid])
+            sek = [None if p is None else p * (fxd[i] if usd and fxd[i] else 1.0) for i, p in enumerate(px)]
+            base = next((v for v in sek if v), None)
+            units, perf, dca = 0.0, [], []
+            for day, v in zip(days, sek):
+                if v:
+                    units += by_day.get(day, 0.0) / v
+                perf.append(None if not v or not base else round((v / base - 1) * 100, 3))
+                dca.append(None if not v else round(units * v, 2))
+            res['indices'].append({'id': iid, 'name': label, 'perf': perf, 'dca': dca})
+        _ov.update(at=time.time(), key=key, data=res)
+        try:
+            json.dump(res, open(OVERLAY_FILE, 'w', encoding='utf-8'))
+        except OSError:
+            pass
+        return res
+    except Exception as e:
+        if os.path.exists(OVERLAY_FILE):
+            try:
+                saved = json.load(open(OVERLAY_FILE, encoding='utf-8'))
+                saved.update(stale=True, error=str(e))
+                return saved
+            except Exception:
+                pass
+        return {'ok': False, 'error': str(e)}
 
 
 if __name__ == '__main__':

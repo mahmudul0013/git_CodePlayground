@@ -1410,30 +1410,22 @@ function bindEvents() {
   // Manual portfolio refresh button
   document.getElementById('refresh-portfolio-btn')?.addEventListener('click', reloadPortfolio);
 
-  // Nav tabs — Portfolio shows everything; Stocks/Funds filter visible sections
+  // Nav tabs — one continuous page: Portfolio scrolls to the top, Heat map to the heat map section below the tables.
+  const body = document.getElementById('scroll-body');
+  const heat = document.getElementById('heatmap-section');
+  const setActive = view => document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === view));
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const view = tab.dataset.tab;
-      const pred    = document.getElementById('predictions-section');
-      const stocks  = document.getElementById('stocks-section');
-      const funds   = document.getElementById('funds-section');
-      if (view === 'portfolio') {
-        pred.style.display   = '';
-        stocks.style.display = '';
-        funds.style.display  = '';
-      } else if (view === 'stocks') {
-        pred.style.display   = 'none';
-        stocks.style.display = '';
-        funds.style.display  = 'none';
-      } else if (view === 'funds') {
-        pred.style.display   = 'none';
-        stocks.style.display = 'none';
-        funds.style.display  = '';
-      }
+      if (tab.dataset.tab === 'heatmap') heat?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else body?.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
+  // highlight the tab that matches what is on screen
+  if (body && heat) body.addEventListener('scroll', () => {
+    setActive(heat.getBoundingClientRect().top < body.getBoundingClientRect().top + body.clientHeight * 0.5 ? 'heatmap' : 'portfolio');
+  }, { passive: true });
+  // the heat map loads and keeps itself in sync as soon as the page opens
+  if (typeof Heat !== 'undefined') Heat.show();
 }
 
 // ────────────────────────────────────────────────────────────

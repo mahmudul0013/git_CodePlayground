@@ -159,3 +159,19 @@ code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 1
 .sync { min-width: 0; flex-wrap: wrap; }
 #sync-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
 @media (max-width: 760px) { .sync { margin-left: 0; width: 100%; } }
+
+/* deposit behaviour: three charts stacked on one shared x axis */
+.dep-controls { display: flex; flex-wrap: wrap; gap: 18px; margin: 4px 0 6px; }
+.dep-controls .lbl { display: block; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.dep-stack h3 { margin: 10px 0 2px; }
+.dep-stack h3:first-child { margin-top: 0; }
+.dep-stack .cv { height: 170px; }
+.dep-stack .cv.dep-b { height: 230px; }
+.dep-stack .cv.dep-c { height: 130px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 12px; vertical-align: -1px; }
+.swatch:first-child { margin-left: 0; }
+.chip input { margin-right: 6px; accent-color: var(--accent); vertical-align: -2px; }
+.chip.on { background: rgba(41,98,255,.18); border-color: var(--accent); color: var(--white); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .g3 { grid-template-columns: 1fr; } }

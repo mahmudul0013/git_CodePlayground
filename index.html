@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="heatmap.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -48,8 +49,7 @@
         <div class="header-center">
           <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="portfolio">Portfolio</button>
-            <button class="nav-tab" data-tab="stocks">Stocks</button>
-            <button class="nav-tab" data-tab="funds">Funds</button>
+            <button class="nav-tab" data-tab="heatmap">Heat map</button>
             <a class="nav-link-out" href="analytics.html">Analytics</a>
           </nav>
         </div>
@@ -189,10 +189,37 @@
           </div>
 
         </div><!-- /holdings -->
+
+    <section id="heatmap-section">
+      <h2 class="section-title" style="margin:6px 0 8px">Portfolio heat map</h2>
+      <div class="hm-controls">
+        <div><span class="lbl">Group by</span><div class="chips" id="heat-group">
+          <button class="chip active" data-g="cat">Category (sector)</button><button class="chip" data-g="type">Type</button><button class="chip" data-g="country">Country</button></div></div>
+        <div><span class="lbl">Colour shows</span><div class="chips" id="heat-color">
+          <button class="chip active" data-c="day">Today's change</button><button class="chip" data-c="unreal">Unrealised vs. cost</button></div></div>
+        <div><button class="refresh-btn" id="heat-refresh" title="Reload holdings and categories">&#8635; Refresh</button></div>
+      </div>
+      <div id="heat-error" class="hm-error" hidden></div>
+      <p class="hint" id="heat-hint"></p>
+      <p class="hint" id="heat-status"></p>
+      <div class="hm-panel">
+        <div class="heat-wrap"><div id="heat-map"></div><div id="heat-tip" class="heat-tip" hidden></div></div>
+        <div class="heat-scale" id="heat-scale"></div>
+      </div>
+      <div class="hm-grid">
+        <div class="hm-panel"><h3 id="heat-pie-title">Distribution</h3><div class="cv"><canvas id="h-pie"></canvas></div></div>
+        <div class="hm-panel"><h3>Breakdown</h3><div class="tbl-wrap"><table id="tb-heat" class="data-table"></table></div></div>
+      </div>
+      <div class="hm-panel"><h3>Concentration</h3><ul id="heat-notes" class="hm-notes"></ul></div>
+    </section>
+
+
+
       </div><!-- /scroll-body -->
     </main>
   </div><!-- /app -->
 
   <script src="app.js"></script>
+  <script src="heatmap.js"></script>
 </body>
 </html>

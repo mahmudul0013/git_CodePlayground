@@ -25,7 +25,7 @@ import os
 import re
 import statistics
 from collections import defaultdict, deque
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -453,8 +453,14 @@ def build(ledger, holdings):
             a['day_pct'] = h['day_pct']
             a['ccy'] = h['ccy'] or a['ccy']
             if abs(h['qty'] - st['qty']) > 1e-3:
-                warnings.append(f"{name}: ledger quantity {st['qty']:.4f} differs from holdings "
-                                f"export {h['qty']:.4f}.")
+                if h['qty'] > st['qty']:
+                    # holdings export is live; the ledger books a trade only after the next day's close
+                    warnings.append(f"{name}: holdings show {h['qty']:g} but the ledger only has "
+                                    f"{st['qty']:g} - probably bought today and not booked in the "
+                                    f"ledger yet (re-export the ledger tomorrow).")
+                else:
+                    warnings.append(f"{name}: ledger quantity {st['qty']:.4f} differs from holdings "
+                                    f"export {h['qty']:.4f}.")
         else:
             a['price'] = a['gav'] = a['unrealized_pct'] = a['day_pct'] = None
             a['value'] = 0.0
@@ -779,6 +785,134 @@ def analyse(trades, assets, cash, cash_events, balance, holdings):
 
 
 # --------------------------------------------------------------------------
+# deposit behaviour: when does money go in, and what was the portfolio doing?
+# --------------------------------------------------------------------------
+def deposit_behavior(trades, cash_events, assets, holdings_value, cash_balance):
+    """Daily series of deposits, positions held, estimated portfolio value and a return index that
+    ignores deposits (so a deposit never looks like a gain), plus one row per deposit day.
+
+    No historical price feed is used: each position is priced from your own trades (SEK per share) and,
+    for assets still held, drawn in a straight line to today's price from the holdings export. The
+    curve is an estimate - it misses moves between your trades."""
+    if not cash_events and not trades:
+        return None
+    flow = defaultdict(float)            # deposits + withdrawals (book date)
+    dep = defaultdict(float)
+    other = defaultdict(float)           # dividends, tax, interest, fees (book date)
+    for d, kind, amt in cash_events:
+        if kind == 'deposit':
+            dep[d] += amt
+            flow[d] += amt
+        elif kind == 'withdrawal':
+            flow[d] += amt
+        else:
+            other[d] += amt
+    by_day = defaultdict(list)
+    for t in trades:
+        by_day[t['date']].append(t)
+    first = min([d for d, _, _ in cash_events] + [t['date'] for t in trades])
+    last = max([d for d, _, _ in cash_events] + [t['date'] for t in trades])
+    day, end = date.fromisoformat(first), date.fromisoformat(last)
+
+    pts = defaultdict(list)              # isin -> [(ordinal day, SEK price)]
+    for t in trades:
+        if t['price']:
+            pts[t['isin']].append((date.fromisoformat(t['date']).toordinal(), t['price'] * (t['fx'] or 1.0)))
+    for a in assets:
+        if a.get('held') and a.get('qty') and a.get('value') and a['isin'] in pts:
+            pts[a['isin']].append((end.toordinal(), a['value'] / a['qty']))
+
+    def price_at(isin, o):
+        p = pts[isin]
+        for (o1, p1), (o2, p2) in zip(p, p[1:]):
+            if o1 <= o <= o2:
+                return p1 if o2 == o1 else p1 + (p2 - p1) * (o - o1) / (o2 - o1)
+        return p[-1][1] if o > p[-1][0] else p[0][1]
+
+    qty = {}
+    cash_now, cum_dep, idx, prev_v = 0.0, 0.0, 100.0, 0.0
+    series = []
+    while day <= end:
+        d = day.isoformat()
+        buys = 0.0
+        for t in by_day.get(d, ()):
+            if t['side'] == 'BUY':
+                cash_now -= t['amount']
+                buys += t['amount']
+            else:
+                cash_now += t['amount']
+            qty[t['isin']] = t['pos_after']
+        cash_now += flow[d] + other[d]
+        cum_dep += flow[d]
+        value = cash_now + sum(q * price_at(i, day.toordinal()) for i, q in qty.items() if q > 1e-6 and pts[i])
+        if prev_v > 500:
+            idx *= (value - flow[d]) / prev_v
+        prev_v = value
+        series.append({'date': d, 'deposit': round(dep[d], 2), 'buys': round(buys, 2),
+                       'cash': round(cash_now, 2), 'value': round(value, 2),
+                       'net_deposited': round(cum_dep, 2),
+                       'held': sum(1 for q in qty.values() if q > 1e-6), 'index': round(idx, 3)})
+        day += timedelta(days=1)
+
+    dates = [r['date'] for r in series]
+    pos = {d: i for i, d in enumerate(dates)}
+
+    def ret(i, n):                       # return of the index over the n days ending the day before i
+        a, b = i - 1 - n, i - 1
+        return (series[b]['index'] / series[a]['index'] - 1) * 100 if a >= 0 else None
+
+    peak, dd_at = 0.0, []
+    for r in series:
+        peak = max(peak, r['index'])
+        dd_at.append((r['index'] / peak - 1) * 100)
+
+    events = []
+    for i, r in enumerate(series):
+        if r['deposit'] <= 0:
+            continue
+        spent = sum(x['buys'] for x in series[i:i + 3])
+        events.append({'date': r['date'], 'amount': r['deposit'],
+                       'cash_before': series[i - 1]['cash'] if i else 0.0,
+                       'perf_5d': None if ret(i, 5) is None else round(ret(i, 5), 2),
+                       'drawdown': round(dd_at[i - 1], 2) if i else 0.0,
+                       'next_5d': None if i + 5 >= len(series) else
+                       round((series[i + 5]['index'] / series[i]['index'] - 1) * 100, 2),
+                       'spent_pct': round(min(spent / r['deposit'], 1.0) * 100)})
+
+    def bucket(v):
+        return None if v is None else 'down' if v <= -2 else 'up' if v >= 2 else 'flat'
+    tot = sum(e['amount'] for e in events) or 1.0
+    base_days = [bucket(ret(i, 5)) for i in range(len(series))]
+    base_days = [b for b in base_days if b]
+    groups = {}
+    for k in ('down', 'flat', 'up'):
+        ev = [e for e in events if bucket(e['perf_5d']) == k]
+        groups[k] = {'deposits': len(ev), 'amount': round(sum(e['amount'] for e in ev), 2),
+                     'amount_share': round(sum(e['amount'] for e in ev) / tot * 100, 1),
+                     'baseline_share': round(base_days.count(k) / len(base_days) * 100, 1) if base_days else None}
+    deep = [e for e in events if e['drawdown'] <= -5]
+    empty = [e for e in events if e['cash_before'] < 1000]
+    quick = [e for e in events if e['spent_pct'] >= 80]
+    summary = {
+        'deposits': len(events), 'total': round(tot, 2), 'groups': groups,
+        'deep_drawdown': {'deposits': len(deep), 'amount_share': round(sum(e['amount'] for e in deep) / tot * 100, 1),
+                          'baseline_share': round(sum(1 for x in dd_at if x <= -5) / len(dd_at) * 100, 1)},
+        'cash_empty': {'deposits': len(empty), 'share': round(len(empty) / len(events) * 100, 1) if events else None},
+        'spent_fast': {'deposits': len(quick), 'share': round(len(quick) / len(events) * 100, 1) if events else None},
+        'avg_deposit': round(tot / len(events), 2) if events else None,
+        'median_gap_days': None,
+    }
+    gaps = sorted((date.fromisoformat(b['date']) - date.fromisoformat(a['date'])).days
+                  for a, b in zip(events, events[1:]))
+    if gaps:
+        summary['median_gap_days'] = gaps[len(gaps) // 2]
+    return {'series': series, 'events': events, 'summary': summary,
+            'est_end_value': series[-1]['value'] if series else None,
+            'true_end_value': round(holdings_value + cash_balance, 2)}
+
+
+
+# --------------------------------------------------------------------------
 # benchmark scorecard
 # --------------------------------------------------------------------------
 # Rule-of-thumb targets chosen for a long-term retail investor. They are NOT
@@ -894,6 +1028,8 @@ def get_payload():
     if not src['holdings']:
         warnings.append('No Innehav*Export*.csv found - current values and unrealised P&L are unavailable.')
     insights = analyse(trades, assets, cash, cash_events, balance, holdings)
+    ov = insights['overview']
+    insights['deposit_behavior'] = deposit_behavior(trades, cash_events, assets, ov['holdings_value'], ov['cash_balance'])
     payload = {
         'generated': datetime.now().isoformat(timespec='seconds'),
         'sources': signature(),

@@ -31,9 +31,9 @@ The Portfolio page (`app.js`) reads the same file through `server.py` `/api/hold
 | `benchmark.py` | "Every deposit into OMXS30 / S&P500 (via USDSEK)" vs account value, Yahoo daily closes, 6 h memory cache + `benchmark_cache.json` offline fallback. |
 | `symbols.py` | ISIN/name -> Yahoo symbol; seeds from `TICKER_MAP` in app.js, then Yahoo search; `symbol_cache.json` (hand edits are kept, negatives retried after 7 days). |
 | `server.py` | Original file server + Yahoo proxy, plus `/api/trades`, `/api/trades/status`, `/api/benchmark`, `/api/symbol`. |
-| `analytics.html/css/js` | The page. Tabs: **Assets** (view chips, filters, 4 charts, sortable table, expandable rows) and **Trading habits & costs** (verdict, benchmark score, good practice, findings, charts, tables). Polls `/api/trades/status` every 10 s and reloads when a CSV changes. |
+| `analytics.html/css/js` | The page. Tabs: **Assets** (view chips, filters, 4 charts, sortable table, expandable rows), **Trading habits & costs** (verdict, benchmark score, good practice, findings, charts, tables) and **Deposit behaviour** (`#deposits`: deposits as columns per day/week/month + estimated portfolio value / deposit-free return + positions held, three stacked charts with a linked crosshair; deposit-vs-market-move stats from `deposit_behavior()` in trade_analytics.py). Polls `/api/trades/status` every 10 s and reloads when a CSV changes. |
 | `asset_chart.js` | `AssetChart.render(el, asset)`: Yahoo daily-close line + BUY/SELL markers; falls back to the user's own trade prices when no symbol / currency mismatch. |
-Existing Portfolio page (`index.html`, `app.js`, `style.css`) only got an "Analytics" link — keep it working.
+Existing Portfolio page (`index.html`, `app.js`, `style.css`) got an "Analytics" link and a **Heat map** nav tab (NOT part of Analytics): `heatmap.js`/`heatmap.css` (squarified treemap of current holdings grouped by Yahoo sector / type / country, coloured by day change or unrealised %, plus doughnut, breakdown table, concentration notes). Data: `/api/assets` (assets from the payload) and `/api/sectors` (`sectors.py`, cache `sector_cache.json`; ETFs/funds have no Yahoo sector so they group as ETFs/Funds, unknown = Unclassified). Portfolio page is ONE continuous page (no separate Stocks/Funds tabs): summary, signals, stocks, funds, then `#heatmap-section`; the nav buttons Portfolio / Heat map just scroll (`app.js`), `Heat.show()` runs at page load. Live: while the tab is open it polls `/api/trades/status` every 10 s (new/changed CSV -> reload assets, sectors, live) and `/api/live` every 30 s (`server.py` `_live_quotes`: Yahoo v8 chart per holding via `symbols.resolve`, 25 s cache). Live price replaces the day change; value/unrealised are rescaled by live/export price only when currencies match. Holdings without a Yahoo symbol (some Nordnet funds) keep export values. Keep the Portfolio page working.
 
 ## Domain rules learned the hard way
 - The type string for sells is **`SÅLT`** (Å, not Ä); buys `KÖPT`. Use the `\u` escapes in `trade_analytics.py`.
@@ -51,7 +51,14 @@ Account ~break-even (+97 kr on 347 400 deposited); broker costs 21 724 kr (6.3% 
 ## Verified / not verified
 Verified (headless Chrome, 2026-10-23): benchmark score + index chart + good-practice cards, per-asset charts (MU, ALFA.ST live; ETF currency mismatch falls back), ledger==holdings (0 mismatches), chips/filters/sort/expand in headless Chrome, 400px layout. Check `git log` for later sessions. Per-asset charts: symbol lookup tested live; currency-mismatch listings (e.g. SMH in USD vs EUR trades, VUSA.L in GBp) intentionally fall back to trade prices — fix by adding a same-currency symbol by hand in `symbol_cache.json`.
 
+## Deposit behaviour notes
+- Index overlay (checkboxes OMXS30 / S&P 500 / Nasdaq 100 futures NQ=F): `/api/overlay` -> `benchmark.overlay()` (Yahoo ^OMX ^GSPC NQ=F, US ones x USDSEK, cached 6 h + benchmark_overlay_cache.json, gitignored). Return view = price return since first deposit; value view = all deposits invested in the index. Add more indices in `OVERLAY_INDICES` + `OV_COLOR`/checkbox.
+- Portfolio value history is an ESTIMATE (no price feed): positions priced from own trades, linearly interpolated to today's holdings price. Real Yahoo history per holding would make it exact (see Ideas).
+- Return index removes deposits/withdrawals (time-weighted); deposit "5 days before" move uses it. Thresholds: drop <= -2%, rise >= +2%.
+- Holdings export is live but the ledger lags by a day: holdings > ledger qty is shown as a 'bought today' note, not an error.
+
 ## Ideas not done yet
+- Exact portfolio value history from Yahoo closes per holding (replace the estimate).
 - Account-value-over-time chart (needs historical prices per holding).
 - Monthly fee budget / "order too small" warning on the page.
 - Dividend/yield analysis page; tax (ISK) view.

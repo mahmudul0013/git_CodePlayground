@@ -27,7 +27,7 @@ const VIEWS = [
 const S = {
   data: null, sig: null, tab: 'assets', view: 'current',
   type: '', ccy: '', dom: '', q: '',
-  sort: { key: 'metric', dir: -1 }, open: new Set(), charts: {},
+  sort: { key: 'metric', dir: -1 }, open: new Set(), charts: {}, gran: 'month', metric: 'value', idx: new Set(), overlay: null,
 };
 
 // ───────── helpers ─────────
@@ -172,7 +172,7 @@ function renderAll() {
   const w = S.data.warnings || [];
   showBanner(w.length ? `<b>Data notes (${w.length}):</b><ul>${w.slice(0, 8).map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
   renderKpis();
-  if (S.tab === 'assets') renderAssets(); else renderHabits();
+  renderTab();
 }
 
 function kpi(l, v, s, c) {
@@ -226,11 +226,9 @@ function renderAssets() {
   };
   const mn = metricName(v);
   $('t-type').textContent = 'By type · ' + mn;
-  $('t-ccy').textContent = 'By currency · ' + mn;
   $('t-dom').textContent = 'By country (ISIN) · ' + mn;
   $('t-top').textContent = 'Top assets · ' + mn;
   doughnut('c-type', group('type'), k => k);
-  doughnut('c-ccy', group('ccy'), k => k);
   doughnut('c-dom', group('domicile'), k => `${COUNTRY[k] || k}`);
   const top = [...list].filter(r => r.metric > 0).sort((a, b) => b.metric - a.metric).slice(0, 12);
   mkChart('c-top', {
@@ -487,6 +485,255 @@ function renderHabits() {
   ].map(x => `<li>${x}</li>`).join('');
 }
 
+// ───────── render: deposit behaviour tab ─────────
+const DEP = { dep: C.s[0], port: C.s[6], held: C.s[2], net: C.dim };
+const weekStart = d => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return iso(x); };
+
+// One row per day -> one row per bucket. Deposits add up; every level (value, positions...) is the last day's.
+function bucketSeries(series, gran) {
+  const key = gran === 'day' ? d => d : gran === 'week' ? weekStart : d => d.slice(0, 7);
+  const out = [];
+  for (const r of series) {
+    const k = key(r.date);
+    let b = out[out.length - 1];
+    if (!b || b.key !== k) out.push(b = { key: k, deposit: 0, buys: 0 });
+    b.deposit += r.deposit; b.buys += r.buys;
+    Object.assign(b, { value: r.value, cash: r.cash, net: r.net_deposited, held: r.held, index: r.index, last: r.date });
+  }
+  return out;
+}
+
+// Hovering one of the stacked charts moves the crosshair + tooltip in the others (same x buckets).
+function linkCharts(ids) {
+  const sync = idx => ids.forEach(id => {
+    const ch = S.charts[id]; if (!ch) return;
+    const act = idx == null ? [] : [{ datasetIndex: 0, index: idx }];
+    ch.setActiveElements(act);
+    ch.tooltip.setActiveElements(act, idx == null ? {} : { x: ch.scales.x.getPixelForValue(idx), y: ch.chartArea.top + 10 });
+    ch.update('none');
+  });
+  ids.forEach(id => {
+    const ch = S.charts[id]; if (!ch) return;
+    ch.canvas.onmousemove = ev => {
+      const hit = ch.getElementsAtEventForMode(ev, 'index', { intersect: false }, false)[0];
+      sync(hit ? hit.index : null);
+    };
+    ch.canvas.onmouseleave = () => sync(null);
+  });
+}
+
+const OV_COLOR = { omx: C.s[1], spx: C.s[3], nq: C.s[4] };
+
+// Index curves come from /api/overlay (Yahoo); fetched only once an index is ticked, again after the CSVs change.
+async function ensureOverlay() {
+  if (S.overlay && (S.overlay.for === S.data.generated)) return;
+  if (S.overlay && S.overlay.pending === S.data.generated) return;
+  const gen = S.data.generated;
+  S.overlay = { ...(S.overlay || {}), pending: gen };
+  let r;
+  try { r = await (await fetch('/api/overlay')).json(); } catch (e) { r = { ok: false, error: String(e) }; }
+  S.overlay = { ...r, for: gen };
+  if (S.tab === 'deposits') renderDeposits();
+}
+
+const crossPlugin = { id: 'cross', afterDatasetsDraw(ch) {
+  const a = ch.tooltip ? ch.tooltip.getActiveElements() : [];
+  if (!a.length) return;
+  const x = ch.scales.x.getPixelForValue(a[0].index), { top, bottom } = ch.chartArea, g = ch.ctx;
+  g.save(); g.strokeStyle = C.dim; g.lineWidth = 1; g.setLineDash([3, 3]);
+  g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore();
+} };
+
+// ───────── deposit tab: insights computed from the daily series (+ S&P 500 overlay when loaded) ─────────
+function renderDepInsights(D, OV) {
+  const ser = D.series, n = ser.length, ov = S.data.insights.overview, co = S.data.insights.costs;
+  const sp = OV && OV.indices.find(i => i.id === 'spx');
+  const omx = OV && OV.indices.find(i => i.id === 'omx');
+  const lv = ix => ix.perf.map(p => p == null ? null : 1 + p / 100);          // index level, 1 = first deposit day
+  const L = { me: ser.map(r => r.index / 100), spx: sp && lv(sp), omx: omx && lv(omx) };
+  const sd = a => { const m = a.reduce((s, x) => s + x, 0) / a.length; return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+  const vol = l => { const r = []; for (let i = 14; i < n; i += 7) r.push(l[i] / l[i - 7] - 1); return r.length > 3 ? sd(r) * Math.sqrt(52) * 100 : null; };
+  const mdd = l => { let pk = 0, w = 0; for (const x of l) { pk = Math.max(pk, x); w = Math.min(w, x / pk - 1); } return w * 100; };
+
+  // monthly returns: month-end level / previous month-end level
+  const ends = [];
+  ser.forEach((r, i) => { const m = r.date.slice(0, 7); if (!ends.length || ends[ends.length - 1].m !== m) ends.push({ m, i }); else ends[ends.length - 1].i = i; });
+  const months = ends.map((e, k) => {
+    const a = k ? ends[k - 1].i : 0, ret = l => l ? (l[e.i] / l[a] - 1) * 100 : null;
+    return { m: e.m, me: ret(L.me), spx: ret(L.spx), omx: ret(L.omx) };
+  }).filter(x => x.me != null && isFinite(x.me));
+
+  const cards = [];
+  const total = l => l ? (l[n - 1] / l[0] - 1) * 100 : null;
+  const myRet = total(L.me);
+
+  // 1. return vs the market
+  if (sp) {
+    const beat = months.filter(m => m.me > m.spx).length;
+    const worst = [...months].sort((a, b) => (a.me - a.spx) - (b.me - b.spx))[0];
+    const best = [...months].sort((a, b) => (b.me - b.spx) - (a.me - a.spx))[0];
+    cards.push([myRet < total(L.spx) ? 'high' : 'info', 'Your return vs the market', `${sgn2(myRet)}% vs ${sgn2(total(L.spx))}%`,
+      `Return of your portfolio with deposits removed vs S&P 500 (${sgn2(total(L.omx))}% for OMXS30), both in SEK, since your first deposit. You beat the S&P 500 in ${beat} of ${months.length} months. Worst month vs the market: ${worst.m} (${sgn2(worst.me - worst.spx)} points); best: ${best.m} (${sgn2(best.me - best.spx)} points).`,
+      'Tip: the gap is the cost of active picking and trading. A broad index fund would have matched the market.']);
+  }
+
+  // 2. risk: same ride, less return?
+  const vme = vol(L.me), vsp = L.spx && vol(L.spx);
+  if (vme != null) {
+    const dme = mdd(L.me), dsp = L.spx && mdd(L.spx);
+    cards.push([sp && vme >= vsp && myRet < total(L.spx) ? 'high' : 'info', 'Risk taken', `${vme.toFixed(0)}% / ${dme.toFixed(0)}%`,
+      `Yearly volatility / worst fall from a peak of your portfolio${sp ? `, against ${vsp.toFixed(0)}% / ${dsp.toFixed(0)}% for the S&P 500` : ''} (weekly returns, deposits removed).`
+      + (sp ? (vme >= vsp * 0.9 && myRet < total(L.spx) ? ' You took about the market\'s risk, or more, for a lower return.' : vme < vsp ? ' You took less risk than the market, which explains part of the lower return.' : '') : ''),
+      'Tip: judge return per unit of risk, not return alone.']);
+  }
+
+  // 3. cash drag
+  const share = ser.filter(r => r.value > 10000).map(r => r.cash / r.value);
+  const avgCash = share.reduce((s, x) => s + x, 0) / Math.max(share.length, 1) * 100;
+  let drag = null;
+  if (L.spx) { drag = 0; for (let i = 1; i < n; i++) if (L.spx[i] && L.spx[i - 1]) drag += Math.max(ser[i - 1].cash, 0) * (L.spx[i] / L.spx[i - 1] - 1); }
+  cards.push([avgCash > 8 ? 'med' : 'info', 'Cash sitting idle', `${avgCash.toFixed(1).replace('.', ',')}%`,
+    `Average share of the account held as cash (now ${fmt(ser[n - 1].cash)} kr).` + (drag != null ? ` Had that cash tracked the S&P 500 it would have ${drag >= 0 ? 'earned' : 'lost'} about ${fmt(Math.abs(drag))} kr.` : ''),
+    'Tip: deposit when you are ready to buy, not days before.']);
+
+  // 4. did the deposit timing help? portfolio move in the 5 days after a deposit vs any 5 days
+  const ev = D.events.filter(e => e.next_5d != null);
+  const evAmt = ev.reduce((s, e) => s + e.amount, 0);
+  const after = ev.reduce((s, e) => s + e.next_5d * e.amount, 0) / Math.max(evAmt, 1);
+  const win = []; for (let i = 0; i + 5 < n; i++) if (ser[i].value > 10000) win.push((L.me[i + 5] / L.me[i] - 1) * 100);
+  const any = win.reduce((s, x) => s + x, 0) / Math.max(win.length, 1);
+  cards.push([after < any ? 'med' : 'info', 'Deposit timing', `${sgn2(after)}% vs ${sgn2(any)}%`,
+    `Average move of your portfolio in the 5 days after a deposit (weighted by amount) vs after an average day. ${Math.abs(after - any) < 0.15 ? 'No timing edge either way: the day you deposit has not mattered.' : after > any ? 'Your deposits came shortly before good stretches.' : 'Your deposits came shortly before weaker stretches.'}`,
+    'Tip: regular fixed deposits remove the guesswork and the habit of timing.']);
+
+  // 5. where the gap to the index went
+  let gap = null;
+  if (sp) {
+    const idxValue = sp.dca[n - 1], fees = co.broker_total, divs = ov.dividends - ov.dividend_tax;
+    const diff = ov.total_value - idxValue, pick = diff + fees - divs;
+    gap = { diff, fees: -fees, divs, pick };
+    cards.push([diff < 0 ? 'high' : 'info', `Why you are ${diff < 0 ? 'behind' : 'ahead of'} the S&P 500`, `${sgn(diff)} kr`,
+      `If every deposit had bought the S&P 500 you would have ${fmt(idxValue)} kr, you have ${fmt(ov.total_value)} kr. Broker costs explain ${fmt(fees)} kr${diff < 0 ? ` (${(fees / -diff * 100).toFixed(0)}% of the gap)` : ''}, dividends gave back ${fmt(divs)} kr, the rest (${sgn(pick)} kr) is what your stock picking and timing added or lost.`,
+      'Tip: costs are the one part you control with certainty.']);
+  }
+
+  // 6. position sizing
+  const avgPos = ov.holdings_value / Math.max(ov.held_assets, 1);
+  cards.push([ov.held_assets > 40 ? 'med' : 'info', 'Money per position', `${fmt(avgPos)} kr`,
+    `${ov.held_assets} open positions, ${fmt(ov.holdings_value)} kr invested, so each holding is about ${pct(avgPos / ov.holdings_value * 100, 1)} of the portfolio. With this many holdings no single stock can move the result, and following them all takes time.`,
+    'Tip: fewer, larger positions cost fewer fees and are easier to follow.']);
+
+  const sev = { high: 'high', med: 'med', info: 'info' };
+  $('dep-insights').innerHTML = cards.map(([k, t, big, p, tip]) => `<div class="finding"><h4><span class="sev ${sev[k]}">${k === 'high' ? 'ACT' : k === 'med' ? 'WATCH' : 'NOTE'}</span>${esc(t)}</h4>
+    <div class="num">${esc(big)}</div><p>${p}</p><p class="tip">${esc(tip)}</p></div>`).join('')
+    + (sp ? '' : `<div class="finding"><h4><span class="sev info">WAIT</span>Market comparison</h4><p>${S.overlay && S.overlay.error ? esc('Index data unavailable: ' + S.overlay.error) : 'Loading index data…'}</p></div>`);
+
+  // ---- monthly return chart: you vs S&P 500
+  const mlabels = months.map(m => m.m);
+  const ds = [{ label: 'Your portfolio', data: months.map(m => +m.me.toFixed(2)), backgroundColor: DEP.port, borderRadius: 3, maxBarThickness: 22 }];
+  if (sp) ds.push({ label: 'S&P 500 (SEK)', data: months.map(m => +m.spx.toFixed(2)), backgroundColor: OV_COLOR.spx, borderRadius: 3, maxBarThickness: 22 });
+  mkChart('d-month', { type: 'bar', data: { labels: mlabels, datasets: ds },
+    options: { interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${sgn2(c.parsed.y)}%` } } },
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 9, maxRotation: 0 } }, y: { grid: { color: C.grid }, ticks: { callback: v => v + '%' } } } } });
+
+  // ---- gap chart: what moved you away from the S&P 500
+  const gc = $('d-gap-wrap');
+  if (gap) {
+    gc.hidden = false;
+    const rows = [['Broker costs', gap.fees], ['Dividends', gap.divs], ['Picking & timing', gap.pick], ['Total vs S&P 500', gap.diff]];
+    mkChart('d-gap', { type: 'bar', data: { labels: rows.map(r => r[0]), datasets: [{ data: rows.map(r => Math.round(r[1])),
+        backgroundColor: rows.map((r, i) => i === 3 ? C.s[0] : r[1] >= 0 ? C.green : C.red), borderRadius: 4, maxBarThickness: 40 }] },
+      options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${sgn(c.parsed.x)} kr` } } },
+        scales: { x: { grid: { color: C.grid }, ticks: { callback: v => fmt(v) } }, y: { grid: { display: false } } } } });
+  } else { gc.hidden = true; if (S.charts['d-gap']) { S.charts['d-gap'].destroy(); delete S.charts['d-gap']; } }
+}
+const sgn2 = v => (v > 0 ? '+' : '') + v.toFixed(2).replace('.', ',');
+
+function renderDeposits() {
+  const D = S.data.insights.deposit_behavior;
+  if (!D || !D.series.length) { $('dep-verdict').innerHTML = '<p class="hint">No deposits found in the ledger.</p>'; return; }
+  document.querySelectorAll('#dep-gran .chip').forEach(b => b.classList.toggle('active', b.dataset.g === S.gran));
+  document.querySelectorAll('#dep-metric .chip').forEach(b => b.classList.toggle('active', b.dataset.m === S.metric));
+  const Y = D.summary, g = Y.groups;
+  document.querySelectorAll('#dep-idx .chip').forEach(l => {
+    const c = l.querySelector('input'); c.checked = S.idx.has(c.value); l.classList.toggle('on', c.checked);
+  });
+  ensureOverlay();
+
+  // ---- verdict cards
+  const lean = k => g[k].amount_share / Math.max(g[k].baseline_share || 1, .1);
+  let pattern, tone = 'warn';
+  if (g.down.amount_share >= 15 && lean('down') >= 1.5) pattern = `Dip-buyer: ${pct(g.down.amount_share, 0)} of your money went in after a week when the portfolio fell 2% or more, although such weeks are only ${pct(g.down.baseline_share, 0)} of all days.`;
+  else if (g.up.amount_share >= 15 && lean('up') >= 1.5) pattern = `Momentum-chaser: ${pct(g.up.amount_share, 0)} of your money went in after a week when the portfolio rose 2% or more (such weeks are ${pct(g.up.baseline_share, 0)} of all days).`;
+  else { pattern = `No clear link to market moves: ${pct(g.flat.amount_share, 0)} of the money went in after a quiet week (a quiet week is ${pct(g.flat.baseline_share, 0)} of all days), ${pct(g.down.amount_share, 0)} after a drop and ${pct(g.up.amount_share, 0)} after a rise.`; tone = 'ok'; }
+  $('dep-verdict').innerHTML = [
+    [tone, 'Pattern vs. portfolio moves', `${g.down.deposits} / ${g.flat.deposits} / ${g.up.deposits}`, `Deposits after a drop / quiet week / rise (portfolio move in the 5 days before, deposits excluded). ${pattern}`],
+    [Y.cash_empty.share >= 30 ? 'warn' : 'ok', 'Top-up when cash ran out', pct(Y.cash_empty.share, 0),
+      `${Y.cash_empty.deposits} of ${Y.deposits} deposits arrived with under 1 000 kr cash in the account — you deposit because you want to buy, not on a calendar.`],
+    [Y.spent_fast.share >= 70 ? 'warn' : 'ok', 'Invested within 2 days', pct(Y.spent_fast.share, 0),
+      `${Y.spent_fast.deposits} deposits were at least 80% spent on buys within 2 days. Money rarely waits; it is deposited in order to be traded.`],
+    ['ok', 'Rhythm', `${fmt(Y.avg_deposit)} kr`, `Average deposit; a deposit every ${Y.median_gap_days} days (median). ${Y.deposits} deposits, ${fmt(Y.total)} kr in total.`],
+  ].map(([k, t, b, p]) => `<div class="vcard ${k}"><div class="t">${t}</div><div class="big">${b}</div><p>${p}</p></div>`).join('');
+
+  // ---- stacked charts
+  const B = bucketSeries(D.series, S.gran);
+  const labels = B.map(b => b.key);
+  const perf = S.metric === 'perf';
+  const unit = { day: 'day', week: 'week (Mon)', month: 'month' }[S.gran];
+  $('d-port-title').textContent = perf ? 'Portfolio return, deposits excluded (% since first deposit)' : 'Portfolio value (kr) vs. money put in';
+  $('dep-hint').textContent = `${S.idx.size ? (perf ? 'Index lines show the price return of each index since the first deposit, in SEK. ' : 'Index lines show what your deposits would be worth had each one bought the index that day. ') : ''}One column per ${unit}. The portfolio and positions lines show the level at the end of each ${unit}. Hover any chart: the other two follow.`;
+  $('dep-legend').innerHTML = `<span class="swatch" style="background:${DEP.dep}"></span>Deposits <span class="swatch" style="background:${DEP.port}"></span>${perf ? 'Return excl. deposits' : 'Estimated portfolio value'} ${perf ? '' : `<span class="swatch" style="background:${DEP.net}"></span>Net deposited so far`} <span class="swatch" style="background:${DEP.held}"></span>Positions held. Value is estimated from your own trade prices (see below), not from a price feed.`;
+  const xs = { grid: { display: false }, offset: true, ticks: { maxTicksLimit: 8, maxRotation: 0 } };
+  const ys = { afterFit: sc => { sc.width = 64; }, grid: { color: C.grid } };
+  const noX = { ...xs, ticks: { ...xs.ticks, display: false } };
+  const base = { interaction: { mode: 'index', intersect: false }, layout: { padding: { right: 6 } } };
+  mkChart('d-dep', { type: 'bar', plugins: [crossPlugin],
+    data: { labels, datasets: [{ label: 'Deposited', data: B.map(b => b.deposit), backgroundColor: DEP.dep, borderRadius: 3, maxBarThickness: 28 }] },
+    options: { ...base, plugins: { legend: { display: false }, tooltip: { callbacks: {
+      title: it => (S.gran === 'week' ? 'Week of ' : '') + it[0].label, label: c => ` Deposited: ${fmt(c.parsed.y)} kr` } } },
+      scales: { x: noX, y: { ...ys, beginAtZero: true, ticks: { callback: v => fmt(v), maxTicksLimit: 5 } } } } });
+  const portSets = perf
+    ? [{ label: 'Return excl. deposits', data: B.map(b => +(b.index - 100).toFixed(2)), borderColor: DEP.port, backgroundColor: DEP.port, borderWidth: 2, pointRadius: 0, tension: .15 }]
+    : [{ label: 'Portfolio value', data: B.map(b => b.value), borderColor: DEP.port, backgroundColor: DEP.port, borderWidth: 2, pointRadius: 0, tension: .15 },
+       { label: 'Net deposited', data: B.map(b => b.net), borderColor: DEP.net, backgroundColor: DEP.net, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, stepped: true }];
+  // index overlays: price return in % (same unit as the return line) or the "all deposits into the index" value (same unit as the value line)
+  const OV = S.overlay && S.overlay.ok ? S.overlay : null;
+  const ovNote = [];
+  if (S.idx.size && !OV) ovNote.push(S.overlay && S.overlay.error ? `Index data unavailable: ${S.overlay.error}` : 'Loading index data…');
+  if (OV && OV.stale) ovNote.push('Index data is the last saved copy (Yahoo unreachable).');
+  if (OV) {
+    const pos = Object.fromEntries(OV.dates.map((d, i) => [d, i]));
+    for (const ix of OV.indices.filter(i => S.idx.has(i.id))) {
+      const arr = perf ? ix.perf : ix.dca;
+      portSets.push({ label: perf ? `${ix.name} (price return)` : `All deposits into ${ix.name}`, data: B.map(b => arr[pos[b.last]] ?? null),
+        borderColor: OV_COLOR[ix.id], backgroundColor: OV_COLOR[ix.id], borderWidth: 1.5, pointRadius: 0, tension: .15, spanGaps: true });
+    }
+  }
+  const ovLegend = portSets.slice(perf ? 1 : 2).map(d => `<span class="swatch" style="background:${d.borderColor}"></span>${d.label}`).join(' ');
+  $('dep-legend').innerHTML += ' ' + ovLegend + (ovNote.length ? ` <b>${esc(ovNote.join(' '))}</b>` : '');
+  mkChart('d-port', { type: 'line', plugins: [crossPlugin], data: { labels, datasets: portSets },
+    options: { ...base, plugins: { legend: { display: false }, tooltip: { callbacks: {
+      label: c => perf ? ` ${c.dataset.label}: ${c.parsed.y > 0 ? '+' : ''}${c.parsed.y.toFixed(2).replace('.', ',')}%` : ` ${c.dataset.label}: ${fmt(c.parsed.y)} kr`,
+      afterBody: it => perf ? [] : [` Gain vs. deposits: ${sgn(B[it[0].dataIndex].value - B[it[0].dataIndex].net)} kr`] } } },
+      scales: { x: noX, y: { ...ys, ticks: { callback: v => perf ? v + '%' : fmt(v), maxTicksLimit: 6 } } } } });
+  mkChart('d-held', { type: 'line', plugins: [crossPlugin],
+    data: { labels, datasets: [{ label: 'Positions held', data: B.map(b => b.held), borderColor: DEP.held, backgroundColor: DEP.held, borderWidth: 2, pointRadius: 0, stepped: true }] },
+    options: { ...base, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` Positions held: ${c.parsed.y}` } } },
+      scales: { x: xs, y: { ...ys, beginAtZero: true, ticks: { maxTicksLimit: 4 } } } } });
+  linkCharts(['d-dep', 'd-port', 'd-held']);
+
+  renderDepInsights(D, OV);
+
+  $('dep-method').innerHTML = [
+    `<b>Portfolio value</b> = cash + every open position × its SEK price. Prices come from your own trades (each asset is drawn in a straight line from trade to trade and, if still held, to today's price in the holdings export), so moves between your trades are missed. The last day shows ${fmt(D.est_end_value)} kr against ${fmt(D.true_end_value)} kr from the exports; the gap is mostly trades not yet in the ledger.`,
+    '<b>Return excl. deposits</b> chains the daily change of the portfolio after removing that day\'s deposits and withdrawals (time-weighted), so adding money never looks like a gain. Deposits count on their booking date.',
+        'Index overlay (tick the boxes): Yahoo daily closes for ^OMX, ^GSPC and NQ=F, US indexes converted to SEK with USD/SEK, price indices only (no dividends, no fees). Return view = index price return since the first deposit; value view = every deposit/withdrawal invested in the index on its day.',
+    'Not investment advice — this describes your past activity only.',
+  ].map(x => `<li>${x}</li>`).join('');
+}
+
 // ───────── benchmark score + good practice ─────────
 const tone = sc => sc == null ? '' : sc >= 70 ? 'good' : sc >= 40 ? 'mid' : 'bad';
 
@@ -536,7 +783,7 @@ async function loadBenchmark() {
     const labels = ['Net deposited', ...b.indices.map(i => 'If in ' + i.name), 'Your account'];
     const vals = [o.net_deposits, ...b.indices.map(i => i.value), o.total_value];
     mkChart('h-bench', { type: 'bar', data: { labels, datasets: [{ data: vals,
-        backgroundColor: [C.other, ...b.indices.map((_, k) => C.s[k === 0 ? 0 : 2]), C.s[1]], borderRadius: 4, maxBarThickness: 46 }] },
+        backgroundColor: [C.other, ...b.indices.map(i => OV_COLOR[i.id] || C.s[2]), C.s[0]], borderRadius: 4, maxBarThickness: 46 }] },
       options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed.y)} kr` } } },
         scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: C.grid }, ticks: { callback: v => fmt(v) } } } } });
     note.innerHTML = b.indices.map(i => `${esc(i.name)}: ${sgn(i.pnl)} kr (${pct(i.pct)}) — your account is <b class="${cls(i.account_minus_index)}">${sgn(i.account_minus_index)} kr</b> ${i.account_minus_index < 0 ? 'behind' : 'ahead'}.`).join('<br>') +
@@ -568,7 +815,13 @@ function bind() {
   $('csv-btn').addEventListener('click', exportCsv);
   $('reload-btn').addEventListener('click', () => load(true));
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
-  window.addEventListener('hashchange', () => setTab(location.hash === '#habits' ? 'habits' : 'assets'));
+  window.addEventListener('hashchange', () => setTab(tabFromHash()));
+  $('dep-gran').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.gran = b.dataset.g; renderDeposits(); } });
+  $('dep-idx').addEventListener('change', e => {
+    e.target.checked ? S.idx.add(e.target.value) : S.idx.delete(e.target.value);
+    renderDeposits();
+  });
+  $('dep-metric').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.metric = b.dataset.m; renderDeposits(); } });
 }
 
 function setTab(tab) {
@@ -576,11 +829,14 @@ function setTab(tab) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $('tab-assets').hidden = tab !== 'assets';
   $('tab-habits').hidden = tab !== 'habits';
-  history.replaceState(null, '', tab === 'habits' ? '#habits' : '#assets');
-  if (S.data) (tab === 'assets' ? renderAssets : renderHabits)();
+  $('tab-deposits').hidden = tab !== 'deposits';
+  history.replaceState(null, '', '#' + tab);
+  if (S.data) renderTab();
 }
+function tabFromHash() { const h = location.hash.slice(1); return ['habits', 'deposits'].includes(h) ? h : 'assets'; }
+function renderTab() { ({ assets: renderAssets, habits: renderHabits, deposits: renderDeposits })[S.tab](); }
 
 bind();
-setTab(location.hash === '#habits' ? 'habits' : 'assets');
+setTab(tabFromHash());
 load(true);
 setInterval(() => load(false), POLL_MS);

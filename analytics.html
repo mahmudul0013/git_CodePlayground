@@ -39,6 +39,7 @@
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="assets" role="tab">Assets</button>
       <button class="tab" data-tab="habits" role="tab">Trading habits &amp; costs</button>
+      <button class="tab" data-tab="deposits" role="tab">Deposit behaviour</button>
     </div>
 
     <!-- ============== ASSETS ============== -->
@@ -56,9 +57,8 @@
 
       <section id="asset-kpis" class="kpi-row small"></section>
 
-      <section class="grid g4">
+      <section class="grid g3">
         <div class="panel"><h3 id="t-type">By type</h3><div class="cv"><canvas id="c-type"></canvas></div></div>
-        <div class="panel"><h3 id="t-ccy">By currency</h3><div class="cv"><canvas id="c-ccy"></canvas></div></div>
         <div class="panel"><h3 id="t-dom">By country</h3><div class="cv"><canvas id="c-dom"></canvas></div></div>
         <div class="panel"><h3 id="t-top">Top assets</h3><div class="cv"><canvas id="c-top"></canvas></div></div>
       </section>
@@ -70,6 +70,37 @@
         </div>
         <div class="table-wrap"><table id="asset-table"></table></div>
       </section>
+    </div>
+
+    <!-- ============== DEPOSITS ============== -->
+    <div id="tab-deposits" hidden>
+      <section id="dep-verdict" class="verdict"></section>
+      <div class="dep-controls">
+        <div><span class="lbl">Deposits per</span><div class="chips" id="dep-gran">
+          <button class="chip" data-g="day">Day</button><button class="chip" data-g="week">Week</button><button class="chip active" data-g="month">Month</button></div></div>
+        <div><span class="lbl">Portfolio line shows</span><div class="chips" id="dep-metric">
+          <button class="chip active" data-m="value">Value (kr)</button><button class="chip" data-m="perf">Return excl. deposits (%)</button></div></div>
+        <div><span class="lbl">Compare with (price index in SEK)</span><div class="chips" id="dep-idx">
+          <label class="chip"><input type="checkbox" value="omx"> OMXS30</label>
+          <label class="chip"><input type="checkbox" value="spx"> S&amp;P 500</label>
+          <label class="chip"><input type="checkbox" value="nq"> Nasdaq 100 futures (NQ=F)</label></div></div>
+      </div>
+      <p class="hint" id="dep-hint"></p>
+      <section class="panel dep-stack">
+        <h3>Deposits (kr)</h3><div class="cv dep-a"><canvas id="d-dep"></canvas></div>
+        <h3 id="d-port-title">Portfolio value (kr)</h3><div class="cv dep-b"><canvas id="d-port"></canvas></div>
+        <h3>Positions held</h3><div class="cv dep-c"><canvas id="d-held"></canvas></div>
+        <p class="hint" id="dep-legend"></p>
+      </section>
+      <h2 class="sec">Insights from your portfolio</h2>
+      <p class="hint">Calculated from your own ledger and the S&amp;P 500 in SEK. General observations from past activity, not investment advice.</p>
+      <section id="dep-insights" class="findings"></section>
+      <section class="grid g2">
+        <div class="panel"><h3>Monthly return: you vs the S&amp;P 500 (%, deposits removed)</h3><div class="cv"><canvas id="d-month"></canvas></div></div>
+        <div class="panel" id="d-gap-wrap"><h3>What moved you away from the S&amp;P 500 (kr)</h3><div class="cv"><canvas id="d-gap"></canvas></div>
+          <p class="hint">Negative = cost you money vs. putting every deposit into the index. Picking &amp; timing is what remains after costs and dividends.</p></div>
+      </section>
+      <section class="panel method"><h3>How to read this</h3><ul id="dep-method"></ul></section>
     </div>
 
     <!-- ============== HABITS ============== -->

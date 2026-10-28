@@ -1,0 +1,758 @@
+{
+ "CA5503711080": {
+  "category": null,
+  "checked": 1793143329.184233,
+  "industry": "Gold",
+  "name": "Lundin Gold",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "LUG.ST"
+ },
+ "CA5503721063": {
+  "category": null,
+  "checked": 1793143329.2633977,
+  "industry": "Copper",
+  "name": "Lundin Mining Corporation",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "LUMI.ST"
+ },
+ "CA5504281067": {
+  "category": null,
+  "checked": 1793143329.393945,
+  "industry": "Other Industrial Metals & Mining",
+  "name": "LunR Royalties Corp.",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "LUNR.TO"
+ },
+ "CH0012221716": {
+  "category": null,
+  "checked": 1793143328.5523643,
+  "industry": "Electrical Equipment & Parts",
+  "name": "ABB",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "ABB.ST"
+ },
+ "DE0006231004": {
+  "category": null,
+  "checked": 1793143329.4599886,
+  "industry": "Semiconductors",
+  "name": "Infineon Technologies AG",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "IFX.DE"
+ },
+ "DE0007236101": {
+  "category": null,
+  "checked": 1793143327.0426443,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Siemens AG",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "SIE.DE"
+ },
+ "DE000A0S9GB0": {
+  "category": null,
+  "checked": 1793143327.8232887,
+  "industry": null,
+  "name": "Xetra-Gold",
+  "quote_type": "EQUITY",
+  "sector": null,
+  "symbol": "4GLD.DE"
+ },
+ "DE000ENER6Y0": {
+  "category": null,
+  "checked": 1793143328.4088013,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Siemens Energy AG",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "ENR.DE"
+ },
+ "DK0062498333": {
+  "category": null,
+  "checked": 1793143327.1288815,
+  "industry": "Drug Manufacturers—General",
+  "name": "Novo Nordisk B",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "NOVO-B.CO"
+ },
+ "FI0009000681": {
+  "category": null,
+  "checked": 1793143329.5578506,
+  "industry": "Communication Equipment",
+  "name": "Nokia",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "NOKIA.HE"
+ },
+ "FR0000121972": {
+  "category": null,
+  "checked": 1793143327.1433337,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Schneider Electric SE",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "SU.PA"
+ },
+ "GB0009895292": {
+  "category": null,
+  "checked": 1793143328.021872,
+  "industry": "Drug Manufacturers—General",
+  "name": "AstraZeneca",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "AZN.ST"
+ },
+ "IE000XZSV718": {
+  "category": null,
+  "checked": 1793143329.3464313,
+  "industry": null,
+  "name": "SPDR S&P 500 UCITS ETF (Acc)",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "SPY5.DE"
+ },
+ "IE00B57X3V84": {
+  "category": null,
+  "checked": 1793143328.1449122,
+  "industry": null,
+  "name": "iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "IGSU.L"
+ },
+ "IE00B8GF1M35": {
+  "category": null,
+  "checked": 1793143329.16623,
+  "industry": null,
+  "name": "SS SPDR Dow Jones Global Real Estate UCITS ETF",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "GLRE.L"
+ },
+ "IE00BF2FN646": {
+  "category": null,
+  "checked": 1793143329.5598578,
+  "industry": null,
+  "name": "Invesco US Treasury Bond 7-10 Year UCITS ETF Dist",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "TREX.L"
+ },
+ "IE00BGV5VN51": {
+  "category": null,
+  "checked": 1793143326.4116066,
+  "industry": null,
+  "name": "Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "XAIX.DE"
+ },
+ "IE00BJZ2DD79": {
+  "category": null,
+  "checked": 1793143326.8716097,
+  "industry": null,
+  "name": "Xtrackers Russell 2000 ETF 1C",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "XRSU.L"
+ },
+ "IE00BK5BR626": {
+  "category": null,
+  "checked": 1793143327.6883142,
+  "industry": null,
+  "name": "Vanguard FTSE All-World High Dividend Yield UCITS ETF - (USD) Acc",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "VHYL.L"
+ },
+ "IE00BKM4GZ66": {
+  "category": null,
+  "checked": 1793143328.1974866,
+  "industry": null,
+  "name": "iShares Core MSCI EM IMI UCITS ETF USD (Acc)",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "EIMI.L"
+ },
+ "IE00BKVD2N49": {
+  "category": null,
+  "checked": 1793143326.9234128,
+  "industry": "Computer Hardware",
+  "name": "Seagate Technology",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "STX"
+ },
+ "IE00BMC38736": {
+  "category": "Technology",
+  "checked": 1793143326.1924715,
+  "industry": null,
+  "name": "VanEck Semiconductor ETF",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "SMH"
+ },
+ "IE00BMTD2V80": {
+  "category": null,
+  "checked": 1793143328.0715787,
+  "industry": null,
+  "name": "Nordnet USA Index",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P0001K6NL.ST"
+ },
+ "KYG3323L1005": {
+  "category": null,
+  "checked": 1793143327.988891,
+  "industry": "Electronic Components",
+  "name": "Fabrinet",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "FN"
+ },
+ "LU1829221024": {
+  "category": null,
+  "checked": 1793143327.4068599,
+  "industry": null,
+  "name": "Amundi Nasdaq-100 II UCITS ETF Acc",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "UST.PA"
+ },
+ "NL0000226223": {
+  "category": null,
+  "checked": 1793143329.3151777,
+  "industry": "Semiconductors",
+  "name": "STMicroelectronics NV",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "STMPA.PA"
+ },
+ "NL0009538784": {
+  "category": null,
+  "checked": 1793143328.6124468,
+  "industry": "Semiconductors",
+  "name": "NXP Semiconductors",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "NXPI"
+ },
+ "NL0009805522": {
+  "category": null,
+  "checked": 1793143327.3398263,
+  "industry": "Internet Content & Information",
+  "name": "Nebius Group",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "NBIS"
+ },
+ "NL0010273215": {
+  "category": null,
+  "checked": 1793143326.1924715,
+  "industry": "Semiconductor Equipment & Materials",
+  "name": "ASML HOLDING",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "ASML"
+ },
+ "NO0011202772": {
+  "category": null,
+  "checked": 1793143329.6464338,
+  "industry": "Oil & Gas E&P",
+  "name": "Vår Energi",
+  "quote_type": "EQUITY",
+  "sector": "Energy",
+  "symbol": "VAR.OL"
+ },
+ "NO0013536151": {
+  "category": null,
+  "checked": 1793143328.8964038,
+  "industry": "Aerospace & Defense",
+  "name": "Kongsberg Gruppen",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "KOG.OL"
+ },
+ "SE0000108656": {
+  "category": null,
+  "checked": 1793143329.668596,
+  "industry": "Communication Equipment",
+  "name": "Ericsson B",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "ERIC-B.ST"
+ },
+ "SE0000115446": {
+  "category": null,
+  "checked": 1793143329.0119839,
+  "industry": "Farm & Heavy Construction Machinery",
+  "name": "Volvo B",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "VOLV-B.ST"
+ },
+ "SE0000242455": {
+  "category": null,
+  "checked": 1793143328.941696,
+  "industry": "Banks—Regional",
+  "name": "Swedbank A",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "SWED-A.ST"
+ },
+ "SE0000526626": {
+  "category": null,
+  "checked": 1793143329.6864202,
+  "industry": "Software—Application",
+  "name": "Micro Systemation B",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "MSAB-B.ST"
+ },
+ "SE0000693293": {
+  "category": null,
+  "checked": 1793143328.7756715,
+  "industry": null,
+  "name": "XACT OMXS30 ESG ETF",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "XACT-OMXS30.ST"
+ },
+ "SE0000695876": {
+  "category": null,
+  "checked": 1793143326.9888735,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Alfa Laval",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "ALFA.ST"
+ },
+ "SE0000900169": {
+  "category": null,
+  "checked": 1793143328.5217447,
+  "industry": null,
+  "name": "AstraZeneca Allemansfond",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P000083RV.ST"
+ },
+ "SE0002756973": {
+  "category": null,
+  "checked": 1793143327.786755,
+  "industry": null,
+  "name": "Nordnet Sverige Index",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P0000J24W.ST"
+ },
+ "SE0005993102": {
+  "category": null,
+  "checked": 1793143327.2363029,
+  "industry": null,
+  "name": "Nordnet Suomi Indeksi",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P000134K9.F"
+ },
+ "SE0005993110": {
+  "category": null,
+  "checked": 1793143327.9699028,
+  "industry": null,
+  "name": "Nordnet Norge Indeks",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P000134K7.IR"
+ },
+ "SE0009778954": {
+  "category": null,
+  "checked": 1793143328.5003815,
+  "industry": null,
+  "name": "XACT Nordic High Dividend Low Volatility (UCITS ETF) (B1 SEK)",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "XACTHDIV.ST"
+ },
+ "SE0015811955": {
+  "category": null,
+  "checked": 1793143328.8559937,
+  "industry": "Asset Management",
+  "name": "Investor A",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "INVE-A.ST"
+ },
+ "SE0019175563": {
+  "category": null,
+  "checked": 1793143327.3757691,
+  "industry": null,
+  "name": "AuAg Essential Metals A",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P0001Q7VH.ST"
+ },
+ "SE0021921269": {
+  "category": null,
+  "checked": 1793143329.4443634,
+  "industry": "Aerospace & Defense",
+  "name": "SAAB B",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "SAAB-B.ST"
+ },
+ "US00287Y1091": {
+  "category": null,
+  "checked": 1793143328.293622,
+  "industry": "Drug Manufacturers—General",
+  "name": "AbbVie",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "ABBV"
+ },
+ "US0079031078": {
+  "category": null,
+  "checked": 1793143326.3543997,
+  "industry": "Semiconductors",
+  "name": "Advanced Micro Devices",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "AMD"
+ },
+ "US02079K3059": {
+  "category": null,
+  "checked": 1793143326.9727786,
+  "industry": "Internet Content & Information",
+  "name": "Alphabet A",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "GOOGL"
+ },
+ "US02156V1098": {
+  "category": null,
+  "checked": 1793143329.3101301,
+  "industry": "Utilities—Independent Power Producers",
+  "name": "Oklo A",
+  "quote_type": "EQUITY",
+  "sector": "Utilities",
+  "symbol": "OKLO"
+ },
+ "US0231351067": {
+  "category": null,
+  "checked": 1793143328.6541517,
+  "industry": "Internet Retail",
+  "name": "Amazon.com",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "AMZN"
+ },
+ "US0311621009": {
+  "category": null,
+  "checked": 1793143327.5460057,
+  "industry": "Drug Manufacturers—General",
+  "name": "Amgen",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "AMGN"
+ },
+ "US0378331005": {
+  "category": null,
+  "checked": 1793143327.890504,
+  "industry": "Consumer Electronics",
+  "name": "Apple",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "AAPL"
+ },
+ "US0382221051": {
+  "category": null,
+  "checked": 1793143326.1944716,
+  "industry": "Semiconductor Equipment & Materials",
+  "name": "Applied Materials",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "AMAT"
+ },
+ "US0420682058": {
+  "category": null,
+  "checked": 1793143327.4724767,
+  "industry": "Semiconductors",
+  "name": "Arm Holdings ADR",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "ARM"
+ },
+ "US09290D1019": {
+  "category": null,
+  "checked": 1793143326.2455611,
+  "industry": "Asset Management",
+  "name": "BlackRock",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "BLK"
+ },
+ "US0937121079": {
+  "category": null,
+  "checked": 1793143327.6740448,
+  "industry": "Electrical Equipment & Parts",
+  "name": "Bloom Energy A",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "BE"
+ },
+ "US1912161007": {
+  "category": null,
+  "checked": 1793143328.4629285,
+  "industry": "Beverages—Non-Alcoholic",
+  "name": "Coca-Cola",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "KO"
+ },
+ "US19247G1076": {
+  "category": null,
+  "checked": 1793143327.452893,
+  "industry": "Scientific & Technical Instruments",
+  "name": "Coherent",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "COHR"
+ },
+ "US24703L2025": {
+  "category": null,
+  "checked": 1793143327.355963,
+  "industry": "Computer Hardware",
+  "name": "Dell Technologies C",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "DELL"
+ },
+ "US2473617023": {
+  "category": null,
+  "checked": 1793143329.1226594,
+  "industry": "Airlines",
+  "name": "Delta Air Lines",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "DAL"
+ },
+ "US36266G1076": {
+  "category": null,
+  "checked": 1793143329.4287274,
+  "industry": "Medical Devices",
+  "name": "GE Healthcare Technologies",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "GEHC"
+ },
+ "US36828A1016": {
+  "category": null,
+  "checked": 1793143326.412608,
+  "industry": "Specialty Industrial Machinery",
+  "name": "GE Vernova",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "GEV"
+ },
+ "US3696043013": {
+  "category": null,
+  "checked": 1793143328.2366238,
+  "industry": "Aerospace & Defense",
+  "name": "GE Aerospace",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "GE"
+ },
+ "US4581401001": {
+  "category": null,
+  "checked": 1793143328.437322,
+  "industry": "Semiconductors",
+  "name": "Intel",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "INTC"
+ },
+ "US4592001014": {
+  "category": null,
+  "checked": 1793143328.6861494,
+  "industry": "Information Technology Services",
+  "name": "IBM",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "IBM"
+ },
+ "US4781601046": {
+  "category": null,
+  "checked": 1793143328.4813797,
+  "industry": "Drug Manufacturers—General",
+  "name": "Johnson & Johnson",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "JNJ"
+ },
+ "US4824801009": {
+  "category": null,
+  "checked": 1793143328.2176247,
+  "industry": "Semiconductor Equipment & Materials",
+  "name": "KLA",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "KLAC"
+ },
+ "US5128073062": {
+  "category": null,
+  "checked": 1793143444.5271378,
+  "industry": "Semiconductor Equipment & Materials",
+  "name": "Lam Research",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "LRCX"
+ },
+ "US55024U1097": {
+  "category": null,
+  "checked": 1793143326.6307716,
+  "industry": "Communication Equipment",
+  "name": "Lumentum",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "LITE"
+ },
+ "US5738741041": {
+  "category": null,
+  "checked": 1793143327.3928602,
+  "industry": "Semiconductors",
+  "name": "Marvell Technology",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "MRVL"
+ },
+ "US5801351017": {
+  "category": null,
+  "checked": 1793143328.7488909,
+  "industry": "Restaurants",
+  "name": "McDonald's",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "MCD"
+ },
+ "US5949181045": {
+  "category": null,
+  "checked": 1793143327.2216835,
+  "industry": "Software—Infrastructure",
+  "name": "Microsoft",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "MSFT"
+ },
+ "US5951121038": {
+  "category": null,
+  "checked": 1793143326.1924715,
+  "industry": "Semiconductors",
+  "name": "Micron Technology",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "MU"
+ },
+ "US60770K1079": {
+  "category": null,
+  "checked": 1793143327.8017588,
+  "industry": "Biotechnology",
+  "name": "Moderna",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "MRNA"
+ },
+ "US60937P1066": {
+  "category": null,
+  "checked": 1793143327.8684943,
+  "industry": "Software—Infrastructure",
+  "name": "MongoDB A",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "MDB"
+ },
+ "US67066G1040": {
+  "category": null,
+  "checked": 1793143326.596066,
+  "industry": "Semiconductors",
+  "name": "NVIDIA",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "NVDA"
+ },
+ "US7427181091": {
+  "category": null,
+  "checked": 1793143329.1485357,
+  "industry": "Household & Personal Products",
+  "name": "Procter & Gamble",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "PG"
+ },
+ "US7475251036": {
+  "category": null,
+  "checked": 1793143329.09055,
+  "industry": "Semiconductors",
+  "name": "QUALCOMM",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "QCOM"
+ },
+ "US7707001027": {
+  "category": null,
+  "checked": 1793143444.5281363,
+  "industry": "Capital Markets",
+  "name": "Robinhood Markets A",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "HOOD"
+ },
+ "US78392B2060": {
+  "category": null,
+  "checked": 1793143326.901112,
+  "industry": "Semiconductors",
+  "name": "SK hynix ADR",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "SKHY"
+ },
+ "US84615Q1031": {
+  "category": null,
+  "checked": 1793143327.6572626,
+  "industry": "Aerospace & Defense",
+  "name": "SpaceX",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "SPCX"
+ },
+ "US8835561023": {
+  "category": null,
+  "checked": 1793143326.9175057,
+  "industry": "Diagnostics & Research",
+  "name": "Thermo Fisher Scientific",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "TMO"
+ },
+ "US9311421039": {
+  "category": null,
+  "checked": 1793143329.2450268,
+  "industry": "Discount Stores",
+  "name": "Walmart",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "WMT"
+ },
+ "US9581021055": {
+  "category": null,
+  "checked": 1793143326.888214,
+  "industry": "Computer Hardware",
+  "name": "Western Digital",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "WDC"
+ }
+}
