@@ -73,7 +73,7 @@ const TICKER_MAP = {
   'Intel':                      'INTC',
   'Investor A':                 'INVE-A.ST',
   'iShares Core MSCI EM IMI UCITS ETF USD (Acc)':                          'EIMI.L',
-  'iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)':         'SUSL.L',
+  'iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)':         'IUSL.DE',
   'JP Morgan Chase':            'JPM',
   'KLA':                        'KLAC',
   'Kongsberg Gruppen':          'KOG.OL',
@@ -108,9 +108,9 @@ const TICKER_MAP = {
   'SKF B':                      'SKF-B.ST',
   'SoFi Technologies':          'SOFI',
   'SPDR S&P 500 ETF USD Acc':   'SPY5.DE',
-  'SPDR S&P 500 UCITS ETF (Acc)': 'SPY5.DE',
+  'SPDR S&P 500 UCITS ETF (Acc)': 'SPYL.DE',
   'Spotify':                    'SPOT',
-  'STMicroelectronics NV':      'STM.PA',
+  'STMicroelectronics NV':      'STMPA.PA',
   'SS SPDR Dow Jones Global Real Estate UCITS ETF': 'GLRE.L',
   'Swedbank A':                 'SWED-A.ST',
   'TE Connectivity':            'TEL',
@@ -126,10 +126,10 @@ const TICKER_MAP = {
   'Wärtsilä B':                 'WRT1V.HE',
   'Western Digital':            'WDC',
   'Workday A':                  'WDAY',
-  'XACT OMXS30 ESG ETF':        'XACT30.ST',
+  'XACT OMXS30 ESG ETF':        'XACT-OMXS30.ST',
   'Xetra-Gold':                 '4GLD.DE',
   'Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C': 'XAIX.DE',
-  'Xtrackers Russell 2000 ETF 1C': 'XRU2.DE',
+  'Xtrackers Russell 2000 ETF 1C': 'XRS2.DE',
 };
 
 // ────────────────────────────────────────────────────────────

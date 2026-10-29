@@ -129,13 +129,24 @@ _live = {'at': 0.0, 'key': None, 'data': None}
 
 
 def _live_quote(symbol: str) -> dict | None:
-    """Last price, previous close and currency of one symbol (v8 chart, no login needed)."""
+    """Last price, previous session close and currency of one symbol (v8 chart, no login needed).
+    The previous close is taken from the daily bars. meta.chartPreviousClose is NOT used:
+    with range=5d it is the close from before the whole window, which turned a -5% day into +9%."""
     try:
-        meta = json.loads(_fetch_yahoo(f'v8/finance/chart/{urllib.parse.quote(symbol)}?interval=1d&range=5d&includePrePost=false'))['chart']['result'][0]['meta']
+        res = json.loads(_fetch_yahoo(f'v8/finance/chart/{urllib.parse.quote(symbol)}?interval=1d&range=5d&includePrePost=false'))['chart']['result'][0]
+        meta = res['meta']
         price = meta.get('regularMarketPrice')
-        prev = meta.get('chartPreviousClose') or meta.get('previousClose')
         if not price:
             return None
+        # previous close = last valid daily close dated BEFORE the current session (exchange-local dates). The latest
+        # bar can be today's still-open session with a null close (European listings), so it must not be counted.
+        off = meta.get('gmtoffset') or 0
+        day = lambda t: (t + off) // 86400
+        sess = day(meta.get('regularMarketTime') or res['timestamp'][-1])
+        prev = None
+        for t, c in zip(res.get('timestamp') or [], res['indicators']['quote'][0]['close']):
+            if c is not None and day(t) < sess:
+                prev = c
         return {'symbol': meta.get('symbol', symbol), 'price': price, 'prev': prev, 'currency': meta.get('currency'),
                 'change_pct': round((price / prev - 1) * 100, 4) if prev else None,
                 'time': meta.get('regularMarketTime'), 'state': meta.get('marketState')}

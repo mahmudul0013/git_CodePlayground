@@ -96,20 +96,20 @@
     "symbol": "AZN.ST"
   },
   "IE000XZSV718": {
-    "checked": 1793143329.3464313,
+    "checked": 1793315060.532587,
     "currency": null,
     "exchange": null,
     "name": "SPDR S&P 500 UCITS ETF (Acc)",
-    "source": "ticker_map",
-    "symbol": "SPY5.DE"
+    "source": "manual",
+    "symbol": "SPYL.DE"
   },
   "IE00B57X3V84": {
-    "checked": 1793143328.1449122,
+    "checked": 1793314953.233041,
     "currency": null,
     "exchange": null,
     "name": "iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)",
-    "source": "ticker_map",
-    "symbol": "SUSL.L"
+    "source": "manual",
+    "symbol": "IUSL.DE"
   },
   "IE00B8GF1M35": {
     "checked": 1793143329.16623,
@@ -144,12 +144,12 @@
     "symbol": "XAIX.DE"
   },
   "IE00BJZ2DD79": {
-    "checked": 1793143326.8716097,
+    "checked": 1793314953.233041,
     "currency": null,
     "exchange": null,
     "name": "Xtrackers Russell 2000 ETF 1C",
-    "source": "ticker_map",
-    "symbol": "XRU2.DE"
+    "source": "manual",
+    "symbol": "XRS2.DE"
   },
   "IE00BK5BR626": {
     "checked": 1792710366.7887113,
@@ -208,12 +208,12 @@
     "symbol": "UST.PA"
   },
   "NL0000226223": {
-    "checked": 1793143329.3151777,
+    "checked": 1793314953.233041,
     "currency": null,
     "exchange": null,
     "name": "STMicroelectronics NV",
-    "source": "ticker_map",
-    "symbol": "STM.PA"
+    "source": "manual",
+    "symbol": "STMPA.PA"
   },
   "NL0009538784": {
     "checked": 1793143328.6124468,
@@ -288,12 +288,12 @@
     "symbol": "MSAB-B.ST"
   },
   "SE0000693293": {
-    "checked": 1793143328.7756715,
+    "checked": 1793314953.233041,
     "currency": null,
     "exchange": null,
     "name": "XACT OMXS30 ESG ETF",
-    "source": "ticker_map",
-    "symbol": "XACT30.ST"
+    "source": "manual",
+    "symbol": "XACT-OMXS30.ST"
   },
   "SE0000695876": {
     "checked": 1792710220.7066844,

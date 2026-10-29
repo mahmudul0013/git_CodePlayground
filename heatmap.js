@@ -208,9 +208,14 @@ function liveAssets() {
   return S.data.assets.map(a => {
     const l = q[a.isin];
     if (!l || !a.value) return a;
-    const out = { ...a, live: true, day_pct: l.change_pct ?? a.day_pct, live_price: l.price, live_ccy: l.currency };
+    // Yahoo fund pages (0P...) carry a NAV from another day than Nordnet's: keep the export for those
+    if (/^0P/.test(l.symbol || '')) return a;
+    const sameCcy = String(l.currency || '').toUpperCase() === String(a.ccy || '').toUpperCase();
     const ratio = a.price ? l.price / a.price : null;
-    if (ratio && String(l.currency || '').toUpperCase() === String(a.ccy || '').toUpperCase() && ratio > .5 && ratio < 2) {
+    // same currency but a very different price = Yahoo symbol is another instrument: do not trust it at all
+    if (sameCcy && !(ratio > .5 && ratio < 2)) return a;
+    const out = { ...a, live: true, day_pct: l.change_pct ?? a.day_pct, live_price: l.price, live_ccy: l.currency };
+    if (sameCcy) {                                   // rescale value and unrealised P&L by live / export price
       const cost = a.value - a.unrealized;
       out.value = a.value * ratio;
       out.unrealized = out.value - cost;
@@ -223,11 +228,11 @@ function liveAssets() {
 function status() {
   const el = $('heat-status');
   if (!S.data) return;
-  const n = S.data.assets.filter(a => a.value > 0).length, k = S.live ? Object.keys(S.live.quotes).length : 0;
+  const la = liveAssets(), n = la.filter(a => a.value > 0).length, k = la.filter(a => a.live).length;
   const t = S.live && S.live.asof ? S.live.asof.slice(11, 19) : null;
   const f = S.data.sources && S.data.sources.holdings;
   el.innerHTML = `<span class="dot ${k ? 'live' : ''}"></span>${k ? `Live Yahoo prices for ${k} of ${n} holdings · updated ${t}` : 'Live prices unavailable — showing the holdings export'}`
-    + ` · holdings file: ${esc(f ? f.file : 'none')}. Funds without a Yahoo listing keep the export values.`;
+    + ` · holdings file: ${esc(f ? f.file : 'none')}. Nordnet funds and holdings Yahoo can't match keep the export values.`;
 }
 
 // ───────── load + public API ─────────
