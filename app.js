@@ -236,6 +236,8 @@ const S = {
   fundsSearch:   '',
   stockSort:     { col: 'value', dir: 'desc' },
   fundsSort:     { col: 'value', dir: 'desc' },
+  autoTicker:    {},   // holding name → Yahoo symbol resolved by the server (ISIN lookup) for names missing in TICKER_MAP
+  liveLoaded:    false, // true after the first live-price fetch (Today's P&L is not shown before that)
   fx:            { USD: 9.35, EUR: 10.81, NOK: 0.965, DKK: 1.446, CAD: 6.77 },
   lastBuy:       {},   // name → { qty, price, date } — most-recent purchase detected
   _snapshot:     {},   // previous-load snapshot used for buy detection
@@ -440,7 +442,7 @@ async function reloadPortfolio() {
 function resolveTickerFor(item) {
   const name  = item.name.trim();
   const entry = TICKER_MAP[name];
-  if (!entry) return null;
+  if (!entry) return S.autoTicker[name] || null;
   if (typeof entry === 'object') {
     return entry[item.currency] || entry.default || Object.values(entry)[0];
   }
@@ -516,8 +518,25 @@ async function fetchSparkline(symbol) {
 // ────────────────────────────────────────────────────────────
 // LIVE PRICE UPDATE CYCLE
 // ────────────────────────────────────────────────────────────
+// Names missing in TICKER_MAP get their Yahoo symbol from the server (same ISIN lookup the heat map uses).
+// Only same-currency listings are accepted so the price shown matches the holding's currency; Nordnet funds (0P...) are skipped.
+let _autoTickerAt = 0;
+async function loadAutoTickers() {
+  if (Date.now() - _autoTickerAt < 10 * 60_000) return;
+  try {
+    const [a, l] = await Promise.all([fetch('/api/assets', { cache: 'no-store' }).then(r => r.json()),
+                                      fetch('/api/live', { cache: 'no-store' }).then(r => r.json())]);
+    for (const x of a.assets || []) {
+      const q = l.quotes && l.quotes[x.isin];
+      if (q && !/^0P/.test(q.symbol) && String(q.currency || '').toUpperCase() === String(x.ccy || '').toUpperCase()) S.autoTicker[x.name.trim()] = q.symbol;
+    }
+    _autoTickerAt = Date.now();
+  } catch (e) { console.warn('[autoTicker]', e.message); }
+}
+
 async function refreshPrices() {
   setStatus('loading', 'Fetching prices…');
+  await loadAutoTickers();
 
   // Assign tickers
   S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
@@ -557,6 +576,7 @@ async function refreshPrices() {
     }
   });
 
+  S.liveLoaded = true;
   renderAll();
   renderWatchlist();
   setStatus('live', 'Live · ' + new Date().toLocaleTimeString() + (S.holdingsFile ? ' · ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
@@ -762,8 +782,15 @@ function renderSummaryCards() {
     ? `≈ $${fmtNum(totalSEK / S.fx.USD)}`
     : `≈ ${fmtNum(totalSEK)} kr`);
 
-  setCard('cv-day',    displayAmt(dayPnL), pctClass(dayPnL));
-  setCard('cv-day-pct', fmtPct(dayPct),   pctClass(dayPct), true);
+  // Before the first live fetch only the export's "Idag %" exists, and Nordnet writes ~0 there on weekends and
+  // outside trading hours - showing that would look like a flat day. Wait for live prices instead.
+  if (S.liveLoaded) {
+    setCard('cv-day',    displayAmt(dayPnL), pctClass(dayPnL));
+    setCard('cv-day-pct', fmtPct(dayPct),   pctClass(dayPct), true);
+  } else {
+    setCard('cv-day', '—', '');
+    setCard('cv-day-pct', 'loading live prices…', '', true);
+  }
 
   setCard('cv-return',     displayAmt(returnSEK), pctClass(returnSEK));
   setCard('cv-return-pct', fmtPct(retPct),        pctClass(retPct), true);
@@ -1416,7 +1443,8 @@ function bindEvents() {
   const setActive = view => document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === view));
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      if (tab.dataset.tab === 'heatmap') heat?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // scroll only the content area (never scrollIntoView: it can also move the header/ticker ancestors)
+      if (tab.dataset.tab === 'heatmap' && heat && body) body.scrollTo({ top: heat.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 14, behavior: 'smooth' });
       else body?.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });

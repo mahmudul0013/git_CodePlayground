@@ -1,4 +1,12 @@
 {
+  "CA15101Q2071": {
+    "checked": 1793543593.4637918,
+    "currency": "CAD",
+    "exchange": "TOR",
+    "name": "Celestica",
+    "source": "yahoo_search",
+    "symbol": "CLS.TO"
+  },
   "CA5503711080": {
     "checked": 1793143329.184233,
     "currency": null,
@@ -702,6 +710,14 @@
     "name": "SpaceX",
     "source": "yahoo_search",
     "symbol": "SPCX"
+  },
+  "US8716071076": {
+    "checked": 1793543565.1101975,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Synopsys",
+    "source": "yahoo_search",
+    "symbol": "SNPS"
   },
   "US8835561023": {
     "checked": 1793143326.9175057,

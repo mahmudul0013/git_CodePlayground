@@ -41,11 +41,11 @@ cd "c:\Users\Administrator\Documents\Agentic World\testTrading"
 Nordnet now exports **all holdings (stocks, ETFs and funds) in one file**, named like `Innehav Tabell Export, accno 66262387, YYYY-MM-DD.csv`. Both the Portfolio page and the Analytics page use only the **newest** such file in the project folder (the date in the file name wins, file modified time breaks ties). Older exports are ignored for all calculations; the second-newest one is only used as the "previous state" for last-buy tracking.
 
 1. Log in at nordnet.se and export your holdings table (**Innehav → Exportera**).
-2. Put the file in the project folder (or let the watcher copy it from Downloads):
+2. Drop the file (and the ledger `transactions-and-notes-export.csv`) into the project folder by hand, then refresh the last-buy baseline (`start-dashboard.bat` does this at every start):
 
 ```powershell
 python nordnet_sync.py            # rebuild portfolio_baseline.json from the 2 newest exports in the folder
-python nordnet_sync.py --watch    # keep running, auto-copy new exports from Downloads
+python nordnet_sync.py --watch    # optional, not used by start-dashboard.bat: auto-copy new exports from Downloads
 python nordnet_sync.py --api      # fetch live from the Nordnet API (needs .env, see below)
 ```
 
@@ -64,7 +64,7 @@ Use `server.py`, not `python -m http.server`. Only `server.py` includes the `/ya
 
 ### 3b. Run it without VS Code (Windows)
 
-Double-click **`start-dashboard.bat`**. It starts `server.py` in its own window (minimised is fine) and restarts it automatically if it ever stops. Close that window, or double-click **`stop-dashboard.bat`**, to stop it (it only touches this project's processes).
+Double-click **`start-dashboard.bat`**. It first runs `nordnet_sync.py` once (rebuilds `portfolio_baseline.json`, the previous-state snapshot behind the gold last-buy tags, from the two newest `Innehav…` exports in the folder), then starts `server.py` in its own window (minimised is fine) and restarts it automatically if it ever stops. You drop all Nordnet CSVs (holdings exports and the ledger) into the project folder by hand; nothing is copied from Downloads. The dashboard, Analytics and heat map pick up a new CSV by themselves; to refresh the last-buy baseline after dropping a new holdings export, run `python nordnet_sync.py` or restart `start-dashboard.bat`. Close that window, or double-click **`stop-dashboard.bat`**, to stop the server (it only touches this project's processes).
 
 Optional: **`install-autostart.bat`** makes the server start by itself, minimised, at every Windows login (puts a launcher in your Startup folder, no admin rights needed); **`uninstall-autostart.bat`** removes it. Stop any server you started from VS Code first, otherwise port 8000 is taken.
 
@@ -86,9 +86,9 @@ This kills every Python process, so close other Python programs first.
 
 ## Typical daily workflow
 
-1. Export new CSVs from Nordnet.
-2. Run `python nordnet_sync.py` (or leave `--watch` running in a second terminal).
-3. Run `python server.py` and open http://localhost:8000.
+1. Export new CSVs from Nordnet and drop them into the project folder.
+2. Run `python nordnet_sync.py` once to refresh the last-buy baseline (or just restart `start-dashboard.bat`, which runs it before starting the server).
+3. Open http://localhost:8000. The server only needs to be running; the pages pick up the new CSVs by themselves.
 
 ## Nordnet API mode (optional)
 
@@ -115,7 +115,7 @@ The session token expires, so repeat these steps when it does.
 | Last-buy tags missing or stale | Run `python nordnet_sync.py` after a new export (needs at least two `Innehav` files in the folder) so `portfolio_baseline.json` is refreshed. |
 | Heat map "Today" differs from Yahoo or Nordnet | Live day change comes from Yahoo daily bars (last close before the current session). Nordnet funds (`0P...` symbols) keep the export values. A same-currency quote priced 2x off the export is ignored as a wrong symbol. |
 | A holding is "Unclassified" or shows no live price | Add or fix its Yahoo symbol in `symbol_cache.json` (set `"source": "manual"`) and in `TICKER_MAP` in `app.js`. ETFs and funds have no Yahoo sector, so they are grouped as ETFs / Funds. |
-| Dashboard shows old holdings | Drop the new `Innehav ... Export` file in the folder (or run `nordnet_sync.py --watch`) and click **Refresh Portfolio**. Restart `server.py` once if you updated from an older version (it needs the `/api/holdings` route). |
+| Dashboard shows old holdings | Drop the new `Innehav ... Export` file in the folder and click **Refresh Portfolio**. Restart `server.py` once if you updated from an older version (it needs the `/api/holdings` route). |
 
 Yahoo symbol suffixes: `.ST` Sweden, `.OL` Norway, `.HE` Finland, `.CO` Denmark, `.L` London, `.DE` Germany, `.PA` Paris. US stocks use the plain ticker.
 
@@ -136,7 +136,7 @@ testTrading/
 ├── symbols.py / symbol_cache.json   ISIN -> Yahoo symbol (hand edits kept)
 ├── sectors.py / sector_cache.json   Sector / fund category per holding from Yahoo
 ├── nordnet_sync.py          Nordnet export sync (baseline, watch, API)
-├── start-dashboard.bat      Run the server without VS Code (auto-restart)
+├── start-dashboard.bat      Run nordnet_sync.py once, then the server without VS Code (auto-restart)
 ├── stop-dashboard.bat       Stop it
 ├── install-autostart.bat / uninstall-autostart.bat   Optional start at Windows login
 ├── transactions-and-notes-export.csv   Full ledger (newest used)

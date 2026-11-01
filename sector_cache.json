@@ -1,4 +1,13 @@
 {
+ "CA15101Q2071": {
+  "category": null,
+  "checked": 1793543593.4637918,
+  "industry": "Electronic Components",
+  "name": "Celestica",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "CLS.TO"
+ },
  "CA5503711080": {
   "category": null,
   "checked": 1793143329.184233,
@@ -719,6 +728,15 @@
   "sector": "Technology",
   "symbol": "SKHY"
  },
+ "US80004C2008": {
+  "category": null,
+  "checked": 1793543565.1101975,
+  "industry": "Computer Hardware",
+  "name": "Sandisk",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "SNDK"
+ },
  "US84615Q1031": {
   "category": null,
   "checked": 1793143327.6572626,
@@ -727,6 +745,15 @@
   "quote_type": "EQUITY",
   "sector": "Industrials",
   "symbol": "SPCX"
+ },
+ "US8716071076": {
+  "category": null,
+  "checked": 1793543565.1101975,
+  "industry": "Software—Infrastructure",
+  "name": "Synopsys",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "SNPS"
  },
  "US8835561023": {
   "category": null,

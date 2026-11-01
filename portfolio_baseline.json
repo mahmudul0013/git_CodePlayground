@@ -1,7 +1,7 @@
 {
   "AuAg Essential Metals A": {
-    "qty": 30.9601,
-    "gav": 155.036
+    "qty": 32.8065,
+    "gav": 155.4544
   },
   "Novo Nordisk B": {
     "qty": 15.0,
@@ -11,6 +11,10 @@
     "qty": 15.0,
     "gav": 174.4667
   },
+  "Alfa Laval": {
+    "qty": 12.0,
+    "gav": 550.2516
+  },
   "VanEck Semiconductor ETF": {
     "qty": 12.0,
     "gav": 91.4243
@@ -19,10 +23,6 @@
     "qty": 11.6146,
     "gav": 241.0647
   },
-  "Alfa Laval": {
-    "qty": 11.0,
-    "gav": 550.8017
-  },
   "Nordnet Norge Indeks": {
     "qty": 9.2115,
     "gav": 308.2223
@@ -30,10 +30,6 @@
   "iShares Core MSCI EM IMI UCITS ETF USD (Acc)": {
     "qty": 6.0,
     "gav": 42.8016
-  },
-  "Kongsberg Gruppen": {
-    "qty": 6.0,
-    "gav": 309.9023
   },
   "LunR Royalties Corp.": {
     "qty": 6.0,
@@ -47,6 +43,10 @@
     "qty": 5.0,
     "gav": 355.3571
   },
+  "Kongsberg Gruppen": {
+    "qty": 5.0,
+    "gav": 309.9023
+  },
   "Lundin Mining Corporation": {
     "qty": 5.0,
     "gav": 241.2564
@@ -54,10 +54,6 @@
   "Nokia": {
     "qty": 5.0,
     "gav": 99.1
-  },
-  "SK hynix ADR": {
-    "qty": 5.0,
-    "gav": 157.1738
   },
   "SPDR S&P 500 UCITS ETF (Acc)": {
     "qty": 5.0,
@@ -75,6 +71,10 @@
     "qty": 4.9967,
     "gav": 760.4199
   },
+  "Alphabet A": {
+    "qty": 4.0,
+    "gav": 311.6192
+  },
   "Amundi Nasdaq-100 II UCITS ETF Acc": {
     "qty": 4.0,
     "gav": 107.175
@@ -86,6 +86,14 @@
   "Oklo A": {
     "qty": 4.0,
     "gav": 32.445
+  },
+  "SK hynix ADR": {
+    "qty": 4.0,
+    "gav": 157.1738
+  },
+  "SpaceX": {
+    "qty": 4.0,
+    "gav": 146.7281
   },
   "SS SPDR Dow Jones Global Real Estate UCITS ETF": {
     "qty": 4.0,
@@ -99,6 +107,10 @@
     "qty": 4.0,
     "gav": 46.374
   },
+  "Xetra-Gold": {
+    "qty": 4.0,
+    "gav": 122.0014
+  },
   "Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C": {
     "qty": 4.0,
     "gav": 202.43
@@ -110,6 +122,10 @@
   "Applied Materials": {
     "qty": 3.0,
     "gav": 426.8324
+  },
+  "Coca-Cola": {
+    "qty": 3.0,
+    "gav": 90.2878
   },
   "Intel": {
     "qty": 3.0,
@@ -123,21 +139,13 @@
     "qty": 3.0,
     "gav": 190.8263
   },
-  "SpaceX": {
-    "qty": 3.0,
-    "gav": 147.0774
-  },
-  "Xetra-Gold": {
-    "qty": 3.0,
-    "gav": 123.9052
-  },
   "Advanced Micro Devices": {
     "qty": 2.0,
     "gav": 591.58
   },
-  "Alphabet A": {
+  "Amazon.com": {
     "qty": 2.0,
-    "gav": 338.2084
+    "gav": 255.7669
   },
   "Arm Holdings ADR": {
     "qty": 2.0,
@@ -219,10 +227,6 @@
     "qty": 1.0,
     "gav": 261.7977
   },
-  "Amazon.com": {
-    "qty": 1.0,
-    "gav": 256.8738
-  },
   "Amgen": {
     "qty": 1.0,
     "gav": 399.9325
@@ -238,10 +242,6 @@
   "BlackRock": {
     "qty": 1.0,
     "gav": 1089.7867
-  },
-  "Coca-Cola": {
-    "qty": 1.0,
-    "gav": 87.0233
   },
   "Dell Technologies C": {
     "qty": 1.0,
@@ -279,6 +279,10 @@
     "qty": 1.0,
     "gav": 261.7808
   },
+  "Lam Research": {
+    "qty": 1.0,
+    "gav": 242.1
+  },
   "Lumentum": {
     "qty": 1.0,
     "gav": 846.6475
@@ -307,6 +311,10 @@
     "qty": 1.0,
     "gav": 188.04
   },
+  "Robinhood Markets A": {
+    "qty": 1.0,
+    "gav": 96.93
+  },
   "SAAB B": {
     "qty": 1.0,
     "gav": 591.896
@@ -331,5 +339,5 @@
     "qty": 0.41,
     "gav": 0.0
   },
-  "__ts": 1793135326975
+  "__ts": 1793544651010
 }
