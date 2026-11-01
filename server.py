@@ -179,6 +179,8 @@ def _live_quotes(assets) -> dict:
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
+    timeout = 30      # a stalled client can hold its own thread for at most 30 s
+
     def end_headers(self):
         # Prevent browser from caching CSV/JSON data files — always serve fresh
         if not self.path.startswith('/yahoo/'):
@@ -301,9 +303,12 @@ def main():
     args = parser.parse_args()
 
     os.chdir(Path(__file__).parent)
-    socketserver.TCPServer.allow_reuse_address = True
+    # One thread per request, so several browsers (and slow Yahoo calls) never block each other.
+    http.server.ThreadingHTTPServer.allow_reuse_address = True
+    http.server.ThreadingHTTPServer.daemon_threads = True      # threads never keep the process alive
+    http.server.ThreadingHTTPServer.request_queue_size = 64
 
-    with socketserver.TCPServer(('', args.port), DashboardHandler) as httpd:
+    with http.server.ThreadingHTTPServer(('', args.port), DashboardHandler) as httpd:
         print(f'\n  Dashboard  ->  http://localhost:{args.port}')
         print(f'  Analytics   ->  http://localhost:{args.port}/analytics.html')
         print(f'  Yahoo proxy: /yahoo/v7/quote -> v8/chart (no auth required)')
