@@ -11,8 +11,16 @@ A personal, browser-based portfolio dashboard inspired by TradingView's dark the
 - Last-buy tracking: new shares and buy price shown in gold under Qty and Price
 - Tomorrow's Signals: top 5 buy and top 5 sell from an 8-factor technical model
 - Live price refresh every 60 s; portfolio CSV reload every 5 min
+- **One continuous Portfolio page**: summary, signals, stocks, funds, then the **Heat map** (the nav buttons *Portfolio* / *Heat map* just scroll)
+- **Portfolio heat map**: treemap of the current holdings, size = market value, colour = today's change or unrealised return, grouped by Yahoo Finance sector (or type / country), with distribution doughnut, breakdown table and concentration notes. It syncs by itself: a new or changed Nordnet CSV is picked up within 10 s and live Yahoo prices refresh every 30 s
+- **Privacy toggle** (eye button in the header of both pages): blurs summary rows, headline numbers, money/size table columns, "... kr" amounts in text and kr chart axes/tooltips. Remembered between pages and reloads (visual masking only)
 
-- **Analytics page** (`/analytics.html`): asset explorer (all ever held / current / closed / bought or sold in the last 1 week or 1 month, with type, currency and country filters and charts) plus a trading-habits and broker-cost report. It is built from `transactions-and-notes-export*.csv` and `Innehav*Export*.csv` in the project folder; the newest matching file wins and the page re-syncs by itself when a file changes.
+- **Analytics page** (`/analytics.html`), three tabs:
+  - **Assets**: asset explorer (all ever held / current / closed / bought or sold in the last 1 week or 1 month, with type, currency and country filters and charts)
+  - **Trading habits & costs**: habit score, broker costs, benchmark against OMXS30 / S&P 500 / Nasdaq 100 futures, good-practice tips, fee and holding-time analysis
+  - **Deposit behaviour**: deposits per day / week / month as columns, estimated portfolio value (or deposit-free return) and positions held as lines on one shared axis, optional index overlays (OMXS30, S&P 500, Nasdaq 100 futures `NQ=F`), insight cards (return vs market, risk, idle cash, deposit timing, why you are ahead or behind the index, money per position)
+
+  It is built from `transactions-and-notes-export*.csv` and `Innehav*Export*.csv` in the project folder; the newest matching file wins and the page re-syncs by itself when a file changes.
 
 ## Requirements
 
@@ -54,9 +62,17 @@ python server.py --port 9000      # custom port
 
 Use `server.py`, not `python -m http.server`. Only `server.py` includes the `/yahoo/*` proxy that live prices and the ticker bar depend on.
 
+### 3b. Run it without VS Code (Windows)
+
+Double-click **`start-dashboard.bat`**. It starts `server.py` in its own window (minimised is fine) and restarts it automatically if it ever stops. Close that window, or double-click **`stop-dashboard.bat`**, to stop it (it only touches this project's processes).
+
+Optional: **`install-autostart.bat`** makes the server start by itself, minimised, at every Windows login (puts a launcher in your Startup folder, no admin rights needed); **`uninstall-autostart.bat`** removes it. Stop any server you started from VS Code first, otherwise port 8000 is taken.
+
+The server listens on **all network interfaces** on purpose (so you can open it through Tailscale from another device). Anyone who can reach port 8000 can read the dashboard, so only expose it on networks you trust.
+
 ### 4. Open the dashboard
 
-Go to **http://localhost:8000** in your browser. Click **Refresh Portfolio** in the header to reload the CSVs and prices immediately.
+Go to **http://localhost:8000** in your browser (Analytics: **/analytics.html**). Click **Refresh Portfolio** in the header to reload the CSVs and prices immediately.
 
 ### 5. Stop the server
 
@@ -97,6 +113,8 @@ The session token expires, so repeat these steps when it does.
 | Port already in use | Run `python server.py --port 9000`, or stop the old process with `taskkill /IM python.exe /F`. |
 | A stock shows `—` for price | Add its name to `TICKER_MAP` in `app.js` with the Yahoo Finance symbol. |
 | Last-buy tags missing or stale | Run `python nordnet_sync.py` after a new export (needs at least two `Innehav` files in the folder) so `portfolio_baseline.json` is refreshed. |
+| Heat map "Today" differs from Yahoo or Nordnet | Live day change comes from Yahoo daily bars (last close before the current session). Nordnet funds (`0P...` symbols) keep the export values. A same-currency quote priced 2x off the export is ignored as a wrong symbol. |
+| A holding is "Unclassified" or shows no live price | Add or fix its Yahoo symbol in `symbol_cache.json` (set `"source": "manual"`) and in `TICKER_MAP` in `app.js`. ETFs and funds have no Yahoo sector, so they are grouped as ETFs / Funds. |
 | Dashboard shows old holdings | Drop the new `Innehav ... Export` file in the folder (or run `nordnet_sync.py --watch`) and click **Refresh Portfolio**. Restart `server.py` once if you updated from an older version (it needs the `/api/holdings` route). |
 
 Yahoo symbol suffixes: `.ST` Sweden, `.OL` Norway, `.HE` Finland, `.CO` Denmark, `.L` London, `.DE` Germany, `.PA` Paris. US stocks use the plain ticker.
@@ -105,11 +123,23 @@ Yahoo symbol suffixes: `.ST` Sweden, `.OL` Norway, `.HE` Finland, `.CO` Denmark,
 
 ```
 testTrading/
-├── index.html               Dashboard UI
+├── index.html               Portfolio page (summary, tables, heat map section)
 ├── style.css                TradingView dark theme styles
-├── app.js                   Dashboard logic (data, live prices, signals)
-├── server.py                Local HTTP server + Yahoo Finance proxy
+├── app.js                   Portfolio logic (data, live prices, signals, nav scroll)
+├── heatmap.js / heatmap.css Portfolio heat map (treemap, doughnut, live sync)
+├── analytics.html/css/js    Analytics page (Assets, Trading habits, Deposit behaviour)
+├── asset_chart.js           Per-asset price chart with BUY/SELL markers
+├── privacy.js / privacy.css Master privacy toggle (eye button)
+├── server.py                Local HTTP server + Yahoo proxy + JSON API (see below)
+├── trade_analytics.py       Ledger + holdings -> positions, trades, insights, deposit behaviour
+├── benchmark.py             Index comparison and overlay series (OMXS30, S&P 500, NQ=F)
+├── symbols.py / symbol_cache.json   ISIN -> Yahoo symbol (hand edits kept)
+├── sectors.py / sector_cache.json   Sector / fund category per holding from Yahoo
 ├── nordnet_sync.py          Nordnet export sync (baseline, watch, API)
+├── start-dashboard.bat      Run the server without VS Code (auto-restart)
+├── stop-dashboard.bat       Stop it
+├── install-autostart.bat / uninstall-autostart.bat   Optional start at Windows login
+├── transactions-and-notes-export.csv   Full ledger (newest used)
 ├── Innehav Tabell Export, accno N, DATE.csv   Holdings export (newest one is used)
 ├── portfolio_baseline.json  Previous-state snapshot for last-buy tracking
 ├── WishList.md              Feature requirements
@@ -117,8 +147,24 @@ testTrading/
 └── .claude/skill.md         Detailed project design knowledge
 ```
 
+## Server API
+
+| Route | Purpose |
+|---|---|
+| `/api/holdings` | Newest holdings CSV (Portfolio page) |
+| `/api/trades`, `/api/trades/status` | Full analytics payload; file signature used for auto-sync |
+| `/api/assets` | Assets only (used by the heat map) |
+| `/api/live` | Live Yahoo quotes for current holdings (25 s cache) |
+| `/api/sectors` | Yahoo sector / fund category per holding (30-day cache) |
+| `/api/benchmark`, `/api/overlay` | Index comparison and daily index curves |
+| `/api/symbol` | ISIN / name -> Yahoo symbol |
+| `/yahoo/*` | Yahoo Finance proxy |
+
+Memory: every server cache holds one entry that is replaced, not grown (measured about 40 MB after loading every endpoint, flat over hundreds of polls).
+
 ## Further reading
 
 - [WishList.md](WishList.md): feature requirements and implemented phases
 - [DesignGuide.md](DesignGuide.md): colors, typography and component specs
 - [.claude/skill.md](.claude/skill.md): architecture, last-buy logic, signal model and ticker map
+- [.claude/skills/trading-analytics/SKILL.md](.claude/skills/trading-analytics/SKILL.md): analytics, heat map, live-price and privacy notes

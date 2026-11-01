@@ -1,0 +1,22 @@
+/* Master privacy toggle: masks the summary rows on the Portfolio and Analytics pages (state shared via localStorage). */
+.privacy-btn {
+  display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 28px; padding: 0;
+  background: var(--bg, #131722); color: var(--text-dim, #787B86); border: 1px solid var(--border, #2A2E39);
+  border-radius: 4px; cursor: pointer;
+}
+.privacy-btn:hover { border-color: var(--accent, #2962FF); color: var(--accent, #2962FF); }
+.privacy-btn svg { width: 16px; height: 16px; }
+.privacy-btn .eye-off { display: none; }
+html.privacy .privacy-btn { color: var(--gold, #F7C948); border-color: var(--gold, #F7C948); }
+html.privacy .privacy-btn .eye { display: none; }
+html.privacy .privacy-btn .eye-off { display: block; }
+
+/* values become an unreadable blur; labels stay visible. Works through every re-render because it is pure CSS */
+html.privacy #summary-cards .card-value, html.privacy #summary-cards .card-sub, html.privacy #summary-cards .card-sub *,
+html.privacy #kpis .kpi .v, html.privacy #kpis .kpi .s,
+html.privacy #asset-kpis .kpi .v, html.privacy #asset-kpis .kpi .s,
+html.privacy .vcard .big, html.privacy .finding .num,
+html.privacy .pv {
+  color: transparent !important; text-shadow: 0 0 12px rgba(209, 212, 220, .75);
+  user-select: none; -webkit-user-select: none; pointer-events: none;
+}

@@ -55,7 +55,7 @@
  },
  "DE000A0S9GB0": {
   "category": null,
-  "checked": 1793143327.8232887,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "Xetra-Gold",
   "quote_type": "EQUITY",
@@ -109,25 +109,25 @@
  },
  "IE000XZSV718": {
   "category": null,
-  "checked": 1793143329.3464313,
+  "checked": 1793537460.531172,
   "industry": null,
   "name": "SPDR S&P 500 UCITS ETF (Acc)",
   "quote_type": "ETF",
   "sector": null,
-  "symbol": "SPY5.DE"
+  "symbol": "SPYL.DE"
  },
  "IE00B57X3V84": {
   "category": null,
-  "checked": 1793143328.1449122,
+  "checked": 1793537460.302502,
   "industry": null,
   "name": "iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)",
   "quote_type": "ETF",
   "sector": null,
-  "symbol": "IGSU.L"
+  "symbol": "IUSL.DE"
  },
  "IE00B8GF1M35": {
   "category": null,
-  "checked": 1793143329.16623,
+  "checked": 1793537460.381622,
   "industry": null,
   "name": "SS SPDR Dow Jones Global Real Estate UCITS ETF",
   "quote_type": "ETF",
@@ -136,7 +136,7 @@
  },
  "IE00BF2FN646": {
   "category": null,
-  "checked": 1793143329.5598578,
+  "checked": 1793537460.5890965,
   "industry": null,
   "name": "Invesco US Treasury Bond 7-10 Year UCITS ETF Dist",
   "quote_type": "ETF",
@@ -145,7 +145,7 @@
  },
  "IE00BGV5VN51": {
   "category": null,
-  "checked": 1793143326.4116066,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C",
   "quote_type": "ETF",
@@ -154,16 +154,16 @@
  },
  "IE00BJZ2DD79": {
   "category": null,
-  "checked": 1793143326.8716097,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "Xtrackers Russell 2000 ETF 1C",
   "quote_type": "ETF",
   "sector": null,
-  "symbol": "XRSU.L"
+  "symbol": "XRS2.DE"
  },
  "IE00BK5BR626": {
   "category": null,
-  "checked": 1793143327.6883142,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "Vanguard FTSE All-World High Dividend Yield UCITS ETF - (USD) Acc",
   "quote_type": "ETF",
@@ -172,7 +172,7 @@
  },
  "IE00BKM4GZ66": {
   "category": null,
-  "checked": 1793143328.1974866,
+  "checked": 1793537460.3137357,
   "industry": null,
   "name": "iShares Core MSCI EM IMI UCITS ETF USD (Acc)",
   "quote_type": "ETF",
@@ -199,7 +199,7 @@
  },
  "IE00BMTD2V80": {
   "category": null,
-  "checked": 1793143328.0715787,
+  "checked": 1793537460.2900467,
   "industry": null,
   "name": "Nordnet USA Index",
   "quote_type": "MUTUALFUND",
@@ -217,7 +217,7 @@
  },
  "LU1829221024": {
   "category": null,
-  "checked": 1793143327.4068599,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "Amundi Nasdaq-100 II UCITS ETF Acc",
   "quote_type": "ETF",
@@ -316,7 +316,7 @@
  },
  "SE0000693293": {
   "category": null,
-  "checked": 1793143328.7756715,
+  "checked": 1793537460.3642557,
   "industry": null,
   "name": "XACT OMXS30 ESG ETF",
   "quote_type": "ETF",
@@ -334,7 +334,7 @@
  },
  "SE0000900169": {
   "category": null,
-  "checked": 1793143328.5217447,
+  "checked": 1793537460.3470592,
   "industry": null,
   "name": "AstraZeneca Allemansfond",
   "quote_type": "MUTUALFUND",
@@ -343,7 +343,7 @@
  },
  "SE0002756973": {
   "category": null,
-  "checked": 1793143327.786755,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "Nordnet Sverige Index",
   "quote_type": "MUTUALFUND",
@@ -352,7 +352,7 @@
  },
  "SE0005993102": {
   "category": null,
-  "checked": 1793143327.2363029,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "Nordnet Suomi Indeksi",
   "quote_type": "MUTUALFUND",
@@ -361,7 +361,7 @@
  },
  "SE0005993110": {
   "category": null,
-  "checked": 1793143327.9699028,
+  "checked": 1793537460.2057657,
   "industry": null,
   "name": "Nordnet Norge Indeks",
   "quote_type": "MUTUALFUND",
@@ -370,7 +370,7 @@
  },
  "SE0009778954": {
   "category": null,
-  "checked": 1793143328.5003815,
+  "checked": 1793537460.3310602,
   "industry": null,
   "name": "XACT Nordic High Dividend Low Volatility (UCITS ETF) (B1 SEK)",
   "quote_type": "ETF",
@@ -388,7 +388,7 @@
  },
  "SE0019175563": {
   "category": null,
-  "checked": 1793143327.3757691,
+  "checked": 1793537458.897794,
   "industry": null,
   "name": "AuAg Essential Metals A",
   "quote_type": "MUTUALFUND",

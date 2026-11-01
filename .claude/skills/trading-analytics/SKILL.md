@@ -64,6 +64,12 @@ Verified (headless Chrome, 2026-10-23): benchmark score + index chart + good-pra
 - Dividend/yield analysis page; tax (ISK) view.
 - Let the user override asset type/country (`asset_overrides.json`).
 
+## Privacy toggle
+Eye button (`#privacy-btn`) in the header of BOTH pages -> `privacy.js` + `privacy.css`: adds `html.privacy`, which blurs the Portfolio summary cards and the Analytics KPI row (labels stay). State in localStorage `tv_privacy`, shared between pages/tabs. Visual only (numbers stay in the DOM). `privacy.js` also auto-masks: table columns whose header is kr/SEK/Value/Return/Realised/Unrealised/Total/Net/Qty/Units/Position after (cells get class `pv`), `... kr` amounts inside sentences in cards/notes (MutationObserver, so re-renders are covered), and kr chart axes/tooltips (Chart.js plugin `tvPrivacy`, detects money callbacks by `fmt(`/`kr` in their source; it edits raw `chart.config.options`, never the resolved proxy). privacy.js must load AFTER the Chart.js script. Anything else private: wrap in `<span class="pv">`. Not covered: percentages, prices per share, chart shapes.
+
+## Server launchers
+`start-dashboard.bat` (auto-restart loop), `stop-dashboard.bat`, `install-autostart.bat` / `uninstall-autostart.bat` (optional login start via the Startup folder). Server still listens on all interfaces on purpose (Tailscale).
+
 ## Conventions
 - Keep Portfolio page untouched except bug fixes; new work goes in the analytics files.
 - Match existing style (compact, comments only for non-obvious "why"). Charts: categorical colours `--s1..--s8` fixed order, green/red only for gain/loss, no dual-axis charts, tooltips on every chart.

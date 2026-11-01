@@ -139,7 +139,7 @@ function renderHeat() {
   const { groups, total, held } = heatGroups();
   const kind = S.heat.color, unit = kind === 'day' ? 'today' : 'vs. your cost (GAV)';
   const loading = S.heat.group === 'cat' && (!S.sectors || S.sectors.pending > 0 || S.sectors.pending_for);
-  $('heat-hint').textContent = `${held} holdings, ${fmt(total)} kr. Tile size = market value, colour = change ${unit}`
+  $('heat-hint').innerHTML = `${held} holdings, <span class="pv">${fmt(total)} kr</span>. Tile size = market value, colour = change ${unit}`
     + (S.heat.group === 'cat' ? '. Category = sector from Yahoo Finance for stocks; ETFs and funds have no sector there and are grouped as ETFs / Funds.' : '.')
     + (loading ? ' Looking up categories…' : '');
   $('heat-scale').innerHTML = `<span>−${HEAT_SCALE[kind]}%</span><i style="background:linear-gradient(90deg,rgb(${BAD}),rgb(${NEUTRAL}),rgb(${GOOD}))"></i><span>+${HEAT_SCALE[kind]}%</span>`;
@@ -168,8 +168,8 @@ function renderHeat() {
     const t = e.target.closest('.hm-tile');
     if (!t) { tip.hidden = true; return; }
     const { a, g } = data[+t.dataset.i], s = S.sectors && S.sectors.sectors && S.sectors.sectors[a.isin] || {};
-    tip.innerHTML = `<b>${esc(a.name)}</b><br>${fmt(a.value)} kr · ${(a.value / total * 100).toFixed(1).replace('.', ',')}% of portfolio<br>`
-      + `Today: <span class="${cls(a.day_pct)}">${a.day_pct == null ? '—' : pct(a.day_pct, 2)}</span> · Unrealised: <span class="${cls(a.unrealized)}">${sgn(a.unrealized)} kr (${a.unrealized_pct == null ? '—' : pct(a.unrealized_pct, 1)})</span><br>`
+    tip.innerHTML = `<b>${esc(a.name)}</b><br><span class="pv">${fmt(a.value)} kr</span> · ${(a.value / total * 100).toFixed(1).replace('.', ',')}% of portfolio<br>`
+      + `Today: <span class="${cls(a.day_pct)}">${a.day_pct == null ? '—' : pct(a.day_pct, 2)}</span> · Unrealised: <span class="pv ${cls(a.unrealized)}">${sgn(a.unrealized)} kr (${a.unrealized_pct == null ? '—' : pct(a.unrealized_pct, 1)})</span><br>`
       + `${esc(g.name)}${s.industry ? ' · ' + esc(s.industry) : ''} · ${esc(a.type)} · ${esc(COUNTRY[a.domicile] || a.domicile)}`;
     tip.hidden = false;
     const r = box.getBoundingClientRect();
@@ -184,8 +184,8 @@ function renderHeat() {
   doughnut('h-pie', groups.map(g => [g.name, g.v]), k => k);
   const dayKr = groups.reduce((s, g) => s + g.day, 0);
   table('tb-heat', [gname[0].toUpperCase() + gname.slice(1), 'Value kr', 'Weight', 'Holdings', 'Unrealised kr', S.heat.color === 'day' ? 'Today' : 'vs. cost'],
-    groups.map(g => [esc(g.name), fmt(g.v), g.weight.toFixed(1).replace('.', ',') + '%', g.items.length,
-      { v: sgn(g.pnl), c: cls(g.pnl) }, { v: (g.metric > 0 ? '+' : '') + g.metric.toFixed(2).replace('.', ',') + '%', c: cls(g.metric) }]));
+    groups.map(g => [esc(g.name), { v: `<span class="pv">${fmt(g.v)}</span>` }, g.weight.toFixed(1).replace('.', ',') + '%', g.items.length,
+      { v: `<span class="pv">${sgn(g.pnl)}</span>`, c: cls(g.pnl) }, { v: (g.metric > 0 ? '+' : '') + g.metric.toFixed(2).replace('.', ',') + '%', c: cls(g.metric) }]));
 
   // ---- concentration read-out
   const plural = gname === 'category' ? 'categories' : gname + 's';
@@ -195,7 +195,7 @@ function renderHeat() {
     `Biggest ${plural}: ${top3.map(g => `<b>${esc(g.name)}</b> ${g.weight.toFixed(0)}%`).join(', ')} — together ${top3.reduce((s, g) => s + g.weight, 0).toFixed(0)}% of the portfolio.`,
     `Biggest holdings: ${topAsset.map(i => `${esc(i.a.name)} ${(i.v / total * 100).toFixed(1).replace('.', ',')}%`).join(', ')}.`,
     `Spread across ${groups.length} ${plural} (concentration index ${hhi.toFixed(2).replace('.', ',')}; 1 = everything in one, ${(1 / groups.length).toFixed(2).replace('.', ',')} = perfectly even).`,
-    S.heat.color === 'day' ? `Today the portfolio moved about ${sgn(dayKr)} kr (from the holdings export's day change).` : `Open positions are ${sgn(groups.reduce((s, g) => s + g.pnl, 0))} kr vs. your average cost.`,
+    S.heat.color === 'day' ? `Today the portfolio moved about <span class="pv">${sgn(dayKr)} kr</span> (from the holdings export's day change).` : `Open positions are <span class="pv">${sgn(groups.reduce((s, g) => s + g.pnl, 0))} kr</span> vs. your average cost.`,
   ].map(x => `<li>${x}</li>`).join('');
 }
 

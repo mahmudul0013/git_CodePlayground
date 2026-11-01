@@ -45,6 +45,8 @@ TradingView.com — professional dark-themed trading interface.
 │          │  STOCKS TABLE (SEK | USD tabs)               │
 │          │  ─────────────────────────────               │
 │          │  FUNDS TABLE                                 │
+│          │  ─────────────────────────────               │
+│          │  HEAT MAP (same page, below the tables)      │
 └──────────┴──────────────────────────────────────────────┘
 ```
 
@@ -83,6 +85,48 @@ TradingView.com — professional dark-themed trading interface.
 ### Sparklines
 - Library: Lightweight Charts or Chart.js mini
 - Color: green line if return positive, red if negative
+
+---
+
+## Analytics Page
+
+Same dark tokens as the Portfolio page. Three tabs: **Assets**, **Trading habits & costs**, **Deposit behaviour**.
+
+### Chart colours
+- Categorical series use a fixed order, never cycled: `#3987e5` `#d95926` `#199e70` `#c98500` `#d55181` `#008300` `#9085e9` `#e66767`. After seven slots the rest folds into a grey "Other" (`#5d6170`).
+- Colour follows the entity, not its rank: deposits blue, portfolio purple, positions green, S&P 500 gold, OMXS30 orange, Nasdaq 100 futures pink.
+- Green / red are reserved for gain / loss.
+- One axis per chart. Different units get separate charts that share an x axis (Deposit behaviour: deposits, portfolio and positions stacked, with a linked crosshair and tooltips).
+- Thin marks (2 px lines, rounded bar ends), recessive grid, a legend for two or more series, a tooltip on every chart.
+
+### Cards
+- `.vcard` verdict cards (left border: red = act, gold = watch, green = ok) and `.finding` insight cards with an ACT / WATCH / NOTE badge, a big number, a sentence and a grey tip.
+
+## Portfolio Page Layout (continuous)
+
+Summary cards, Tomorrow's Signals, Stocks & ETFs, Funds, then the Heat map section. The header nav has only **Portfolio** and **Heat map**; they scroll to the top / to the heat map and highlight by scroll position.
+
+## Heat Map
+
+```
+[Group by: Category | Type | Country]  [Colour: Today | Unrealised]  [Refresh]
++-----------------------------------------------------------+
+| TECHNOLOGY 43%          | INDUSTRIALS 14%   | HEALTHCARE  |   group blocks, uppercase 11px title
+| +---------+----------+  | +------+--------+ | ...         |   tile = one holding, area = market value
+| | Micron  | ASML     |  | | GE   | Siemens| |             |
+| +---------+----------+  | +------+--------+ |             |
++-----------------------------------------------------------+
+        -3% [red ... grey ... green] +3%        (colour scale)
+[ distribution doughnut ]   [ breakdown table ]   concentration notes
+```
+- Squarified treemap, two levels (category, then holding), group background `#0d1017`, 1 px gaps.
+- Diverging colour: red `rgb(192,64,62)` to neutral `rgb(58,63,80)` to green `rgb(27,138,127)`; saturates at +-3 % (today) or +-25 % (unrealised). Missing data is neutral grey. Tile text is white; names truncate, and the % is shown only when the tile is large enough.
+- Hover tooltip: name, value, weight, today, unrealised, sector / industry / type / country.
+- Status line with a live dot (green = live Yahoo prices, grey = export values only).
+
+## Privacy Toggle
+
+Eye icon button in the header of both pages (gold border when values are hidden). Hidden values are blurred (`color: transparent` plus a soft `text-shadow`), labels stay visible, and the state is kept in `localStorage` (`tv_privacy`) and shared by both pages. Mark any new private number with `<span class="pv">`. Chart kr axes and tooltips are switched off while hidden.
 
 ---
 
