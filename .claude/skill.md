@@ -156,7 +156,11 @@ newest Innehav file   ← source of truth
 - **Auth bypass**: v7 quote batch API requires crumb/cookie; `server.py` translates v7 → v8 chart API (no auth needed) and reassembles v7 response format
 - **Fallback**: `query2.finance.yahoo.com` if `query1` fails
 - **Config in app.js**:
-  - `CFG.yahooBase = IS_LOCAL ? '/yahoo' : 'https://query1.finance.yahoo.com'`
+  - `CFG.yahooBase = HAS_PROXY ? '/yahoo' : 'https://query1.finance.yahoo.com'`
+  - `HAS_PROXY` is protocol-based (`http:`/`https:`), **not** hostname-based. `server.py`
+    binds `0.0.0.0`, so `/yahoo/*` is same-origin for LAN clients too. Gating this on
+    `hostname === 'localhost'` sends LAN clients to Yahoo direct, where CORS blocks every
+    request: no quotes, DAY % stuck at 0.00%, and FX silently falls back to `CFG` defaults.
   - `CFG.refreshMs = 60_000` (live price refresh)
   - `CFG.csvRefreshMs = 300_000` (portfolio CSV re-check)
 

@@ -4,10 +4,11 @@
    renders sparklines via Chart.js, company logos via Clearbit.
    ============================================================ */
 
-// When served from server.py (localhost) all Yahoo Finance calls go through
-// the local /yahoo/* proxy — no CORS, no blocked requests.
-// When opened from a remote host the full Yahoo URL is used with proxy fallbacks.
-const IS_LOCAL = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+// All Yahoo Finance calls go through server.py's /yahoo/* proxy — no CORS, no
+// blocked requests. server.py listens on every interface, so that proxy is
+// same-origin whatever hostname the page was opened with (localhost, a LAN IP,
+// a machine name). Only a file:// page has no proxy and must call Yahoo direct.
+const HAS_PROXY = location.protocol === 'http:' || location.protocol === 'https:';
 
 // ────────────────────────────────────────────────────────────
 // CONFIG
@@ -17,9 +18,9 @@ const CFG = {
   // server.py serves the newest one at /api/holdings (latest file only is ever used).
   holdingsUrl: '/api/holdings',
 
-  // On localhost: /yahoo/* is proxied by server.py — no CORS issues
-  // On remote:    direct Yahoo URL (browser/proxy fallbacks in yahooGet)
-  yahooBase:  IS_LOCAL ? '/yahoo' : 'https://query1.finance.yahoo.com',
+  // Served by server.py: /yahoo/* is proxied for us — no CORS issues
+  // Opened as a file:    direct Yahoo URL (browser/proxy fallbacks in yahooGet)
+  yahooBase:  HAS_PROXY ? '/yahoo' : 'https://query1.finance.yahoo.com',
 
   // Ticker bar symbols + display labels
   tickerSymbols: ['^OMX', '^GDAXI', 'ES=F', 'GC=F', 'USDSEK=X', 'EURUSD=X'],
@@ -451,8 +452,8 @@ function resolveTickerFor(item) {
 
 // ────────────────────────────────────────────────────────────
 // YAHOO FINANCE API
-// Local mode  : /yahoo/* proxied by server.py  — direct fetch, no CORS
-// Remote mode : try query1 → query2 → corsproxy.io → allorigins.win
+// Served by server.py : /yahoo/* proxied same-origin — direct fetch, no CORS
+// Anything else / proxy down : query1 → query2 → corsproxy.io → allorigins.win
 // ────────────────────────────────────────────────────────────
 async function yahooGet(url) {
   const tFetch = (u, wrapAO = false) => new Promise((res, rej) => {
@@ -474,14 +475,16 @@ async function yahooGet(url) {
       .catch(e => { clearTimeout(tid); rej(e); });
   });
 
-  if (IS_LOCAL) {
-    // server.py proxy: simple, reliable, no CORS
-    return tFetch(url);
+  // server.py proxy: simple, reliable, no CORS. Reachable on any hostname,
+  // so this is the first try for localhost and LAN clients alike.
+  if (HAS_PROXY) {
+    try { return await tFetch(url); } catch (_) {}
   }
 
-  // Remote fallback chain
-  const ext = 'https://query1.finance.yahoo.com';
-  const absUrl = url.startsWith('/') ? ext + url : url;
+  // Fallback chain — drop the proxy prefix and talk to Yahoo directly
+  const ext    = 'https://query1.finance.yahoo.com';
+  const path   = url.replace(/^\/yahoo/, '');
+  const absUrl = path.startsWith('/') ? ext + path : path;
   try { return await tFetch(absUrl); } catch (_) {}
   try { return await tFetch(absUrl.replace('query1.', 'query2.')); } catch (_) {}
   try { return await tFetch(`https://corsproxy.io/?url=${encodeURIComponent(absUrl)}`); } catch (_) {}

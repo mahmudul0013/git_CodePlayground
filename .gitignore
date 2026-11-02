@@ -1,3 +1,5 @@
 __pycache__/
 benchmark_cache.json
 benchmark_overlay_cache.json
+.env
+.nordnet_session.json
