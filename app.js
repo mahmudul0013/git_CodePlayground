@@ -1164,7 +1164,7 @@ function calcStochK(data, period = 14) {
 async function loadPredictions() {
   const badge = document.getElementById('pred-badge');
   try {
-    const r = await (await fetch('/api/advice', { cache: 'no-store' })).json();
+    const r = await (await fetch('/api/advice?profile=' + (localStorage.getItem('tv_advice_profile') || 'balanced'), { cache: 'no-store' })).json();
     if (!r.ok) throw new Error(r.error || 'no data');
     const named = Object.entries(r.assets).map(([isin, v]) => ({ isin, ...v }));
     const stock = n => S.stocks.find(s => s.name === n) || S.funds.find(f => f.name === n);

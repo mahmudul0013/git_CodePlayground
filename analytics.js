@@ -857,11 +857,13 @@ function renderDividends() {
 const ADV_RANK = { TRIM: 0, ADD: 1, BUYBACK: 2, REVIEW: 3, CONSOLIDATE: 4, HOLD: 5 };
 const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
 
+const advProfile = () => { try { return localStorage.getItem('tv_advice_profile') || 'balanced'; } catch (e) { return 'balanced'; } };
+
 async function loadAdvice() {
   if (S.advLoading) return;
   S.advLoading = true;
   try {
-    const r = await getJSON('/api/advice');
+    const r = await getJSON('/api/advice?profile=' + advProfile());
     if (r.ok) { S.advice = r; if (S.tab === 'assets') renderTable(derive()); if (S.tab === 'advice') renderAdvice(); }
   } catch (e) { /* column stays empty */ }
   S.advLoading = false;
@@ -883,6 +885,8 @@ function renderAdvice() {
   if (!A) { $('adv-status').textContent = 'Loading price history from Yahoo for the first time can take up to a minute…'; loadAdvice(); return; }
   const rows = Object.entries(A.assets).map(([isin, v]) => ({ isin, ...v }));
   const Y = A.summary;
+  document.querySelectorAll('#adv-profile .chip').forEach(b => b.classList.toggle('active', b.dataset.p === Y.profile));
+  $('adv-profile-about').textContent = 'Add / buy back when: ' + Y.profile_about + '. Size, sector and tiny-position rules are the same for all three.';
   $('adv-status').textContent = `Based on ${Y.positions} holdings (${Y.covered} with Yahoo price history), valued ${A.asof.replace('T', ' ')}. Weights are % of holdings.`;
   $('adv-bt').innerHTML = `<thead><tr><th>Back-test on your holdings, 2021-2026</th><th>Result</th><th>Verdict</th></tr></thead><tbody>
     <tr><td>Old "Strong Buy" score, next day</td><td>avg −0.25%, up only 43% of days (all days: +0.14%, 53%)</td><td class="neg">No edge, removed</td></tr>
@@ -1007,6 +1011,11 @@ function bind() {
   $('dep-idx').addEventListener('change', e => {
     e.target.checked ? S.idx.add(e.target.value) : S.idx.delete(e.target.value);
     renderDeposits();
+  });
+  $('adv-profile').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    try { localStorage.setItem('tv_advice_profile', b.dataset.p); } catch (err) { /* private mode */ }
+    S.advice = null; $('adv-status').textContent = 'Recalculating…'; loadAdvice();
   });
   $('div-gran').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.dgran = b.dataset.g; renderDividends(); } });
   $('dep-metric').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.metric = b.dataset.m; renderDeposits(); } });

@@ -233,7 +233,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             elif route == '/api/advice':
                 p = trade_analytics.get_payload()
                 held = [{'isin': x['isin'], 'name': x['name'], 'ccy': x.get('ccy')} for x in p['assets'] if x.get('value') and x.get('isin')]
-                body = advisor.get(p, _live_quotes(held))
+                prof = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('profile', [advisor.DEFAULT_PROFILE])[0]
+                body = advisor.get(p, _live_quotes(held), prof if prof in advisor.PROFILES else advisor.DEFAULT_PROFILE)
             elif route == '/api/assets':
                 p = trade_analytics.get_payload()
                 body = {'generated': p['generated'], 'sources': p['sources'], 'assets': p['assets']}

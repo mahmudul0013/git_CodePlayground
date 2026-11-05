@@ -40,7 +40,21 @@ MIN_ORDER = 1500     # kr: smaller orders are mostly courtage
 BUYBACK_W = 1.5      # % of holdings: size of a buy-back into a closed position
 BUYBACK_WAIT = 7     # days after the last sell before a buy-back is suggested (0-1 day flips lose money in your history)
 
+# Entry profiles for ADD and BUYBACK (the size / theme / dust rules are the same for all).
+#   dd = allowed distance from the 52-week high, rsi = max RSI(14), trend = allowed 50/200-day states,
+#   mom = require positive 12-1 month momentum, above50 = price must be back above its 50-day average, wait = days after a sell.
+PROFILES = {
+    'conservative': {'label': 'Conservative', 'dd': (-0.25, -0.10), 'rsi': 60, 'trend': ('up',), 'mom': True, 'above50': True, 'wait': 14,
+                     'about': '10-25% below the high, price already back above its 50-day average, RSI under 60, 2 weeks after a sell'},
+    'balanced': {'label': 'Balanced', 'dd': (-0.25, -0.05), 'rsi': 68, 'trend': ('up',), 'mom': True, 'above50': False, 'wait': 7,
+                 'about': '5-25% below the high, RSI under 68, 1 week after a sell'},
+    'aggressive': {'label': 'Aggressive', 'dd': (-0.40, -0.05), 'rsi': 75, 'trend': ('up', 'mixed', 'down'), 'mom': False, 'above50': False, 'wait': 3,
+                   'about': 'up to 40% below the high, any trend, RSI under 75, 3 days after a sell. Catches falling knives; not recommended'},
+}
+DEFAULT_PROFILE = 'balanced'
+
 _LOCK = threading.Lock()
+_fail = {}                            # symbol -> time of a failed fetch (not retried for an hour)
 _hist = None                          # {symbol: {'at': ts, 'c': [closes], 'd': [epoch days]}}
 _cache = {'key': None, 'data': None}
 
@@ -79,7 +93,7 @@ def _fetch(sym):
 
 def _histories(syms, budget=45):
     h = _load()
-    todo = [s for s in syms if s not in h or time.time() - h[s]['at'] > HIST_TTL]
+    todo = [s for s in syms if (s not in h or time.time() - h[s]['at'] > HIST_TTL) and time.time() - _fail.get(s, 0) > 3600]
     if todo:
         ex = ThreadPoolExecutor(max_workers=8)
         futs = {ex.submit(_fetch, s): s for s in todo}
@@ -91,7 +105,7 @@ def _histories(syms, budget=45):
                     h[futs[f]] = f.result()
                 changed = True
             except Exception:
-                pass
+                _fail[futs[f]] = time.time()
         ex.shutdown(wait=False, cancel_futures=True)
         if changed:
             _save()
@@ -154,9 +168,26 @@ def _round500(x):
 
 
 # ───────── main ─────────
-def advise(payload, live=None):
+def _entry_ok(f, P):
+    """Does this price history pass the entry test of profile P (used for ADD and BUYBACK)?"""
+    if not f or f['trend'] not in P['trend']:
+        return False
+    if P['mom'] and (f['mom12_1'] or 0) <= 0:
+        return False
+    if P['above50'] and (f['ext50'] is None or f['ext50'] < 0):
+        return False
+    return P['dd'][0] <= f['dd52'] <= P['dd'][1] and (f['rsi'] or 50) < P['rsi']
+
+
+def _trend_phrase(f):
+    return 'Uptrend (above 200-day)' if f['trend'] == 'up' else f'Trend {f["trend"]} vs its 50/200-day averages'
+
+
+def advise(payload, live=None, profile=DEFAULT_PROFILE):
     """live: optional {isin: {'price', 'currency'}} to value positions at today's price."""
     live = live or {}
+    P = PROFILES.get(profile) or PROFILES[DEFAULT_PROFILE]
+    profile = profile if profile in PROFILES else DEFAULT_PROFILE
     held = [a for a in payload['assets'] if a.get('held') and a.get('value') and a.get('isin')]
     if not held:
         return {'ok': False, 'error': 'no holdings'}
@@ -167,7 +198,7 @@ def advise(payload, live=None):
         if r and not r['symbol'].startswith('0P'):
             sym_of[a['isin']] = r['symbol']; syms.append(r['symbol'])
     hist = _histories(sorted(set(syms)))
-    partial = any(s not in hist for s in syms)
+    partial = any(s not in hist and time.time() - _fail.get(s, 0) > 3600 for s in syms)
     sec, _pending = sectors.batch([{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy')} for a in held + closed], budget=8)
     partial = partial or bool(_pending)
     last_sell = {}
@@ -242,14 +273,13 @@ def advise(payload, live=None):
             why.append(f'Below its 200-day average, negative 12-month momentum and {up:.0f}% under your cost. Decide if the original reason still holds; if not, selling frees capital for better uses.')
             done = True
         # 5) ADD candidates: small weight, uptrend, pulled back, not stretched, theme not already over the cap
-        if not done and f and w < ADD_BELOW_W and f['trend'] == 'up' and (f['mom12_1'] or 0) > 0 \
-                and -0.25 <= f['dd52'] <= -0.05 and (f['rsi'] or 50) < 68 and r['sector'] not in over_theme:
+        if not done and f and w < ADD_BELOW_W and _entry_ok(f, P) and r['sector'] not in over_theme:
             need = (TARGET_W - w) / 100 * total
             mp, vp = _pct_rank(moms, f['mom12_1']), _pct_rank(vols, f['vol'])
             pull = min(1.0, (-f['dd52'] - .05) / .15)
             res.update(action='ADD', amount=_round500(max(need, MIN_ORDER)), target_weight=TARGET_W,
                        score=int(100 * (.5 * mp + .25 * pull + .25 * (1 - vp))))
-            why.append(f'Uptrend (above 200-day), 12-month momentum {f["mom12_1"] * 100:+.0f}%, pulled back {f["dd52"] * 100:.0f}% from its 52-week high, and only {w:.1f}% of the portfolio. Fill up to about {TARGET_W:.0f}%.')
+            why.append(f'{_trend_phrase(f)}, 12-month momentum {(f["mom12_1"] or 0) * 100:+.0f}%, pulled back {f["dd52"] * 100:.0f}% from its 52-week high, and only {w:.1f}% of the portfolio. Fill up to about {TARGET_W:.0f}%.')
             done = True
         if not done:
             if f and f['trend'] == 'up':
@@ -268,7 +298,7 @@ def advise(payload, live=None):
     for a in closed:
         h = hist.get(sym_of.get(a['isin']))
         f = _features(h['c']) if h else None
-        if not f or f['trend'] != 'up' or (f['mom12_1'] or 0) <= 0 or not (-0.25 <= f['dd52'] <= -0.05) or (f['rsi'] or 50) >= 68:
+        if not _entry_ok(f, P):
             continue
         s = sec.get(a['isin']) or {}
         sector = s.get('sector') or s.get('category') or 'Unclassified'
@@ -276,7 +306,7 @@ def advise(payload, live=None):
             continue
         ls = last_sell.get(a['isin'])
         days = (date.today() - date.fromisoformat(ls['date'])).days if ls else None
-        if days is not None and days < BUYBACK_WAIT:
+        if days is not None and days < P['wait']:
             continue
         mp, vp = _pct_rank(moms, f['mom12_1']), _pct_rank(vols, f['vol'])
         pull = min(1.0, (-f['dd52'] - .05) / .15)
@@ -292,7 +322,7 @@ def advise(payload, live=None):
             'name': a['name'], 'action': 'BUYBACK', 'closed': True, 'amount': _round500(max(BUYBACK_W / 100 * total, MIN_ORDER)),
             'weight': 0.0, 'target_weight': BUYBACK_W, 'sector': sector, 'score': int(100 * (.5 * mp + .25 * pull + .25 * (1 - vp))),
             'metrics': {k: (round(v, 4) if isinstance(v, float) else v) for k, v in f.items() if k in ('trend', 'vs200', 'mom12_1', 'rsi', 'dd52', 'vol', 'ret21')},
-            'reasons': [f'{when}Not held today. Uptrend (above 200-day), 12-month momentum {f["mom12_1"] * 100:+.0f}%, pulled back {f["dd52"] * 100:.0f}% from its 52-week high. A buy-back of about {BUYBACK_W:.1f}% of the portfolio (once, in one order).']}
+            'reasons': [f'{when}Not held today. {_trend_phrase(f)}, 12-month momentum {(f["mom12_1"] or 0) * 100:+.0f}%, pulled back {f["dd52"] * 100:.0f}% from its 52-week high. A buy-back of about {BUYBACK_W:.1f}% of the portfolio (once, in one order).']}
 
     # ───── portfolio level: volatility, drawdown, correlation from the last year of daily returns ─────
     port = _portfolio_stats(rows, total)
@@ -325,7 +355,7 @@ def advise(payload, live=None):
 
     summary = {'positions': len(rows), 'total': round(total), 'theme': {k: round(v, 1) for k, v in sorted(theme.items(), key=lambda x: -x[1])},
                'counts': {k: sum(1 for v in out.values() if v['action'] == k) for k in ('ADD', 'BUYBACK', 'TRIM', 'CONSOLIDATE', 'REVIEW', 'HOLD')},
-               'portfolio': port, 'covered': sum(1 for r in rows if r['f']) , 'asof': date.today().isoformat()}
+               'profile': profile, 'profile_about': P['about'], 'portfolio': port, 'covered': sum(1 for r in rows if r['f']) , 'asof': date.today().isoformat()}
     return {'ok': True, 'partial': partial, 'asof': time.strftime('%Y-%m-%dT%H:%M:%S'), 'assets': out, 'cards': cards, 'summary': summary}
 
 
@@ -370,13 +400,13 @@ def _portfolio_stats(rows, total):
     return {'vol': round(vol, 4), 'max_dd': round(dd, 4), 'corr': round(corr, 3), 'n': n, 'eff_n': round(eff, 1), 'days': len(port)}
 
 
-def get(payload, live=None):
+def get(payload, live=None, profile=DEFAULT_PROFILE):
     """Cached per payload version and calendar hour (single slot, memory stays flat)."""
-    key = (payload.get('generated'), time.strftime('%Y%m%d%H'), bool(live))
+    key = (payload.get('generated'), time.strftime('%Y%m%d%H'), bool(live), profile)
     with _LOCK:
         if _cache['key'] == key and time.time() < _cache.get('exp', 0):
             return _cache['data']
-    data = advise(payload, live)
+    data = advise(payload, live, profile)
     with _LOCK:
         # price history / sectors still loading in the background: retry soon instead of holding a partial answer for an hour
         _cache['key'], _cache['data'], _cache['exp'] = key, data, time.time() + (90 if data.get('partial') else 3600)
