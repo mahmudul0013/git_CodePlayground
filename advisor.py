@@ -10,6 +10,8 @@ winners that kept rising. So actions come from what is measurable and controllab
   * volatility, drawdown from the 52-week high, correlation of the whole portfolio.
 
     advise(payload, quotes_by_isin=None) -> {ok, asof, assets: {isin: {...}}, cards: [...], summary: {...}}
+
+Closed positions are checked too: a stock you sold that is in an uptrend and pulled back is a BUYBACK idea.
 """
 import json
 import math
@@ -35,6 +37,8 @@ ADD_BELOW_W = 1.5    # only positions below this weight are ADD candidates
 THEME_CAP = 40.0     # % of holdings in one Yahoo sector: no new ADDs there, largest names trimmed
 DUST = 1500          # kr: positions below this cost more attention and fees than they can earn
 MIN_ORDER = 1500     # kr: smaller orders are mostly courtage
+BUYBACK_W = 1.5      # % of holdings: size of a buy-back into a closed position
+BUYBACK_WAIT = 7     # days after the last sell before a buy-back is suggested (0-1 day flips lose money in your history)
 
 _LOCK = threading.Lock()
 _hist = None                          # {symbol: {'at': ts, 'c': [closes], 'd': [epoch days]}}
@@ -77,7 +81,7 @@ def _histories(syms, budget=45):
     h = _load()
     todo = [s for s in syms if s not in h or time.time() - h[s]['at'] > HIST_TTL]
     if todo:
-        ex = ThreadPoolExecutor(max_workers=6)
+        ex = ThreadPoolExecutor(max_workers=8)
         futs = {ex.submit(_fetch, s): s for s in todo}
         done, _ = wait(list(futs), timeout=budget)
         changed = False
@@ -156,13 +160,20 @@ def advise(payload, live=None):
     held = [a for a in payload['assets'] if a.get('held') and a.get('value') and a.get('isin')]
     if not held:
         return {'ok': False, 'error': 'no holdings'}
+    closed = [a for a in payload['assets'] if not a.get('held') and a.get('isin') and a.get('sells')]
     syms, sym_of = [], {}
-    for a in held:
+    for a in held + closed:
         r = symbols.resolve(a['isin'], a['name'], a.get('ccy'))
         if r and not r['symbol'].startswith('0P'):
             sym_of[a['isin']] = r['symbol']; syms.append(r['symbol'])
     hist = _histories(sorted(set(syms)))
-    sec, _pending = sectors.batch([{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy')} for a in held], budget=8)
+    partial = any(s not in hist for s in syms)
+    sec, _pending = sectors.batch([{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy')} for a in held + closed], budget=8)
+    partial = partial or bool(_pending)
+    last_sell = {}
+    for t in payload.get('trades', []):
+        if t.get('side') == 'SELL' and (t['isin'] not in last_sell or t['date'] >= last_sell[t['isin']]['date']):
+            last_sell[t['isin']] = t
 
     # value each holding at the newest price (same guard as the heat map: same currency, ratio 0.5-2)
     rows = []
@@ -253,6 +264,36 @@ def advise(payload, live=None):
             why.append(f'No add: {r["sector"]} is already {theme[r["sector"]]:.0f}% of the portfolio.')
         out[a['isin']] = res
 
+    # ───── buy-back ideas: positions you closed that are in an uptrend and pulled back ─────
+    for a in closed:
+        h = hist.get(sym_of.get(a['isin']))
+        f = _features(h['c']) if h else None
+        if not f or f['trend'] != 'up' or (f['mom12_1'] or 0) <= 0 or not (-0.25 <= f['dd52'] <= -0.05) or (f['rsi'] or 50) >= 68:
+            continue
+        s = sec.get(a['isin']) or {}
+        sector = s.get('sector') or s.get('category') or 'Unclassified'
+        if sector in over_theme:
+            continue
+        ls = last_sell.get(a['isin'])
+        days = (date.today() - date.fromisoformat(ls['date'])).days if ls else None
+        if days is not None and days < BUYBACK_WAIT:
+            continue
+        mp, vp = _pct_rank(moms, f['mom12_1']), _pct_rank(vols, f['vol'])
+        pull = min(1.0, (-f['dd52'] - .05) / .15)
+        when = ''
+        if ls:
+            when = f'Sold {ls["date"]}'
+            sccy = str(ls.get('ccy') or '').upper()
+            if ls.get('price') and h.get('ccy') and str(h['ccy']).upper() == sccy and .3 < f['last'] / ls['price'] < 3:
+                chg = (f['last'] / ls['price'] - 1) * 100
+                when += f' at {ls["price"]:g} {sccy}, now {f["last"]:.4g} ({chg:+.0f}%)'
+            when += '. '
+        out[a['isin']] = {
+            'name': a['name'], 'action': 'BUYBACK', 'closed': True, 'amount': _round500(max(BUYBACK_W / 100 * total, MIN_ORDER)),
+            'weight': 0.0, 'target_weight': BUYBACK_W, 'sector': sector, 'score': int(100 * (.5 * mp + .25 * pull + .25 * (1 - vp))),
+            'metrics': {k: (round(v, 4) if isinstance(v, float) else v) for k, v in f.items() if k in ('trend', 'vs200', 'mom12_1', 'rsi', 'dd52', 'vol', 'ret21')},
+            'reasons': [f'{when}Not held today. Uptrend (above 200-day), 12-month momentum {f["mom12_1"] * 100:+.0f}%, pulled back {f["dd52"] * 100:.0f}% from its 52-week high. A buy-back of about {BUYBACK_W:.1f}% of the portfolio (once, in one order).']}
+
     # ───── portfolio level: volatility, drawdown, correlation from the last year of daily returns ─────
     port = _portfolio_stats(rows, total)
 
@@ -280,12 +321,12 @@ def advise(payload, live=None):
     adds = [v for v in out.values() if v['action'] == 'ADD']
     trims = [v for v in out.values() if v['action'] == 'TRIM']
     card('info', 'Size of the proposed changes', f'+{_n(sum(v["amount"] for v in out.values() if v["action"] == "ADD"))} / -{_n(sum(v["amount"] for v in trims))} kr',
-         f'{len(adds)} ADD ideas and {len(trims)} TRIM ideas. Execute with few, larger orders (at least {MIN_ORDER} kr) and let sells fund the buys so no new deposit is needed.')
+         f'{len(adds)} ADD ideas (plus {sum(1 for v in out.values() if v["action"] == "BUYBACK")} buy-backs of closed positions) and {len(trims)} TRIM ideas. Execute with few, larger orders (at least {MIN_ORDER} kr) and let sells fund the buys so no new deposit is needed.')
 
     summary = {'positions': len(rows), 'total': round(total), 'theme': {k: round(v, 1) for k, v in sorted(theme.items(), key=lambda x: -x[1])},
-               'counts': {k: sum(1 for v in out.values() if v['action'] == k) for k in ('ADD', 'TRIM', 'CONSOLIDATE', 'REVIEW', 'HOLD')},
+               'counts': {k: sum(1 for v in out.values() if v['action'] == k) for k in ('ADD', 'BUYBACK', 'TRIM', 'CONSOLIDATE', 'REVIEW', 'HOLD')},
                'portfolio': port, 'covered': sum(1 for r in rows if r['f']) , 'asof': date.today().isoformat()}
-    return {'ok': True, 'asof': time.strftime('%Y-%m-%dT%H:%M:%S'), 'assets': out, 'cards': cards, 'summary': summary}
+    return {'ok': True, 'partial': partial, 'asof': time.strftime('%Y-%m-%dT%H:%M:%S'), 'assets': out, 'cards': cards, 'summary': summary}
 
 
 def _portfolio_stats(rows, total):
@@ -333,9 +374,10 @@ def get(payload, live=None):
     """Cached per payload version and calendar hour (single slot, memory stays flat)."""
     key = (payload.get('generated'), time.strftime('%Y%m%d%H'), bool(live))
     with _LOCK:
-        if _cache['key'] == key:
+        if _cache['key'] == key and time.time() < _cache.get('exp', 0):
             return _cache['data']
     data = advise(payload, live)
     with _LOCK:
-        _cache['key'], _cache['data'] = key, data
+        # price history / sectors still loading in the background: retry soon instead of holding a partial answer for an hour
+        _cache['key'], _cache['data'], _cache['exp'] = key, data, time.time() + (90 if data.get('partial') else 3600)
     return data

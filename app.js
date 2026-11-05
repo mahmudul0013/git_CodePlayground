@@ -1170,7 +1170,7 @@ async function loadPredictions() {
     const stock = n => S.stocks.find(s => s.name === n) || S.funds.find(f => f.name === n);
     const mk = v => ({ ...v, stock: stock(v.name) });
     S.predictions = {
-      up:   named.filter(v => v.action === 'ADD').sort((a, b) => b.score - a.score).slice(0, 5).map(mk),
+      up:   named.filter(v => v.action === 'ADD' || v.action === 'BUYBACK').sort((a, b) => b.score - a.score).slice(0, 5).map(mk),
       down: named.filter(v => ['TRIM', 'REVIEW', 'CONSOLIDATE'].includes(v.action))
                  .sort((a, b) => ({ TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[a.action] - { TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[b.action]) || b.score - a.score || b.amount - a.amount)
                  .slice(0, 5).map(mk),
@@ -1188,10 +1188,10 @@ function renderPredictions() {
   const badge = document.getElementById('pred-badge');
   if (!upEl || !downEl) return;
   const c = S.adviceCounts || {};
-  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.TRIM || 0} trim · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
+  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.BUYBACK || 0} buy back · ${c.TRIM || 0} trim · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
 
   const card = (e, rank) => {
-    const up = e.action === 'ADD', cls = up ? 'signal-bull' : 'signal-bear';
+    const up = e.action === 'ADD' || e.action === 'BUYBACK', cls = up ? 'signal-bull' : 'signal-bear';
     const sign = up ? '+' : '−';
     const why = (e.reasons[0] || '').replace(/\s+/g, ' ');
     return `<div class="pred-card">
@@ -1199,7 +1199,7 @@ function renderPredictions() {
       <div class="pred-logo-wrap" data-logo="${escHtml(e.name)}"></div>
       <div class="pred-info">
         <div class="pred-name" title="${escHtml(e.name)}">${escHtml(e.name)}</div>
-        <div class="pred-ticker"><span class="pred-signal-label ${cls}">${e.action}</span>&nbsp;${e.weight.toFixed(1)}% of portfolio · ${escHtml(e.sector)}</div>
+        <div class="pred-ticker"><span class="pred-signal-label ${cls}">${e.action === 'BUYBACK' ? 'BUY BACK' : e.action}</span>&nbsp;${e.closed ? 'sold earlier, not held' : e.weight.toFixed(1) + '% of portfolio'} · ${escHtml(e.sector)}</div>
         <div class="pred-signals" title="${escHtml(e.reasons.join(' '))}">${escHtml(why)}</div>
       </div>
       <div class="pred-right">

@@ -1,4 +1,13 @@
 {
+ "CA05466C1095": {
+  "category": null,
+  "checked": 1793921080.6009476,
+  "industry": "Silver",
+  "name": "Aya Gold & Silver",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "AYA.TO"
+ },
  "CA15101Q2071": {
   "category": null,
   "checked": 1793543593.4637918,
@@ -7,6 +16,24 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "CLS.TO"
+ },
+ "CA46016U1084": {
+  "category": null,
+  "checked": 1793921081.5450542,
+  "industry": "Oil & Gas E&P",
+  "name": "International Petroleum Corp.",
+  "quote_type": "EQUITY",
+  "sector": "Energy",
+  "symbol": "IPCO.TO"
+ },
+ "CA5398201007": {
+  "category": null,
+  "checked": 1793921080.5452027,
+  "industry": "Aerospace & Defense",
+  "name": "Lockheed Martin Corp.",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "LMT"
  },
  "CA5503711080": {
   "category": null,
@@ -53,6 +80,15 @@
   "sector": "Technology",
   "symbol": "IFX.DE"
  },
+ "DE0007100000": {
+  "category": null,
+  "checked": 1793921082.3575282,
+  "industry": "Auto Manufacturers",
+  "name": "Mercedes Benz Group",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "MBG.DE"
+ },
  "DE0007236101": {
   "category": null,
   "checked": 1793143327.0426443,
@@ -80,6 +116,24 @@
   "sector": "Industrials",
   "symbol": "ENR.DE"
  },
+ "DE000JY6GY20": {
+  "category": null,
+  "checked": 1793921082.6572864,
+  "industry": null,
+  "name": "MINI L SANDISK CO NORDNET SE29",
+  "quote_type": null,
+  "sector": null,
+  "symbol": null
+ },
+ "DK0060696300": {
+  "category": null,
+  "checked": 1793921081.768608,
+  "industry": "Tobacco",
+  "name": "Scandinavian Tobacco Group",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "STG.CO"
+ },
  "DK0062498333": {
   "category": null,
   "checked": 1793143327.1288815,
@@ -98,6 +152,51 @@
   "sector": "Technology",
   "symbol": "NOKIA.HE"
  },
+ "FI0009003727": {
+  "category": null,
+  "checked": 1793921080.2518618,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Wärtsilä B",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "WRT1V.HE"
+ },
+ "FI0009013403": {
+  "category": null,
+  "checked": 1793921081.97199,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Kone B",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "KNEBV.HE"
+ },
+ "FI4000153309": {
+  "category": null,
+  "checked": 1793921080.2680635,
+  "industry": "Biotechnology",
+  "name": "Faron Pharmaceuticals",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "FARN.L"
+ },
+ "FI4000297767": {
+  "category": null,
+  "checked": 1793921081.0561552,
+  "industry": "Banks—Regional",
+  "name": "Nordea",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "NDA-SE.ST"
+ },
+ "FI4000552500": {
+  "category": null,
+  "checked": 1793921081.9993434,
+  "industry": "Insurance—Diversified",
+  "name": "Sampo A",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "SAMPO.HE"
+ },
  "FR0000121972": {
   "category": null,
   "checked": 1793143327.1433337,
@@ -106,6 +205,15 @@
   "quote_type": "EQUITY",
   "sector": "Industrials",
   "symbol": "SU.PA"
+ },
+ "FR0011341205": {
+  "category": null,
+  "checked": 1793921082.0684583,
+  "industry": "Biotechnology",
+  "name": "Nanobiotix",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "NANO.PA"
  },
  "GB0009895292": {
   "category": null,
@@ -116,6 +224,42 @@
   "sector": "Healthcare",
   "symbol": "AZN.ST"
  },
+ "IE0003Z9E2Y3": {
+  "category": null,
+  "checked": 1793921080.869216,
+  "industry": null,
+  "name": "Global X Copper Miners ETF USD Acc",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "IE0003Z9E2Y3.SG"
+ },
+ "IE000IVNQZ81": {
+  "category": null,
+  "checked": 1793921081.3391502,
+  "industry": "Electronic Components",
+  "name": "TE Connectivity",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "TEL"
+ },
+ "IE000S9YS762": {
+  "category": null,
+  "checked": 1793921082.2586422,
+  "industry": "Specialty Chemicals",
+  "name": "Linde",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "LIN"
+ },
+ "IE000UL6CLP7": {
+  "category": null,
+  "checked": 1793921080.9070325,
+  "industry": null,
+  "name": "Global X Silver Miners ETF USD Acc",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "IE000UL6CLP7.SG"
+ },
  "IE000XZSV718": {
   "category": null,
   "checked": 1793914604.5603764,
@@ -124,6 +268,15 @@
   "quote_type": "ETF",
   "sector": null,
   "symbol": "SPYL.DE"
+ },
+ "IE000YYE6WK5": {
+  "category": null,
+  "checked": 1793921078.8023808,
+  "industry": null,
+  "name": "VanEck Defense ETF A USD Acc",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "DFNS.L"
  },
  "IE00B57X3V84": {
   "category": null,
@@ -151,6 +304,15 @@
   "quote_type": "ETF",
   "sector": null,
   "symbol": "TREX.L"
+ },
+ "IE00BFMXXD54": {
+  "category": null,
+  "checked": 1793921078.8023808,
+  "industry": null,
+  "name": "Vanguard S&P 500 UCITS ETF - (USD) Acc",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "VUSA.L"
  },
  "IE00BGV5VN51": {
   "category": null,
@@ -206,6 +368,15 @@
   "sector": null,
   "symbol": "SMH"
  },
+ "IE00BMTD2G30": {
+  "category": null,
+  "checked": 1793921078.7856593,
+  "industry": null,
+  "name": "Nordnet Global Index",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P0001K6NH.ST"
+ },
  "IE00BMTD2V80": {
   "category": null,
   "checked": 1793914604.309904,
@@ -215,6 +386,33 @@
   "sector": null,
   "symbol": "0P0001K6NL.ST"
  },
+ "IE00BYTBXV33": {
+  "category": null,
+  "checked": 1793921080.1847878,
+  "industry": "Airlines",
+  "name": "Ryanair Holdings Plc",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "RYA.IR"
+ },
+ "IE00BYZK4776": {
+  "category": null,
+  "checked": 1793921078.8023808,
+  "industry": null,
+  "name": "iShares Healthcare Innovation UCITS ETF USD (Acc)",
+  "quote_type": "ETF",
+  "sector": null,
+  "symbol": "HEAL.L"
+ },
+ "IT0003856405": {
+  "category": null,
+  "checked": 1793921080.4530077,
+  "industry": "Aerospace & Defense",
+  "name": "Leonardo S.p.A.",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "LDO.MI"
+ },
  "KYG3323L1005": {
   "category": null,
   "checked": 1793143327.988891,
@@ -223,6 +421,42 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "FN"
+ },
+ "KYG393871085": {
+  "category": null,
+  "checked": 1793921082.340714,
+  "industry": "Semiconductors",
+  "name": "GLOBALFOUNDRIES",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "GFS"
+ },
+ "LU0030164395": {
+  "category": null,
+  "checked": 1793921078.8023808,
+  "industry": null,
+  "name": "SEB Europe Exposure Fund C EUR",
+  "quote_type": null,
+  "sector": null,
+  "symbol": null
+ },
+ "LU1778762911": {
+  "category": null,
+  "checked": 1793921081.3235126,
+  "industry": "Internet Content & Information",
+  "name": "Spotify",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "SPOT"
+ },
+ "LU1822851538": {
+  "category": null,
+  "checked": 1793921078.8023808,
+  "industry": null,
+  "name": "Finserve Global Defence & Sec I SEK R",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P0001D63M.ST"
  },
  "LU1829221024": {
   "category": null,
@@ -269,6 +503,24 @@
   "sector": "Technology",
   "symbol": "ASML"
  },
+ "NO0010063308": {
+  "category": null,
+  "checked": 1793921080.0178757,
+  "industry": "Telecom Services",
+  "name": "Telenor",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "TEL.OL"
+ },
+ "NO0010791353": {
+  "category": null,
+  "checked": 1793921081.2847495,
+  "industry": "Marine Shipping",
+  "name": "MPC Container Ships",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "MPCC.OL"
+ },
  "NO0011202772": {
   "category": null,
   "checked": 1793143329.6464338,
@@ -286,6 +538,33 @@
   "quote_type": "EQUITY",
   "sector": "Industrials",
   "symbol": "KOG.OL"
+ },
+ "NO0013697029": {
+  "category": null,
+  "checked": 1793921082.0359614,
+  "industry": "Aerospace & Defense",
+  "name": "Kongsberg Maritime",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "KMAR.OL"
+ },
+ "SE0000106270": {
+  "category": null,
+  "checked": 1793921082.835454,
+  "industry": "Apparel Manufacturing",
+  "name": "H&M B",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "HM-B.ST"
+ },
+ "SE0000108227": {
+  "category": null,
+  "checked": 1793921081.150596,
+  "industry": "Tools & Accessories",
+  "name": "SKF B",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "SKF-B.ST"
  },
  "SE0000108656": {
   "category": null,
@@ -305,6 +584,15 @@
   "sector": "Industrials",
   "symbol": "VOLV-B.ST"
  },
+ "SE0000148884": {
+  "category": null,
+  "checked": 1793921080.5680082,
+  "industry": "Banks—Regional",
+  "name": "SEB A",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "SEB-A.ST"
+ },
  "SE0000242455": {
   "category": null,
   "checked": 1793143328.941696,
@@ -314,6 +602,15 @@
   "sector": "Financial Services",
   "symbol": "SWED-A.ST"
  },
+ "SE0000427874": {
+  "category": null,
+  "checked": 1793921078.8023808,
+  "industry": null,
+  "name": "Nordea Alfa",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P00000L8H.ST"
+ },
  "SE0000526626": {
   "category": null,
   "checked": 1793143329.6864202,
@@ -322,6 +619,15 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "MSAB-B.ST"
+ },
+ "SE0000584948": {
+  "category": null,
+  "checked": 1793921080.368195,
+  "industry": "Specialty Retail",
+  "name": "Clas Ohlson B",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "CLAS-B.ST"
  },
  "SE0000693293": {
   "category": null,
@@ -350,6 +656,15 @@
   "sector": null,
   "symbol": "0P000083RV.ST"
  },
+ "SE0001057910": {
+  "category": null,
+  "checked": 1793921080.8518007,
+  "industry": "Silver",
+  "name": "Sotkamo Silver",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "SOSI1.HE"
+ },
  "SE0002756973": {
   "category": null,
   "checked": 1793914603.6632133,
@@ -358,6 +673,15 @@
   "quote_type": "MUTUALFUND",
   "sector": null,
   "symbol": "0P0000J24W.ST"
+ },
+ "SE0005188836": {
+  "category": null,
+  "checked": 1793921078.7856593,
+  "industry": null,
+  "name": "Länsförsäkringar Global Index",
+  "quote_type": "MUTUALFUND",
+  "sector": null,
+  "symbol": "0P0000YVZ3.ST"
  },
  "SE0005993102": {
   "category": null,
@@ -377,6 +701,42 @@
   "sector": null,
   "symbol": "0P000134K7.IR"
  },
+ "SE0006425815": {
+  "category": null,
+  "checked": 1793921079.8280387,
+  "industry": "Electrical Equipment & Parts",
+  "name": "PowerCell Sweden",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "PCELL.ST"
+ },
+ "SE0006993770": {
+  "category": null,
+  "checked": 1793921079.80181,
+  "industry": "Grocery Stores",
+  "name": "Axfood",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "AXFO.ST"
+ },
+ "SE0007100581": {
+  "category": null,
+  "checked": 1793921079.8436682,
+  "industry": "Security & Protection Services",
+  "name": "Assa Abloy B",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "ASSA-B.ST"
+ },
+ "SE0007100599": {
+  "category": null,
+  "checked": 1793921080.3325706,
+  "industry": "Banks—Diversified",
+  "name": "Handelsbanken A",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "SHB-A.ST"
+ },
  "SE0009778954": {
   "category": null,
   "checked": 1793914604.4260662,
@@ -385,6 +745,51 @@
   "quote_type": "ETF",
   "sector": null,
   "symbol": "XACTHDIV.ST"
+ },
+ "SE0009806607": {
+  "category": null,
+  "checked": 1793921081.93345,
+  "industry": "Pollution & Treatment Controls",
+  "name": "Munters Group",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "MTRS.ST"
+ },
+ "SE0011090547": {
+  "category": null,
+  "checked": 1793921080.944105,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Beijer Alma B",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "BEIA-B.ST"
+ },
+ "SE0014504817": {
+  "category": null,
+  "checked": 1793921082.2117603,
+  "industry": "Security & Protection Services",
+  "name": "Loomis",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "LOOMIS.ST"
+ },
+ "SE0014960365": {
+  "category": null,
+  "checked": 1793921081.9120414,
+  "industry": "Engineering & Construction",
+  "name": "Sweco A",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "SWEC-A.ST"
+ },
+ "SE0015192067": {
+  "category": null,
+  "checked": 1793921082.425458,
+  "industry": "Capital Markets",
+  "name": "Nordnet",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "SAVE.ST"
  },
  "SE0015811955": {
   "category": null,
@@ -395,6 +800,24 @@
   "sector": "Financial Services",
   "symbol": "INVE-A.ST"
  },
+ "SE0017486889": {
+  "category": null,
+  "checked": 1793921081.2655156,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Atlas Copco A",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "ATCO-A.ST"
+ },
+ "SE0017486897": {
+  "category": null,
+  "checked": 1793921082.6102357,
+  "industry": null,
+  "name": "Atlas Copco B",
+  "quote_type": null,
+  "sector": null,
+  "symbol": null
+ },
  "SE0019175563": {
   "category": null,
   "checked": 1793914603.6547048,
@@ -404,6 +827,15 @@
   "sector": null,
   "symbol": "0P0001Q7VH.ST"
  },
+ "SE0021628898": {
+  "category": null,
+  "checked": 1793921080.2181387,
+  "industry": "Auto Manufacturers",
+  "name": "Volvo Car B",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "VOLCAR-B.ST"
+ },
  "SE0021921269": {
   "category": null,
   "checked": 1793143329.4443634,
@@ -412,6 +844,33 @@
   "quote_type": "EQUITY",
   "sector": "Industrials",
   "symbol": "SAAB-B.ST"
+ },
+ "SE0022726485": {
+  "category": null,
+  "checked": 1793921079.7548609,
+  "industry": "Gambling",
+  "name": "Betsson B",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "BETS-B.ST"
+ },
+ "SE0025158629": {
+  "category": null,
+  "checked": 1793921080.385322,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Mycronic",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "MYCR.ST"
+ },
+ "US00215W1009": {
+  "category": null,
+  "checked": 1793921082.5789704,
+  "industry": null,
+  "name": "ASE Technology ADR",
+  "quote_type": "EQUITY",
+  "sector": null,
+  "symbol": "US00215W1009.SG"
  },
  "US00287Y1091": {
   "category": null,
@@ -458,6 +917,15 @@
   "sector": "Consumer Cyclical",
   "symbol": "AMZN"
  },
+ "US0258161092": {
+  "category": null,
+  "checked": 1793921081.3870578,
+  "industry": "Credit Services",
+  "name": "American Express",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "AXP"
+ },
  "US0311621009": {
   "category": null,
   "checked": 1793143327.5460057,
@@ -466,6 +934,33 @@
   "quote_type": "EQUITY",
   "sector": "Healthcare",
   "symbol": "AMGN"
+ },
+ "US0320951017": {
+  "category": null,
+  "checked": 1793921080.1518373,
+  "industry": "Electronic Components",
+  "name": "Amphenol",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "APH"
+ },
+ "US03214Q1085": {
+  "category": null,
+  "checked": 1793921079.9533534,
+  "industry": "Electrical Equipment & Parts",
+  "name": "Amprius Technologies",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "AMPX"
+ },
+ "US0326541051": {
+  "category": null,
+  "checked": 1793921081.0852175,
+  "industry": "Semiconductors",
+  "name": "Analog Devices",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "ADI"
  },
  "US0378331005": {
   "category": null,
@@ -485,6 +980,24 @@
   "sector": "Technology",
   "symbol": "AMAT"
  },
+ "US03823U1025": {
+  "category": null,
+  "checked": 1793921082.1185083,
+  "industry": "Communication Equipment",
+  "name": "Applied Optoelectronics",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "AAOI"
+ },
+ "US0404132054": {
+  "category": null,
+  "checked": 1793921082.6572864,
+  "industry": "Computer Hardware",
+  "name": "Arista Networks",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "ANET"
+ },
  "US0420682058": {
   "category": null,
   "checked": 1793143327.4724767,
@@ -493,6 +1006,15 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "ARM"
+ },
+ "US0567521085": {
+  "category": null,
+  "checked": 1793921081.8169892,
+  "industry": "Internet Content & Information",
+  "name": "Baidu ADR",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "B1C.DU"
  },
  "US09290D1019": {
   "category": null,
@@ -512,6 +1034,96 @@
   "sector": "Industrials",
   "symbol": "BE"
  },
+ "US1011371077": {
+  "category": null,
+  "checked": 1793921079.5507624,
+  "industry": "Medical Devices",
+  "name": "Boston Scientific",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "BSX"
+ },
+ "US1104481072": {
+  "category": null,
+  "checked": 1793921081.6881342,
+  "industry": "Tobacco",
+  "name": "British American Tobacco ADR",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "BTI"
+ },
+ "US11135F1012": {
+  "category": null,
+  "checked": 1793921080.5520582,
+  "industry": "Semiconductors",
+  "name": "Broadcom",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "AVGO"
+ },
+ "US1252691001": {
+  "category": null,
+  "checked": 1793921081.5867846,
+  "industry": "Agricultural Inputs",
+  "name": "CF Industries",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "CF"
+ },
+ "US1273871087": {
+  "category": null,
+  "checked": 1793921080.9288685,
+  "industry": "Software—Application",
+  "name": "Cadence Design Systems",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "CDNS"
+ },
+ "US15675D1037": {
+  "category": null,
+  "checked": 1793921082.6882913,
+  "industry": "Semiconductors",
+  "name": "Cerebras Systems",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "CBRS"
+ },
+ "US1667641005": {
+  "category": null,
+  "checked": 1793921080.5021358,
+  "industry": "Oil & Gas Integrated",
+  "name": "Chevron",
+  "quote_type": "EQUITY",
+  "sector": "Energy",
+  "symbol": "CVX"
+ },
+ "US17253J1060": {
+  "category": null,
+  "checked": 1793921079.8905404,
+  "industry": "Information Technology Services",
+  "name": "Cipher Digital",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "CIFR"
+ },
+ "US17275R1023": {
+  "category": null,
+  "checked": 1793921099.2540264,
+  "industry": "Communication Equipment",
+  "name": "Cisco Systems",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "CSCO"
+ },
+ "US1890541097": {
+  "category": null,
+  "checked": 1793921082.151794,
+  "industry": "Household & Personal Products",
+  "name": "Clorox",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "CLX"
+ },
  "US1912161007": {
   "category": null,
   "checked": 1793143328.4629285,
@@ -529,6 +1141,33 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "COHR"
+ },
+ "US2058871029": {
+  "category": null,
+  "checked": 1793921081.4525344,
+  "industry": "Packaged Foods",
+  "name": "ConAgra Brands",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "CAG"
+ },
+ "US20825C1045": {
+  "category": null,
+  "checked": 1793921081.8912933,
+  "industry": "Oil & Gas E&P",
+  "name": "ConocoPhillips",
+  "quote_type": "EQUITY",
+  "sector": "Energy",
+  "symbol": "COP"
+ },
+ "US22160K1051": {
+  "category": null,
+  "checked": 1793921082.5028706,
+  "industry": "Discount Stores",
+  "name": "Costco Wholesale",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "COST"
  },
  "US24703L2025": {
   "category": null,
@@ -548,6 +1187,60 @@
   "sector": "Industrials",
   "symbol": "DAL"
  },
+ "US2546871060": {
+  "category": null,
+  "checked": 1793921082.2898955,
+  "industry": "Entertainment",
+  "name": "Walt Disney",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "DIS"
+ },
+ "US2605571031": {
+  "category": null,
+  "checked": 1793921081.0957294,
+  "industry": "Chemicals",
+  "name": "Dow",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "DOW"
+ },
+ "US2674751019": {
+  "category": null,
+  "checked": 1793921082.519404,
+  "industry": "Engineering & Construction",
+  "name": "Dycom Industries",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "DY"
+ },
+ "US2910111044": {
+  "category": null,
+  "checked": 1793921079.7870405,
+  "industry": "Specialty Industrial Machinery",
+  "name": "Emerson Electric",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "EMR"
+ },
+ "US3024913036": {
+  "category": null,
+  "checked": 1793921082.0853508,
+  "industry": "Agricultural Inputs",
+  "name": "FMC",
+  "quote_type": "EQUITY",
+  "sector": "Basic Materials",
+  "symbol": "FMC"
+ },
+ "US30303M1027": {
+  "category": null,
+  "checked": 1793921079.9854567,
+  "industry": "Internet Content & Information",
+  "name": "Meta Platforms A",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "META"
+ },
  "US36266G1076": {
   "category": null,
   "checked": 1793143329.4287274,
@@ -566,6 +1259,15 @@
   "sector": "Industrials",
   "symbol": "GEV"
  },
+ "US3695501086": {
+  "category": null,
+  "checked": 1793921079.7392313,
+  "industry": "Aerospace & Defense",
+  "name": "General Dynamics",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "GD"
+ },
  "US3696043013": {
   "category": null,
   "checked": 1793143328.2366238,
@@ -574,6 +1276,33 @@
   "quote_type": "EQUITY",
   "sector": "Industrials",
   "symbol": "GE"
+ },
+ "US40434L1052": {
+  "category": null,
+  "checked": 1793921082.3942077,
+  "industry": "Computer Hardware",
+  "name": "HP",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "HPQ"
+ },
+ "US4370761029": {
+  "category": null,
+  "checked": 1793921082.7573152,
+  "industry": "Home Improvement Retail",
+  "name": "Home Depot",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "HD"
+ },
+ "US4385161066": {
+  "category": null,
+  "checked": 1793921081.0316975,
+  "industry": "Conglomerates",
+  "name": "HONEYWELL INTERNATIONAL",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "HON"
  },
  "US4581401001": {
   "category": null,
@@ -593,6 +1322,15 @@
   "sector": "Technology",
   "symbol": "IBM"
  },
+ "US46625H1005": {
+  "category": null,
+  "checked": 1793921081.355788,
+  "industry": "Banks—Diversified",
+  "name": "JP Morgan Chase",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "JPM"
+ },
  "US4781601046": {
   "category": null,
   "checked": 1793143328.4813797,
@@ -611,6 +1349,15 @@
   "sector": "Technology",
   "symbol": "KLAC"
  },
+ "US5007541064": {
+  "category": null,
+  "checked": 1793921082.201925,
+  "industry": "Packaged Foods",
+  "name": "The Kraft Heinz Company",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "KHC"
+ },
  "US5128073062": {
   "category": null,
   "checked": 1793143444.5271378,
@@ -619,6 +1366,24 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "LRCX"
+ },
+ "US5324571083": {
+  "category": null,
+  "checked": 1793921082.243014,
+  "industry": "Drug Manufacturers—General",
+  "name": "Eli Lilly",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "LLY"
+ },
+ "US5500211090": {
+  "category": null,
+  "checked": 1793921081.5077693,
+  "industry": "Apparel Retail",
+  "name": "Lululemon Athletica",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "LULU"
  },
  "US55024U1097": {
   "category": null,
@@ -656,6 +1421,15 @@
   "sector": "Technology",
   "symbol": "MSFT"
  },
+ "US5949724083": {
+  "category": null,
+  "checked": 1793921081.7857351,
+  "industry": "Software—Application",
+  "name": "Strategy A",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "MSTR"
+ },
  "US5951121038": {
   "category": null,
   "checked": 1793143326.1924715,
@@ -683,6 +1457,42 @@
   "sector": "Technology",
   "symbol": "MDB"
  },
+ "US6098391054": {
+  "category": null,
+  "checked": 1793921082.549053,
+  "industry": "Semiconductors",
+  "name": "Monolithic Power Systems",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "MPWR"
+ },
+ "US61023L2079": {
+  "category": null,
+  "checked": 1793921099.255024,
+  "industry": "Biotechnology",
+  "name": "Monopar Therapeutics",
+  "quote_type": "EQUITY",
+  "sector": "Healthcare",
+  "symbol": "MNPR"
+ },
+ "US64110L1061": {
+  "category": null,
+  "checked": 1793921080.2928379,
+  "industry": "Entertainment",
+  "name": "Netflix",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "NFLX"
+ },
+ "US6541061031": {
+  "category": null,
+  "checked": 1793921081.656881,
+  "industry": "Footwear & Accessories",
+  "name": "Nike",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "NKE"
+ },
  "US67066G1040": {
   "category": null,
   "checked": 1793143326.596066,
@@ -691,6 +1501,51 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "NVDA"
+ },
+ "US67079K1007": {
+  "category": null,
+  "checked": 1793921081.5671086,
+  "industry": "Specialty Industrial Machinery",
+  "name": "NuScale Power",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "SMR"
+ },
+ "US6821891057": {
+  "category": null,
+  "checked": 1793921082.812441,
+  "industry": "Semiconductors",
+  "name": "ON Semiconductor",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "ON"
+ },
+ "US68389X1054": {
+  "category": null,
+  "checked": 1793921079.874916,
+  "industry": "Software—Infrastructure",
+  "name": "Oracle",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "ORCL"
+ },
+ "US69608A1088": {
+  "category": null,
+  "checked": 1793921080.4861915,
+  "industry": "Software—Infrastructure",
+  "name": "Palantir Technologies",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "PLTR"
+ },
+ "US7181721090": {
+  "category": null,
+  "checked": 1793921081.7459624,
+  "industry": "Tobacco",
+  "name": "Philip Morris",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Defensive",
+  "symbol": "PM"
  },
  "US7427181091": {
   "category": null,
@@ -709,6 +1564,33 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "QCOM"
+ },
+ "US74967X1037": {
+  "category": null,
+  "checked": 1793921081.6725066,
+  "industry": "Specialty Retail",
+  "name": "RH",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "RH"
+ },
+ "US75513E1010": {
+  "category": null,
+  "checked": 1793921080.2029505,
+  "industry": "Aerospace & Defense",
+  "name": "RTX",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "RTX"
+ },
+ "US76954A1034": {
+  "category": null,
+  "checked": 1793921081.4854348,
+  "industry": "Auto Manufacturers",
+  "name": "Rivian Automotive A",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "RIVN"
  },
  "US7707001027": {
   "category": null,
@@ -737,6 +1619,24 @@
   "sector": "Technology",
   "symbol": "SNDK"
  },
+ "US81141R1005": {
+  "category": null,
+  "checked": 1793921082.7235641,
+  "industry": "Internet Retail",
+  "name": "Sea ADR A",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "SE"
+ },
+ "US83406F1021": {
+  "category": null,
+  "checked": 1793921081.4687707,
+  "industry": "Credit Services",
+  "name": "SoFi Technologies",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "SOFI"
+ },
  "US84615Q1031": {
   "category": null,
   "checked": 1793143327.6572626,
@@ -755,6 +1655,42 @@
   "sector": "Technology",
   "symbol": "SNPS"
  },
+ "US8740391003": {
+  "category": null,
+  "checked": 1793921082.0183399,
+  "industry": null,
+  "name": "Taiwan Semiconductor Manufacturing ADR",
+  "quote_type": null,
+  "sector": null,
+  "symbol": null
+ },
+ "US88160R1014": {
+  "category": null,
+  "checked": 1793921081.1249537,
+  "industry": "Auto Manufacturers",
+  "name": "Tesla",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "TSLA"
+ },
+ "US8825081040": {
+  "category": null,
+  "checked": 1793921082.3055182,
+  "industry": "Semiconductors",
+  "name": "Texas Instruments",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "TXN"
+ },
+ "US88339J1051": {
+  "category": null,
+  "checked": 1793921081.2415605,
+  "industry": "Advertising Agencies",
+  "name": "The Trade Desk A",
+  "quote_type": "EQUITY",
+  "sector": "Communication Services",
+  "symbol": "TTD"
+ },
  "US8835561023": {
   "category": null,
   "checked": 1793143326.9175057,
@@ -763,6 +1699,24 @@
   "quote_type": "EQUITY",
   "sector": "Healthcare",
   "symbol": "TMO"
+ },
+ "US9100471096": {
+  "category": null,
+  "checked": 1793921081.856851,
+  "industry": "Airlines",
+  "name": "United Airlines",
+  "quote_type": "EQUITY",
+  "sector": "Industrials",
+  "symbol": "UAL"
+ },
+ "US92826C8394": {
+  "category": null,
+  "checked": 1793921081.60241,
+  "industry": "Credit Services",
+  "name": "Visa",
+  "quote_type": "EQUITY",
+  "sector": "Financial Services",
+  "symbol": "V"
  },
  "US9311421039": {
   "category": null,
@@ -781,5 +1735,23 @@
   "quote_type": "EQUITY",
   "sector": "Technology",
   "symbol": "WDC"
+ },
+ "US9741551033": {
+  "category": null,
+  "checked": 1793921081.7367396,
+  "industry": "Restaurants",
+  "name": "Wingstop",
+  "quote_type": "EQUITY",
+  "sector": "Consumer Cyclical",
+  "symbol": "WING"
+ },
+ "US98138H1014": {
+  "category": null,
+  "checked": 1793921081.1946695,
+  "industry": "Software—Application",
+  "name": "Workday A",
+  "quote_type": "EQUITY",
+  "sector": "Technology",
+  "symbol": "WDAY"
  }
 }

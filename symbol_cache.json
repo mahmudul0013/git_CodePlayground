@@ -1,4 +1,12 @@
 {
+  "CA05466C1095": {
+    "checked": 1793921063.9755352,
+    "currency": "CAD",
+    "exchange": "TOR",
+    "name": "Aya Gold & Silver",
+    "source": "yahoo_search",
+    "symbol": "AYA.TO"
+  },
   "CA15101Q2071": {
     "checked": 1793543593.4637918,
     "currency": "CAD",
@@ -6,6 +14,22 @@
     "name": "Celestica",
     "source": "yahoo_search",
     "symbol": "CLS.TO"
+  },
+  "CA46016U1084": {
+    "checked": 1793921066.502967,
+    "currency": "CAD",
+    "exchange": "TOR",
+    "name": "International Petroleum Corp.",
+    "source": "yahoo_search",
+    "symbol": "IPCO.TO"
+  },
+  "CA5398201007": {
+    "checked": 1793921063.920781,
+    "currency": null,
+    "exchange": null,
+    "name": "Lockheed Martin Corp.",
+    "source": "ticker_map",
+    "symbol": "LMT"
   },
   "CA5503711080": {
     "checked": 1793143329.184233,
@@ -47,6 +71,14 @@
     "source": "ticker_map",
     "symbol": "IFX.DE"
   },
+  "DE0007100000": {
+    "checked": 1793921072.9858088,
+    "currency": "EUR",
+    "exchange": "GER",
+    "name": "Mercedes Benz Group",
+    "source": "yahoo_search",
+    "symbol": "MBG.DE"
+  },
   "DE0007236101": {
     "checked": 1793143327.0426443,
     "currency": null,
@@ -71,6 +103,19 @@
     "source": "ticker_map",
     "symbol": "ENR.DE"
   },
+  "DE000JY6GY20": {
+    "checked": 1793921074.6767762,
+    "name": "MINI L SANDISK CO NORDNET SE29",
+    "symbol": null
+  },
+  "DK0060696300": {
+    "checked": 1793921068.1331985,
+    "currency": "DKK",
+    "exchange": "CPH",
+    "name": "Scandinavian Tobacco Group",
+    "source": "yahoo_search",
+    "symbol": "STG.CO"
+  },
   "DK0062498333": {
     "checked": 1793143327.1288815,
     "currency": null,
@@ -87,6 +132,46 @@
     "source": "ticker_map",
     "symbol": "NOKIA.HE"
   },
+  "FI0009003727": {
+    "checked": 1793921062.9213173,
+    "currency": null,
+    "exchange": null,
+    "name": "Wärtsilä B",
+    "source": "ticker_map",
+    "symbol": "WRT1V.HE"
+  },
+  "FI0009013403": {
+    "checked": 1793921069.9195442,
+    "currency": "EUR",
+    "exchange": "HEL",
+    "name": "Kone B",
+    "source": "yahoo_search",
+    "symbol": "KNEBV.HE"
+  },
+  "FI4000153309": {
+    "checked": 1793921062.94375,
+    "currency": "GBP",
+    "exchange": "LSE",
+    "name": "Faron Pharmaceuticals",
+    "source": "yahoo_search",
+    "symbol": "FARN.L"
+  },
+  "FI4000297767": {
+    "checked": 1793921065.5026274,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Nordea",
+    "source": "yahoo_search",
+    "symbol": "NDA-SE.ST"
+  },
+  "FI4000552500": {
+    "checked": 1793921070.120161,
+    "currency": "EUR",
+    "exchange": "HEL",
+    "name": "Sampo A",
+    "source": "yahoo_search",
+    "symbol": "SAMPO.HE"
+  },
   "FR0000121972": {
     "checked": 1793143327.1433337,
     "currency": null,
@@ -94,6 +179,14 @@
     "name": "Schneider Electric SE",
     "source": "ticker_map",
     "symbol": "SU.PA"
+  },
+  "FR0011341205": {
+    "checked": 1793921070.7509243,
+    "currency": "EUR",
+    "exchange": "PAR",
+    "name": "Nanobiotix",
+    "source": "yahoo_search",
+    "symbol": "NANO.PA"
   },
   "GB0009895292": {
     "checked": 1792710220.7306423,
@@ -103,6 +196,38 @@
     "source": "ticker_map",
     "symbol": "AZN.ST"
   },
+  "IE0003Z9E2Y3": {
+    "checked": 1793921064.3574493,
+    "currency": "EUR",
+    "exchange": "STU",
+    "name": "Global X Copper Miners ETF USD Acc",
+    "source": "yahoo_search",
+    "symbol": "IE0003Z9E2Y3.SG"
+  },
+  "IE000IVNQZ81": {
+    "checked": 1793921066.3701553,
+    "currency": null,
+    "exchange": null,
+    "name": "TE Connectivity",
+    "source": "ticker_map",
+    "symbol": "TEL"
+  },
+  "IE000S9YS762": {
+    "checked": 1793921071.8681686,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Linde",
+    "source": "yahoo_search",
+    "symbol": "LIN"
+  },
+  "IE000UL6CLP7": {
+    "checked": 1793921064.5607476,
+    "currency": "EUR",
+    "exchange": "STU",
+    "name": "Global X Silver Miners ETF USD Acc",
+    "source": "yahoo_search",
+    "symbol": "IE000UL6CLP7.SG"
+  },
   "IE000XZSV718": {
     "checked": 1793315060.532587,
     "currency": null,
@@ -110,6 +235,14 @@
     "name": "SPDR S&P 500 UCITS ETF (Acc)",
     "source": "manual",
     "symbol": "SPYL.DE"
+  },
+  "IE000YYE6WK5": {
+    "checked": 1793921060.330239,
+    "currency": null,
+    "exchange": null,
+    "name": "VanEck Defense ETF A USD Acc",
+    "source": "ticker_map",
+    "symbol": "DFNS.L"
   },
   "IE00B57X3V84": {
     "checked": 1793314953.233041,
@@ -191,6 +324,14 @@
     "source": "ticker_map",
     "symbol": "SMH"
   },
+  "IE00BMTD2G30": {
+    "checked": 1793921078.7856593,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Nordnet Global Index",
+    "source": "yahoo_search",
+    "symbol": "0P0001K6NH.ST"
+  },
   "IE00BMTD2V80": {
     "checked": 1793143328.0715787,
     "currency": "SEK",
@@ -199,6 +340,30 @@
     "source": "yahoo_search",
     "symbol": "0P0001K6NL.ST"
   },
+  "IE00BYTBXV33": {
+    "checked": 1793921062.4734895,
+    "currency": "EUR",
+    "exchange": "ISE",
+    "name": "Ryanair Holdings Plc",
+    "source": "yahoo_search",
+    "symbol": "RYA.IR"
+  },
+  "IE00BYZK4776": {
+    "checked": 1793921060.142666,
+    "currency": "GBP",
+    "exchange": "LSE",
+    "name": "iShares Healthcare Innovation UCITS ETF USD (Acc)",
+    "source": "yahoo_search",
+    "symbol": "HEAL.L"
+  },
+  "IT0003856405": {
+    "checked": 1793921063.421948,
+    "currency": "EUR",
+    "exchange": "MIL",
+    "name": "Leonardo S.p.A.",
+    "source": "yahoo_search",
+    "symbol": "LDO.MI"
+  },
   "KYG3323L1005": {
     "checked": 1793143327.988891,
     "currency": "USD",
@@ -206,6 +371,35 @@
     "name": "Fabrinet",
     "source": "yahoo_search",
     "symbol": "FN"
+  },
+  "KYG393871085": {
+    "checked": 1793921072.7867436,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "GLOBALFOUNDRIES",
+    "source": "yahoo_search",
+    "symbol": "GFS"
+  },
+  "LU0030164395": {
+    "checked": 1793921060.3687289,
+    "name": "SEB Europe Exposure Fund C EUR",
+    "symbol": null
+  },
+  "LU1778762911": {
+    "checked": 1793921066.3593655,
+    "currency": null,
+    "exchange": null,
+    "name": "Spotify",
+    "source": "ticker_map",
+    "symbol": "SPOT"
+  },
+  "LU1822851538": {
+    "checked": 1793921060.5510287,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Finserve Global Defence & Sec I SEK R",
+    "source": "yahoo_search",
+    "symbol": "0P0001D63M.ST"
   },
   "LU1829221024": {
     "checked": 1792710220.7573602,
@@ -247,6 +441,22 @@
     "source": "ticker_map",
     "symbol": "ASML"
   },
+  "NO0010063308": {
+    "checked": 1793921062.203859,
+    "currency": "NOK",
+    "exchange": "OSL",
+    "name": "Telenor",
+    "source": "yahoo_search",
+    "symbol": "TEL.OL"
+  },
+  "NO0010791353": {
+    "checked": 1793921066.1201725,
+    "currency": "NOK",
+    "exchange": "OSL",
+    "name": "MPC Container Ships",
+    "source": "yahoo_search",
+    "symbol": "MPCC.OL"
+  },
   "NO0011202772": {
     "checked": 1793143329.6464338,
     "currency": null,
@@ -262,6 +472,30 @@
     "name": "Kongsberg Gruppen",
     "source": "ticker_map",
     "symbol": "KOG.OL"
+  },
+  "NO0013697029": {
+    "checked": 1793921070.5193048,
+    "currency": "NOK",
+    "exchange": "OSL",
+    "name": "Kongsberg Maritime",
+    "source": "yahoo_search",
+    "symbol": "KMAR.OL"
+  },
+  "SE0000106270": {
+    "checked": 1793921075.951818,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "H&M B",
+    "source": "yahoo_search",
+    "symbol": "HM-B.ST"
+  },
+  "SE0000108227": {
+    "checked": 1793921066.0369198,
+    "currency": null,
+    "exchange": null,
+    "name": "SKF B",
+    "source": "ticker_map",
+    "symbol": "SKF-B.ST"
   },
   "SE0000108656": {
     "checked": 1793143329.668596,
@@ -279,6 +513,14 @@
     "source": "ticker_map",
     "symbol": "VOLV-B.ST"
   },
+  "SE0000148884": {
+    "checked": 1793921063.9543324,
+    "currency": null,
+    "exchange": null,
+    "name": "SEB A",
+    "source": "ticker_map",
+    "symbol": "SEB-A.ST"
+  },
   "SE0000242455": {
     "checked": 1793143328.941696,
     "currency": null,
@@ -287,6 +529,14 @@
     "source": "ticker_map",
     "symbol": "SWED-A.ST"
   },
+  "SE0000427874": {
+    "checked": 1793921059.9304426,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Nordea Alfa",
+    "source": "yahoo_search",
+    "symbol": "0P00000L8H.ST"
+  },
   "SE0000526626": {
     "checked": 1793143329.6864202,
     "currency": "SEK",
@@ -294,6 +544,14 @@
     "name": "Micro Systemation B",
     "source": "yahoo_search",
     "symbol": "MSAB-B.ST"
+  },
+  "SE0000584948": {
+    "checked": 1793921063.1709585,
+    "currency": null,
+    "exchange": null,
+    "name": "Clas Ohlson B",
+    "source": "ticker_map",
+    "symbol": "CLAS-B.ST"
   },
   "SE0000693293": {
     "checked": 1793314953.233041,
@@ -319,6 +577,14 @@
     "source": "yahoo_search",
     "symbol": "0P000083RV.ST"
   },
+  "SE0001057910": {
+    "checked": 1793921064.1673613,
+    "currency": "EUR",
+    "exchange": "HEL",
+    "name": "Sotkamo Silver",
+    "source": "yahoo_search",
+    "symbol": "SOSI1.HE"
+  },
   "SE0002756973": {
     "checked": 1793143327.786755,
     "currency": "SEK",
@@ -326,6 +592,14 @@
     "name": "Nordnet Sverige Index",
     "source": "yahoo_search",
     "symbol": "0P0000J24W.ST"
+  },
+  "SE0005188836": {
+    "checked": 1793921057.501816,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Länsförsäkringar Global Index",
+    "source": "yahoo_search",
+    "symbol": "0P0000YVZ3.ST"
   },
   "SE0005993102": {
     "checked": 1793145106.6934466,
@@ -343,6 +617,38 @@
     "source": "yahoo_search",
     "symbol": "0P000134K7.IR"
   },
+  "SE0006425815": {
+    "checked": 1793921061.4376948,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "PowerCell Sweden",
+    "source": "yahoo_search",
+    "symbol": "PCELL.ST"
+  },
+  "SE0006993770": {
+    "checked": 1793921061.4279478,
+    "currency": null,
+    "exchange": null,
+    "name": "Axfood",
+    "source": "ticker_map",
+    "symbol": "AXFO.ST"
+  },
+  "SE0007100581": {
+    "checked": 1793921061.6207023,
+    "currency": null,
+    "exchange": null,
+    "name": "Assa Abloy B",
+    "source": "ticker_map",
+    "symbol": "ASSA-B.ST"
+  },
+  "SE0007100599": {
+    "checked": 1793921063.1545181,
+    "currency": null,
+    "exchange": null,
+    "name": "Handelsbanken A",
+    "source": "ticker_map",
+    "symbol": "SHB-A.ST"
+  },
   "SE0009778954": {
     "checked": 1793143328.5003815,
     "currency": "SEK",
@@ -350,6 +656,46 @@
     "name": "XACT Nordic High Dividend Low Volatility (UCITS ETF) (B1 SEK)",
     "source": "yahoo_search",
     "symbol": "XACTHDIV.ST"
+  },
+  "SE0009806607": {
+    "checked": 1793921069.7400413,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Munters Group",
+    "source": "yahoo_search",
+    "symbol": "MTRS.ST"
+  },
+  "SE0011090547": {
+    "checked": 1793921064.9530864,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Beijer Alma B",
+    "source": "yahoo_search",
+    "symbol": "BEIA-B.ST"
+  },
+  "SE0014504817": {
+    "checked": 1793921071.6206255,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Loomis",
+    "source": "yahoo_search",
+    "symbol": "LOOMIS.ST"
+  },
+  "SE0014960365": {
+    "checked": 1793921069.5182087,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Sweco A",
+    "source": "yahoo_search",
+    "symbol": "SWEC-A.ST"
+  },
+  "SE0015192067": {
+    "checked": 1793921073.3700736,
+    "currency": null,
+    "exchange": "OSTO",
+    "name": "Nordnet",
+    "source": "yahoo_search",
+    "symbol": "SAVE.ST"
   },
   "SE0015811955": {
     "checked": 1793143328.8559937,
@@ -359,6 +705,19 @@
     "source": "ticker_map",
     "symbol": "INVE-A.ST"
   },
+  "SE0017486889": {
+    "checked": 1793921066.0903192,
+    "currency": null,
+    "exchange": null,
+    "name": "Atlas Copco A",
+    "source": "ticker_map",
+    "symbol": "ATCO-A.ST"
+  },
+  "SE0017486897": {
+    "checked": 1793921074.2565248,
+    "name": "Atlas Copco B",
+    "symbol": null
+  },
   "SE0019175563": {
     "checked": 1793143327.3757691,
     "currency": "SEK",
@@ -367,6 +726,14 @@
     "source": "yahoo_search",
     "symbol": "0P0001Q7VH.ST"
   },
+  "SE0021628898": {
+    "checked": 1793921062.7260814,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Volvo Car B",
+    "source": "yahoo_search",
+    "symbol": "VOLCAR-B.ST"
+  },
   "SE0021921269": {
     "checked": 1793139026.1980968,
     "currency": null,
@@ -374,6 +741,22 @@
     "name": "SAAB B",
     "source": "ticker_map",
     "symbol": "SAAB-B.ST"
+  },
+  "SE0022726485": {
+    "checked": 1793921060.9402921,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Betsson B",
+    "source": "yahoo_search",
+    "symbol": "BETS-B.ST"
+  },
+  "SE0025158629": {
+    "checked": 1793921063.1937425,
+    "currency": "SEK",
+    "exchange": "STO",
+    "name": "Mycronic",
+    "source": "yahoo_search",
+    "symbol": "MYCR.ST"
   },
   "US00215W1009": {
     "checked": 1793139092.8747504,
@@ -423,6 +806,14 @@
     "source": "ticker_map",
     "symbol": "AMZN"
   },
+  "US0258161092": {
+    "checked": 1793921066.4035587,
+    "currency": null,
+    "exchange": null,
+    "name": "American Express",
+    "source": "ticker_map",
+    "symbol": "AXP"
+  },
   "US0311621009": {
     "checked": 1793143327.5460057,
     "currency": "USD",
@@ -430,6 +821,30 @@
     "name": "Amgen",
     "source": "yahoo_search",
     "symbol": "AMGN"
+  },
+  "US0320951017": {
+    "checked": 1793921062.4602792,
+    "currency": null,
+    "exchange": null,
+    "name": "Amphenol",
+    "source": "ticker_map",
+    "symbol": "APH"
+  },
+  "US03214Q1085": {
+    "checked": 1793921061.9374008,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Amprius Technologies",
+    "source": "yahoo_search",
+    "symbol": "AMPX"
+  },
+  "US0326541051": {
+    "checked": 1793921065.7909162,
+    "currency": null,
+    "exchange": null,
+    "name": "Analog Devices",
+    "source": "ticker_map",
+    "symbol": "ADI"
   },
   "US0378331005": {
     "checked": 1793053251.9694586,
@@ -447,6 +862,22 @@
     "source": "ticker_map",
     "symbol": "AMAT"
   },
+  "US03823U1025": {
+    "checked": 1793921071.1965218,
+    "currency": "SEK",
+    "exchange": "NGM",
+    "name": "Applied Optoelectronics",
+    "source": "yahoo_search",
+    "symbol": "AAOI"
+  },
+  "US0404132054": {
+    "checked": 1793921074.4518116,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Arista Networks",
+    "source": "yahoo_search",
+    "symbol": "ANET"
+  },
   "US0420682058": {
     "checked": 1793143327.4724767,
     "currency": null,
@@ -454,6 +885,14 @@
     "name": "Arm Holdings ADR",
     "source": "ticker_map",
     "symbol": "ARM"
+  },
+  "US0567521085": {
+    "checked": 1793921068.5868165,
+    "currency": "EUR",
+    "exchange": "DUS",
+    "name": "Baidu ADR",
+    "source": "yahoo_search",
+    "symbol": "B1C.DU"
   },
   "US09290D1019": {
     "checked": 1792710686.8698528,
@@ -470,6 +909,78 @@
     "name": "Bloom Energy A",
     "source": "ticker_map",
     "symbol": "BE"
+  },
+  "US1011371077": {
+    "checked": 1793921060.8951557,
+    "currency": null,
+    "exchange": null,
+    "name": "Boston Scientific",
+    "source": "ticker_map",
+    "symbol": "BSX"
+  },
+  "US1104481072": {
+    "checked": 1793921067.536649,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "British American Tobacco ADR",
+    "source": "yahoo_search",
+    "symbol": "BTI"
+  },
+  "US11135F1012": {
+    "checked": 1793921063.9375634,
+    "currency": null,
+    "exchange": null,
+    "name": "Broadcom",
+    "source": "ticker_map",
+    "symbol": "AVGO"
+  },
+  "US1252691001": {
+    "checked": 1793921066.9365451,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "CF Industries",
+    "source": "yahoo_search",
+    "symbol": "CF"
+  },
+  "US1273871087": {
+    "checked": 1793921064.7532117,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Cadence Design Systems",
+    "source": "yahoo_search",
+    "symbol": "CDNS"
+  },
+  "US15675D1037": {
+    "checked": 1793921074.9186132,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Cerebras Systems",
+    "source": "yahoo_search",
+    "symbol": "CBRS"
+  },
+  "US1667641005": {
+    "checked": 1793921063.9042478,
+    "currency": null,
+    "exchange": null,
+    "name": "Chevron",
+    "source": "ticker_map",
+    "symbol": "CVX"
+  },
+  "US17253J1060": {
+    "checked": 1793921061.6538641,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Cipher Digital",
+    "source": "yahoo_search",
+    "symbol": "CIFR"
+  },
+  "US17275R1023": {
+    "checked": 1793921073.559717,
+    "currency": null,
+    "exchange": null,
+    "name": "Cisco Systems",
+    "source": "ticker_map",
+    "symbol": "CSCO"
   },
   "US1890541097": {
     "checked": 1793139098.5897992,
@@ -495,6 +1006,30 @@
     "source": "ticker_map",
     "symbol": "COHR"
   },
+  "US2058871029": {
+    "checked": 1793921066.4035587,
+    "currency": null,
+    "exchange": null,
+    "name": "ConAgra Brands",
+    "source": "ticker_map",
+    "symbol": "CAG"
+  },
+  "US20825C1045": {
+    "checked": 1793921069.1365476,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "ConocoPhillips",
+    "source": "yahoo_search",
+    "symbol": "COP"
+  },
+  "US22160K1051": {
+    "checked": 1793921073.586583,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Costco Wholesale",
+    "source": "yahoo_search",
+    "symbol": "COST"
+  },
   "US24703L2025": {
     "checked": 1793143327.355963,
     "currency": "USD",
@@ -510,6 +1045,54 @@
     "name": "Delta Air Lines",
     "source": "ticker_map",
     "symbol": "DAL"
+  },
+  "US2546871060": {
+    "checked": 1793921072.1031048,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Walt Disney",
+    "source": "yahoo_search",
+    "symbol": "DIS"
+  },
+  "US2605571031": {
+    "checked": 1793921065.8129458,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Dow",
+    "source": "yahoo_search",
+    "symbol": "DOW"
+  },
+  "US2674751019": {
+    "checked": 1793921073.7697792,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Dycom Industries",
+    "source": "yahoo_search",
+    "symbol": "DY"
+  },
+  "US2910111044": {
+    "checked": 1793921061.2328944,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Emerson Electric",
+    "source": "yahoo_search",
+    "symbol": "EMR"
+  },
+  "US3024913036": {
+    "checked": 1793921070.957129,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "FMC",
+    "source": "yahoo_search",
+    "symbol": "FMC"
+  },
+  "US30303M1027": {
+    "checked": 1793921062.1874595,
+    "currency": null,
+    "exchange": null,
+    "name": "Meta Platforms A",
+    "source": "ticker_map",
+    "symbol": "META"
   },
   "US36266G1076": {
     "checked": 1793143329.4287274,
@@ -527,6 +1110,14 @@
     "source": "yahoo_search",
     "symbol": "GEV"
   },
+  "US3695501086": {
+    "checked": 1793921060.9246693,
+    "currency": null,
+    "exchange": null,
+    "name": "General Dynamics",
+    "source": "ticker_map",
+    "symbol": "GD"
+  },
   "US3696043013": {
     "checked": 1793143328.2366238,
     "currency": null,
@@ -534,6 +1125,30 @@
     "name": "GE Aerospace",
     "source": "ticker_map",
     "symbol": "GE"
+  },
+  "US40434L1052": {
+    "checked": 1793921073.1705117,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "HP",
+    "source": "yahoo_search",
+    "symbol": "HPQ"
+  },
+  "US4370761029": {
+    "checked": 1793921075.2961462,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Home Depot",
+    "source": "yahoo_search",
+    "symbol": "HD"
+  },
+  "US4385161066": {
+    "checked": 1793921065.26885,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "HONEYWELL INTERNATIONAL",
+    "source": "yahoo_search",
+    "symbol": "HON"
   },
   "US4581401001": {
     "checked": 1793143328.437322,
@@ -575,6 +1190,14 @@
     "source": "ticker_map",
     "symbol": "KLAC"
   },
+  "US5007541064": {
+    "checked": 1793921071.4363286,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "The Kraft Heinz Company",
+    "source": "yahoo_search",
+    "symbol": "KHC"
+  },
   "US5128073062": {
     "checked": 1793143444.5271378,
     "currency": "USD",
@@ -582,6 +1205,22 @@
     "name": "Lam Research",
     "source": "yahoo_search",
     "symbol": "LRCX"
+  },
+  "US5324571083": {
+    "checked": 1793921071.836928,
+    "currency": null,
+    "exchange": null,
+    "name": "Eli Lilly",
+    "source": "ticker_map",
+    "symbol": "LLY"
+  },
+  "US5500211090": {
+    "checked": 1793921066.4800944,
+    "currency": null,
+    "exchange": null,
+    "name": "Lululemon Athletica",
+    "source": "ticker_map",
+    "symbol": "LULU"
   },
   "US55024U1097": {
     "checked": 1793139004.0264132,
@@ -615,6 +1254,14 @@
     "source": "ticker_map",
     "symbol": "MSFT"
   },
+  "US5949724083": {
+    "checked": 1793921068.3859596,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Strategy A",
+    "source": "yahoo_search",
+    "symbol": "MSTR"
+  },
   "US5951121038": {
     "checked": 1792710220.7066844,
     "currency": null,
@@ -639,6 +1286,14 @@
     "source": "yahoo_search",
     "symbol": "MDB"
   },
+  "US6098391054": {
+    "checked": 1793921073.9863138,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Monolithic Power Systems",
+    "source": "yahoo_search",
+    "symbol": "MPWR"
+  },
   "US61023L2079": {
     "checked": 1793139143.4971788,
     "currency": "USD",
@@ -647,6 +1302,22 @@
     "source": "yahoo_search",
     "symbol": "MNPR"
   },
+  "US64110L1061": {
+    "checked": 1793921063.1440594,
+    "currency": null,
+    "exchange": null,
+    "name": "Netflix",
+    "source": "ticker_map",
+    "symbol": "NFLX"
+  },
+  "US6541061031": {
+    "checked": 1793921067.5210288,
+    "currency": null,
+    "exchange": null,
+    "name": "Nike",
+    "source": "ticker_map",
+    "symbol": "NKE"
+  },
   "US67066G1040": {
     "checked": 1793143326.596066,
     "currency": null,
@@ -654,6 +1325,46 @@
     "name": "NVIDIA",
     "source": "ticker_map",
     "symbol": "NVDA"
+  },
+  "US67079K1007": {
+    "checked": 1793921066.7031906,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "NuScale Power",
+    "source": "yahoo_search",
+    "symbol": "SMR"
+  },
+  "US6821891057": {
+    "checked": 1793921075.5185566,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "ON Semiconductor",
+    "source": "yahoo_search",
+    "symbol": "ON"
+  },
+  "US68389X1054": {
+    "checked": 1793921061.6378741,
+    "currency": null,
+    "exchange": null,
+    "name": "Oracle",
+    "source": "ticker_map",
+    "symbol": "ORCL"
+  },
+  "US69608A1088": {
+    "checked": 1793921063.871255,
+    "currency": null,
+    "exchange": null,
+    "name": "Palantir Technologies",
+    "source": "ticker_map",
+    "symbol": "PLTR"
+  },
+  "US7181721090": {
+    "checked": 1793921067.8540213,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Philip Morris",
+    "source": "yahoo_search",
+    "symbol": "PM"
   },
   "US7427181091": {
     "checked": 1793143329.1485357,
@@ -679,6 +1390,22 @@
     "source": "yahoo_search",
     "symbol": "RH"
   },
+  "US75513E1010": {
+    "checked": 1793921062.70394,
+    "currency": null,
+    "exchange": null,
+    "name": "RTX",
+    "source": "ticker_map",
+    "symbol": "RTX"
+  },
+  "US76954A1034": {
+    "checked": 1793921066.454383,
+    "currency": null,
+    "exchange": null,
+    "name": "Rivian Automotive A",
+    "source": "ticker_map",
+    "symbol": "RIVN"
+  },
   "US7707001027": {
     "checked": 1793143444.5281363,
     "currency": "USD",
@@ -703,6 +1430,22 @@
     "source": "ticker_map",
     "symbol": "SNDK"
   },
+  "US81141R1005": {
+    "checked": 1793921075.11067,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Sea ADR A",
+    "source": "yahoo_search",
+    "symbol": "SE"
+  },
+  "US83406F1021": {
+    "checked": 1793921066.4209,
+    "currency": null,
+    "exchange": null,
+    "name": "SoFi Technologies",
+    "source": "ticker_map",
+    "symbol": "SOFI"
+  },
   "US84615Q1031": {
     "checked": 1793143327.6572626,
     "currency": "USD",
@@ -719,6 +1462,35 @@
     "source": "yahoo_search",
     "symbol": "SNPS"
   },
+  "US8740391003": {
+    "checked": 1793921070.325792,
+    "name": "Taiwan Semiconductor Manufacturing ADR",
+    "symbol": null
+  },
+  "US88160R1014": {
+    "checked": 1793921066.0252552,
+    "currency": null,
+    "exchange": null,
+    "name": "Tesla",
+    "source": "ticker_map",
+    "symbol": "TSLA"
+  },
+  "US8825081040": {
+    "checked": 1793921072.3156629,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Texas Instruments",
+    "source": "yahoo_search",
+    "symbol": "TXN"
+  },
+  "US88339J1051": {
+    "checked": 1793921066.0696962,
+    "currency": null,
+    "exchange": null,
+    "name": "The Trade Desk A",
+    "source": "ticker_map",
+    "symbol": "TTD"
+  },
   "US8835561023": {
     "checked": 1793143326.9175057,
     "currency": "USD",
@@ -726,6 +1498,22 @@
     "name": "Thermo Fisher Scientific",
     "source": "yahoo_search",
     "symbol": "TMO"
+  },
+  "US9100471096": {
+    "checked": 1793921068.8203309,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "United Airlines",
+    "source": "yahoo_search",
+    "symbol": "UAL"
+  },
+  "US92826C8394": {
+    "checked": 1793921067.2241762,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "name": "Visa",
+    "source": "yahoo_search",
+    "symbol": "V"
   },
   "US9311421039": {
     "checked": 1793143329.2450268,
@@ -750,5 +1538,13 @@
     "name": "Wingstop",
     "source": "yahoo_search",
     "symbol": "WING"
+  },
+  "US98138H1014": {
+    "checked": 1793921066.053088,
+    "currency": null,
+    "exchange": null,
+    "name": "Workday A",
+    "source": "ticker_map",
+    "symbol": "WDAY"
   }
 }

@@ -179,6 +179,7 @@ code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 1
 /* add / trim advice */
 .adv { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; cursor: help; white-space: nowrap; }
 .adv.ADD { background: rgba(38,166,154,.18); color: var(--green); }
+.adv.BUYBACK { background: rgba(57,135,229,.18); color: #7aa8f0; }
 .adv.TRIM { background: rgba(247,201,72,.15); color: var(--gold); }
 .adv.CONSOLIDATE { background: rgba(144,133,233,.18); color: #b3a9f5; }
 .adv.REVIEW { background: rgba(239,83,80,.18); color: var(--red); }
@@ -188,3 +189,16 @@ code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 1
 .honest { border-left: 3px solid var(--gold); }
 .honest p { font-size: 12.5px; margin-top: 6px; }
 .honest .bt td, .honest .bt th { padding: 4px 10px; font-size: 12px; }
+
+/* assets table: compact so all columns fit without horizontal scrolling */
+#asset-table th, #asset-table td { padding: 6px 7px; }
+#asset-table td.name { max-width: 175px; }
+#asset-table .adv-amt { display: block; margin: 2px 0 0; }
+#asset-table td.tl, #asset-table th[data-k="type"], #asset-table th[data-k="advice"], #asset-table td.adv-td { text-align: left; }
+
+/* narrower windows: the money-flow columns Bought / Sold (still in the CSV export and the expanded trade list) make room */
+@media (max-width: 1360px) {
+  #asset-table tr.row > td:nth-child(7), #asset-table tr.row > td:nth-child(8),
+  #asset-table thead th:nth-child(7), #asset-table thead th:nth-child(8),
+  #asset-table tfoot td:nth-child(7), #asset-table tfoot td:nth-child(8) { display: none; }
+}

@@ -309,10 +309,9 @@ function renderTable(d) {
   const { v, list } = d;
   const win = v.win ? (v.win === 'w' ? ' (1W)' : ' (1M)') : '';
   const cols = [
-    col('name', 'Asset'), col('type', 'Type'), col('ccy', 'Ccy'), col('status', 'Status'), col('advice', 'Add / trim'),
+    col('name', 'Asset'), col('type', 'Type · Ccy'), col('status', 'Status'), col('advice', 'Add / trim'),
     col('qty', 'Qty'), col('value', 'Value kr'),
     col('bought', 'Bought kr' + win), col('sold', 'Sold kr' + win), col('trades', 'Buys / sells' + win),
-    col('last_buy', 'Last buy'), col('last_sell', 'Last sell'),
     col('fees', 'Fees kr'), col('realized', 'Realised kr'), col('unrealized', 'Unrealised kr'), col('total_pnl', 'Total P&L kr'),
   ];
   const { key, dir } = S.sort;
@@ -325,20 +324,19 @@ function renderTable(d) {
     const a = r.a, w = r.w, open = S.open.has(a.isin);
     let h = `<tr class="row" data-i="${esc(a.isin)}">
       <td class="name" title="${esc(a.name)} · ${esc(a.isin)}">${open ? '▾' : '▸'} ${esc(a.name)}</td>
-      <td class="tag">${esc(a.type)}</td><td class="tag">${esc(a.ccy)}</td>
+      <td class="tag tl">${esc(a.type)} · ${esc(a.ccy)}</td>
       <td><span class="badge ${a.held ? 'held' : 'closed'}">${a.held ? 'Held' : 'Closed'}</span></td>
-      <td>${adviceCell(a)}</td>
+      <td class="adv-td">${adviceCell(a)}</td>
       <td>${a.held ? fmt2(a.qty).replace(/,00$/, '') : '—'}</td><td>${a.held ? fmt(a.value) : '—'}</td>
       <td>${fmt(w.bought)}</td><td>${fmt(w.sold)}</td><td>${w.nb} / ${w.ns}</td>
-      <td class="tag">${a.last_buy || '—'}</td><td class="tag">${a.last_sell || '—'}</td>
       <td>${fmt(a.fees)}</td><td class="${cls(a.realized)}">${sgn(a.realized)}</td>
       <td class="${cls(a.unrealized)}">${a.held ? sgn(a.unrealized) : '—'}</td><td class="${cls(a.total_pnl)}">${sgn(a.total_pnl)}</td></tr>`;
     if (open) h += `<tr class="detail"><td colspan="${cols.length}">${detail(a)}</td></tr>`;
     return h;
   }).join('');
   const sum = f => list.reduce((s, r) => s + (f(r) || 0), 0);
-  const foot = `<tr><td>Total (${list.length})</td><td></td><td></td><td></td><td></td><td></td><td>${fmt(sum(r => r.a.value))}</td>
-    <td>${fmt(sum(r => r.w.bought))}</td><td>${fmt(sum(r => r.w.sold))}</td><td>${sum(r => r.w.nb)} / ${sum(r => r.w.ns)}</td><td></td><td></td>
+  const foot = `<tr><td>Total (${list.length})</td><td></td><td></td><td></td><td></td><td>${fmt(sum(r => r.a.value))}</td>
+    <td>${fmt(sum(r => r.w.bought))}</td><td>${fmt(sum(r => r.w.sold))}</td><td>${sum(r => r.w.nb)} / ${sum(r => r.w.ns)}</td>
     <td>${fmt(sum(r => r.a.fees))}</td><td>${sgn(sum(r => r.a.realized))}</td><td>${sgn(sum(r => r.a.unrealized))}</td><td>${sgn(sum(r => r.a.total_pnl))}</td></tr>`;
   $('asset-table').innerHTML = `<thead><tr>${th}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:var(--text-dim)">No assets match this filter.</td></tr>`}</tbody><tfoot>${foot}</tfoot>`;
   $('table-title').textContent = `${v.label} — ${list.length} assets`;
@@ -856,8 +854,8 @@ function renderDividends() {
 }
 
 // ───────── advice tab + Add / trim column (rules in advisor.py, served by /api/advice) ─────────
-const ADV_RANK = { TRIM: 0, ADD: 1, REVIEW: 2, CONSOLIDATE: 3, HOLD: 4 };
-const ADV_LABEL = { ADD: 'ADD', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
+const ADV_RANK = { TRIM: 0, ADD: 1, BUYBACK: 2, REVIEW: 3, CONSOLIDATE: 4, HOLD: 5 };
+const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
 
 async function loadAdvice() {
   if (S.advLoading) return;
@@ -872,11 +870,11 @@ async function loadAdvice() {
 const adviceOf = a => (S.advice && S.advice.assets && S.advice.assets[a.isin]) || null;
 
 function adviceCell(a) {
-  if (!a.held) return '<span class="tag">—</span>';
   const v = adviceOf(a);
+  if (!a.held && !v) return '<span class="tag">—</span>';      // closed assets only show a buy-back idea
   if (!v) return '<span class="tag">…</span>';
   const tip = esc(v.reasons.join(' '));
-  const amt = v.amount ? `<span class="adv-amt pv">${v.action === 'ADD' ? '+' : '−'}${fmt(v.amount)} kr</span>` : '';
+  const amt = v.amount ? `<span class="adv-amt pv">${v.action === 'ADD' || v.action === 'BUYBACK' ? '+' : '−'}${fmt(v.amount)} kr</span>` : '';
   return `<span class="adv ${v.action}" title="${tip}">${ADV_LABEL[v.action] || v.action}</span>${amt}`;
 }
 
@@ -900,21 +898,22 @@ function renderAdvice() {
     options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x.toFixed(1)}% of holdings` } } },
       scales: { x: { grid: { color: C.grid }, ticks: { callback: v => v + '%' } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } } } });
   const ac = Object.entries(Y.counts);
-  const accol = { ADD: C.green, TRIM: C.s[3], CONSOLIDATE: C.s[6], REVIEW: C.red, HOLD: C.other };
+  const accol = { ADD: C.green, BUYBACK: C.s[0], TRIM: C.s[3], CONSOLIDATE: C.s[6], REVIEW: C.red, HOLD: C.other };
   mkChart('a-actions', { type: 'bar', data: { labels: ac.map(x => x[0]), datasets: [{ data: ac.map(x => x[1]), backgroundColor: ac.map(x => accol[x[0]]), borderRadius: 3, maxBarThickness: 40 }] },
     options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: C.grid }, ticks: { precision: 0 } } } } });
 
-  const head = ['Asset', 'Weight', 'Amount kr', 'Score', 'Trend', '12m momentum', 'From 52w high', 'Why'];
-  const line = v => [esc(v.name), pct(v.weight, 1), { v: `<span class="pv">${v.amount ? fmt(v.amount) : '—'}</span>` },
+  const head = ['Asset', 'Action', 'Weight', 'Amount kr', 'Score', 'Trend', '12m momentum', 'From 52w high', 'Why'];
+  const line = v => [esc(v.name), `<span class="adv ${v.action}">${ADV_LABEL[v.action]}</span>`, v.closed ? 'not held' : pct(v.weight, 1), { v: `<span class="pv">${v.amount ? fmt(v.amount) : '—'}</span>` },
     v.score || '—', (v.metrics && v.metrics.trend) || '—', v.metrics && v.metrics.mom12_1 != null ? pct(v.metrics.mom12_1 * 100, 0) : '—',
     v.metrics && v.metrics.dd52 != null ? pct(v.metrics.dd52 * 100, 0) : '—', { v: `<span class="adv-why">${esc(v.reasons.join(' '))}</span>` }];
   const by = (acts, f) => rows.filter(r => acts.includes(r.action)).sort(f || ((x, y) => y.score - x.score)).map(line);
-  table('tb-add', head, by(['ADD']), 'No add ideas right now: nothing is both in an uptrend, pulled back and under-weight outside an over-weight theme.');
+  table('tb-add', head, by(['ADD', 'BUYBACK']), 'No add or buy-back ideas right now: nothing is both in an uptrend, pulled back and (for adds) under-weight outside an over-weight theme.');
   table('tb-trim', head, by(['TRIM']), 'No position breaks the size or theme limits.');
   table('tb-cons', head, by(['CONSOLIDATE', 'REVIEW'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.amount - x.amount), 'Nothing to consolidate.');
   $('adv-method').innerHTML = [
     '<b>TRIM</b>: a position above 4% of holdings is cut back to 4%; in a theme above 40% the holdings of 2.5% or more give back a fifth. Risk rules only; overbought or "extended" is NOT a trim reason (the back-test says it would have hurt).',
     '<b>ADD</b>: weight under 1.5%, price above its 200-day with the 50-day above it, positive 12-1 month momentum, 5-25% below the 52-week high, RSI under 68, and the theme not over its cap. Fill to about 2% in orders of at least 1 500 kr. Score = momentum rank, pullback depth and low volatility.',
+    '<b>BUY BACK</b>: same trend and pullback test applied to positions you have closed (so a good exit is not a lost opportunity), at least 7 days after your last sell, in one order of about 1.5% of the portfolio. The sell price and today\'s price are shown when both are in the same currency.',
     '<b>CONSOLIDATE</b>: under 1 500 kr. A round trip costs about 16 kr courtage and the position cannot change the result; sell it or top it up.',
     '<b>REVIEW</b>: below the 200-day, negative momentum and more than 15% under your cost. Not a sell order: re-check why you own it.',
     '<b>Data</b>: Yahoo adjusted daily closes (2 years, cached 6 h in history_cache.json), live prices for weights, Yahoo sectors, your ledger for cost and unrealised result. Funds without Yahoo history are kept as is.',
