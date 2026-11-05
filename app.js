@@ -309,6 +309,7 @@ function buildHolding(raw) {
     purchaseValueSEK: valueSEK - returnSEK,
     returnPct:  parseSE(raw['Avkast. %']),
     returnSEK,
+    exportValueSEK: valueSEK, exportReturnSEK: returnSEK, exportReturnPct: parseSE(raw['Avkast. %']),   // snapshot, kept to rescale from live prices
     ticker:     null,
     livePrice:  null,
     liveDayPct: null,
@@ -576,6 +577,15 @@ async function refreshPrices() {
     if (s.ticker && S.quotes[s.ticker]) {
       s.livePrice  = S.quotes[s.ticker].price;
       s.liveDayPct = S.quotes[s.ticker].changePercent;
+      // Value and return follow the live price (the export is a snapshot from the day it was made). A quote more than
+      // 2x off the export price is a wrong Yahoo symbol or a different currency, so the export values stay.
+      const ratio = s.price > 0 ? s.livePrice / s.price : null;
+      if (ratio > .5 && ratio < 2) {
+        s.valueSEK  = s.exportValueSEK * ratio;
+        s.returnSEK = s.exportReturnSEK + (s.valueSEK - s.exportValueSEK);
+        const cost  = s.valueSEK - s.returnSEK;
+        s.returnPct = cost > 0 ? s.returnSEK / cost * 100 : s.exportReturnPct;
+      }
     }
   });
 
@@ -1146,210 +1156,62 @@ function calcStochK(data, period = 14) {
 }
 
 /**
- * 8-factor technical scoring.
- * Indicators:  MACD (3pt) · RSI (2pt) · Bollinger (2pt) ·
- *              Stochastic (2pt) · SMA crossover (2.5pt) ·
- *              Volume (1.5pt) · Pivot (1pt) · ROC-5 (1pt)
- * Max absolute score ≈ 15.
- * Returns { score, confidence, direction, signals, rsi, stochK, macdState, currentPrice }
+ * Add / Trim ideas (replaces the old "Tomorrow's Signals").
+ * The old 8-indicator next-day score was back-tested on 77 holdings over 5 years and had no predictive power
+ * (Strong Buy: avg -0.25% next day, 43% up days), so the ideas now come from advisor.py (/api/advice):
+ * position size, theme concentration, tiny positions / fees and trend health. Rules and back-test: Analytics -> Advice.
  */
-function scoreTechnicals(data) {
-  if (!data || data.length < 20) return null;
-
-  const closes = data.map(d => d.close);
-  const last   = data[data.length - 1];
-  const cur    = last.close;
-
-  const rsi    = calcRSI(closes);
-  const macd   = calcMACD(closes);
-  const bb     = calcBB(closes);
-  const stochK = calcStochK(data);
-  const sma5   = calcSMA(closes, 5);
-  const sma20  = calcSMA(closes, 20);
-  const sma5p  = calcSMA(closes.slice(0, -1), 5);
-  const sma20p = calcSMA(closes.slice(0, -1), 20);
-  const pivots = calcPivots(last.high, last.low, last.close);
-
-  let score = 0;
-  const signals = [];
-
-  // ── 1. MACD (max ±3) ────────────────────────────────────
-  if (macd) {
-    if      (macd.crossoverBull)                         { score += 3.0; signals.push('MACD bullish cross'); }
-    else if (macd.crossoverBear)                         { score -= 3.0; signals.push('MACD bearish cross'); }
-    else if (macd.macd > macd.signal && macd.macd > 0)  { score += 2.0; signals.push('MACD uptrend'); }
-    else if (macd.macd < macd.signal && macd.macd < 0)  { score -= 2.0; signals.push('MACD downtrend'); }
-    else if (macd.macd > macd.signal)                    { score += 1.0; signals.push('MACD positive'); }
-    else                                                 { score -= 1.0; signals.push('MACD negative'); }
-  }
-
-  // ── 2. RSI (max ±2) ─────────────────────────────────────
-  if      (rsi < 30) { score += 2.0; signals.push('RSI oversold'); }
-  else if (rsi < 40) { score += 1.0; signals.push('RSI weak'); }
-  else if (rsi > 70) { score -= 2.0; signals.push('RSI overbought'); }
-  else if (rsi > 60) { score -= 1.0; signals.push('RSI high'); }
-
-  // ── 3. Bollinger Bands (max ±2) ─────────────────────────
-  if (bb) {
-    const bbPct = (cur - bb.lower) / (bb.upper - bb.lower); // 0 = at lower, 1 = at upper
-    if      (cur  < bb.lower)  { score += 2.0; signals.push('BB oversold'); }
-    else if (bbPct < 0.15)     { score += 1.5; signals.push('BB near lower'); }
-    else if (cur  > bb.upper)  { score -= 2.0; signals.push('BB overbought'); }
-    else if (bbPct > 0.85)     { score -= 1.5; signals.push('BB near upper'); }
-  }
-
-  // ── 4. Stochastic %K (max ±2) ───────────────────────────
-  if (stochK != null) {
-    if      (stochK < 20) { score += 2.0; signals.push('Stoch oversold'); }
-    else if (stochK < 30) { score += 1.0; signals.push('Stoch low'); }
-    else if (stochK > 80) { score -= 2.0; signals.push('Stoch overbought'); }
-    else if (stochK > 70) { score -= 1.0; signals.push('Stoch high'); }
-  }
-
-  // ── 5. SMA crossover (max ±2.5) ─────────────────────────
-  if (sma5 && sma20 && sma5p != null && sma20p != null) {
-    const above    = sma5  > sma20;
-    const wasAbove = sma5p > sma20p;
-    if      ( above && !wasAbove) { score += 2.5; signals.push('Golden cross'); }
-    else if (!above &&  wasAbove) { score -= 2.5; signals.push('Death cross'); }
-    else if  (above)              { score += 1.0; signals.push('Above MA'); }
-    else                          { score -= 1.0; signals.push('Below MA'); }
-  }
-
-  // ── 6. Volume confirmation (max ±1.5) ───────────────────
-  if (data.length >= 5) {
-    const avgVol  = data.slice(-5).reduce((a, d) => a + (d.volume || 0), 0) / 5;
-    const lastVol = last.volume || 0;
-    const chg     = last.close - data[data.length - 2].close;
-    if (lastVol > avgVol * 1.3) {
-      if (chg > 0) { score += 1.5; signals.push('High-vol up day'); }
-      else         { score -= 1.5; signals.push('High-vol down day'); }
-    }
-  }
-
-  // ── 7. Pivot Points (max ±1) ────────────────────────────
-  const near = 0.012;
-  if (Math.abs(cur - pivots.s1) / cur < near) { score += 1.0; signals.push('At S1 support'); }
-  if (Math.abs(cur - pivots.s2) / cur < near) { score += 0.5; signals.push('At S2 support'); }
-  if (Math.abs(cur - pivots.r1) / cur < near) { score -= 1.0; signals.push('At R1 resistance'); }
-  if (Math.abs(cur - pivots.r2) / cur < near) { score -= 0.5; signals.push('At R2 resistance'); }
-  score += cur > pivots.pp ? 0.3 : -0.3;
-
-  // ── 8. Rate of Change 5-day (max ±1) ────────────────────
-  if (closes.length >= 6) {
-    const roc = (closes[closes.length-1] - closes[closes.length-6]) / closes[closes.length-6] * 100;
-    if      (roc >  3) { score += 1.0; signals.push(`ROC +${roc.toFixed(1)}%`); }
-    else if (roc >  1) { score += 0.5; signals.push(`ROC +${roc.toFixed(1)}%`); }
-    else if (roc < -3) { score -= 1.0; signals.push(`ROC ${roc.toFixed(1)}%`); }
-    else if (roc < -1) { score -= 0.5; signals.push(`ROC ${roc.toFixed(1)}%`); }
-  }
-
-  // Signal strength: how much do indicators agree? (0–92%)
-  const MAX_SCORE = 15;
-  const confidence = Math.min(92, Math.round(Math.abs(score) / MAX_SCORE * 100));
-  const macdState  = macd ? (macd.macd > macd.signal ? 'bull' : 'bear') : '—';
-
-  return {
-    score,
-    confidence,
-    direction: score >= 0 ? 'up' : 'down',
-    signals:   signals.slice(0, 4),
-    rsi:       +rsi.toFixed(1),
-    stochK,
-    macdState,
-    currentPrice: cur,
-    pivots,
-  };
-}
-
-/** Signal label from score magnitude */
-function signalLabel(score, direction) {
-  const abs = Math.abs(score);
-  const up  = direction === 'up';
-  if (abs >= 7) return up ? 'Strong Buy'  : 'Strong Sell';
-  if (abs >= 4) return up ? 'Buy'         : 'Sell';
-  return               up ? 'Weak Buy'    : 'Weak Sell';
-}
-
-/** Background: fetch OHLCV for all portfolio stocks, score them, render widget */
 async function loadPredictions() {
-  const tickers = [...new Set(S.stocks.filter(s => s.ticker).map(s => s.ticker))];
-  const badge   = document.getElementById('pred-badge');
-  if (badge) badge.textContent = `Analyzing ${tickers.length} stocks…`;
-
-  const scored = [];
-  for (const sym of tickers) {
-    if (!S.ohlcv[sym]) {
-      const data = await fetchOHLCV(sym);
-      if (data) S.ohlcv[sym] = data;
-    }
-    if (S.ohlcv[sym]) {
-      const result = scoreTechnicals(S.ohlcv[sym]);
-      if (result) {
-        const stock = S.stocks.find(s => s.ticker === sym);
-        scored.push({ sym, stock, ...result });
-      }
-    }
-    await sleep(200);
+  const badge = document.getElementById('pred-badge');
+  try {
+    const r = await (await fetch('/api/advice', { cache: 'no-store' })).json();
+    if (!r.ok) throw new Error(r.error || 'no data');
+    const named = Object.entries(r.assets).map(([isin, v]) => ({ isin, ...v }));
+    const stock = n => S.stocks.find(s => s.name === n) || S.funds.find(f => f.name === n);
+    const mk = v => ({ ...v, stock: stock(v.name) });
+    S.predictions = {
+      up:   named.filter(v => v.action === 'ADD').sort((a, b) => b.score - a.score).slice(0, 5).map(mk),
+      down: named.filter(v => ['TRIM', 'REVIEW', 'CONSOLIDATE'].includes(v.action))
+                 .sort((a, b) => ({ TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[a.action] - { TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[b.action]) || b.score - a.score || b.amount - a.amount)
+                 .slice(0, 5).map(mk),
+    };
+    S.adviceCounts = r.summary.counts;
+    renderPredictions();
+  } catch (e) {
+    console.warn('[advice]', e.message);
+    if (badge) badge.textContent = 'Advice unavailable (' + e.message + ')';
   }
-
-  // All scored stocks — take top 5 by score (up) and bottom 5 by score (down)
-  const upList   = scored.filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
-  const downList = scored.filter(x => x.score < 0).sort((a, b) => a.score - b.score).slice(0, 5);
-
-  S.predictions = { up: upList, down: downList };
-  renderPredictions();
 }
 
-/** Render the predictions widget */
 function renderPredictions() {
-  const upEl   = document.getElementById('pred-up-list');
-  const downEl = document.getElementById('pred-down-list');
-  const badge  = document.getElementById('pred-badge');
+  const upEl = document.getElementById('pred-up-list'), downEl = document.getElementById('pred-down-list');
+  const badge = document.getElementById('pred-badge');
   if (!upEl || !downEl) return;
+  const c = S.adviceCounts || {};
+  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.TRIM || 0} trim · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
 
-  const total = S.predictions.up.length + S.predictions.down.length;
-  if (badge) badge.textContent = total
-    ? `${total} signals · ${new Date().toLocaleTimeString()}`
-    : 'No signals — check console for CORS errors';
-
-  const buildCard = (entry, rank) => {
-    const { sym, stock, confidence, rsi, signals, currentPrice, stochK, macdState, score } = entry;
-    const name   = stock?.name || sym;
-    const price  = currentPrice ? fmtNum(currentPrice, 2) : '—';
-    const label  = signalLabel(score, entry.direction);
-    const lCls   = entry.direction === 'up' ? 'signal-bull' : 'signal-bear';
-    const stoch  = stochK != null ? `Stoch ${stochK.toFixed(0)}` : '';
+  const card = (e, rank) => {
+    const up = e.action === 'ADD', cls = up ? 'signal-bull' : 'signal-bear';
+    const sign = up ? '+' : '−';
+    const why = (e.reasons[0] || '').replace(/\s+/g, ' ');
     return `<div class="pred-card">
       <span class="pred-rank">${rank}</span>
-      <div class="pred-logo-wrap" id="plogo-${sym.replace(/[^a-zA-Z0-9]/g, '')}"></div>
+      <div class="pred-logo-wrap" data-logo="${escHtml(e.name)}"></div>
       <div class="pred-info">
-        <div class="pred-name" title="${escHtml(name)}">${escHtml(name)}</div>
-        <div class="pred-ticker">${escHtml(sym)}&nbsp;<span class="pred-signal-label ${lCls}">${label}</span></div>
-        <div class="pred-signals">${signals.map(escHtml).join(' · ')}</div>
+        <div class="pred-name" title="${escHtml(e.name)}">${escHtml(e.name)}</div>
+        <div class="pred-ticker"><span class="pred-signal-label ${cls}">${e.action}</span>&nbsp;${e.weight.toFixed(1)}% of portfolio · ${escHtml(e.sector)}</div>
+        <div class="pred-signals" title="${escHtml(e.reasons.join(' '))}">${escHtml(why)}</div>
       </div>
       <div class="pred-right">
-        <div class="pred-prob">${confidence}%</div>
-        <div class="pred-price">${price}</div>
-        <div class="pred-bar-wrap"><div class="pred-bar-fill" style="width:${confidence}%"></div></div>
-        <div class="pred-rsi">RSI ${rsi} · ${stoch} · MACD ${macdState}</div>
+        <div class="pred-prob pv">${e.amount ? sign + fmtNum(e.amount, 0) + ' kr' : '—'}</div>
+        <div class="pred-bar-wrap"><div class="pred-bar-fill" style="width:${Math.max(8, Math.min(100, e.score))}%"></div></div>
+        <div class="pred-rsi">priority ${e.score}</div>
       </div>
     </div>`;
   };
-
-  upEl.innerHTML   = S.predictions.up.length
-    ? S.predictions.up.map((e, i) => buildCard(e, i + 1)).join('')
-    : '<div class="pred-loading">No bullish setups in portfolio</div>';
-
-  downEl.innerHTML = S.predictions.down.length
-    ? S.predictions.down.map((e, i) => buildCard(e, i + 1)).join('')
-    : '<div class="pred-loading">No bearish setups in portfolio</div>';
-
-  // Inject company logos
-  [...S.predictions.up, ...S.predictions.down].forEach(entry => {
-    const el = document.getElementById('plogo-' + entry.sym.replace(/[^a-zA-Z0-9]/g, ''));
-    if (el && entry.stock) el.appendChild(buildLogoEl(entry.stock.name));
-  });
+  upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">No add ideas: nothing is under-weight, in an uptrend and pulled back right now</div>';
+  downEl.innerHTML = S.predictions.down.length ? S.predictions.down.map((e, i) => card(e, i + 1)).join('') : '<div class="pred-loading">Nothing to trim, consolidate or review</div>';
+  document.querySelectorAll('#predictions-section [data-logo]').forEach(el => { el.appendChild(buildLogoEl(el.dataset.logo)); });
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1494,6 +1356,7 @@ async function init() {
     // Background: load sparklines + prediction signals
     loadSparklines();
     loadPredictions();
+    setInterval(loadPredictions, 30 * 60_000);
 
     // Auto-refresh prices every minute
     setInterval(refreshPrices, CFG.refreshMs);

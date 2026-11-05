@@ -14,6 +14,8 @@ html.privacy .privacy-btn .eye-off { display: block; }
 /* values become an unreadable blur; labels stay visible. Works through every re-render because it is pure CSS */
 html.privacy #summary-cards .card-value, html.privacy #summary-cards .card-sub, html.privacy #summary-cards .card-sub *,
 html.privacy #kpis .kpi .v, html.privacy #kpis .kpi .s,
+html.privacy #div-kpis .kpi .v, html.privacy #div-kpis .kpi .s,
+html.privacy .adv-amt,
 html.privacy #asset-kpis .kpi .v, html.privacy #asset-kpis .kpi .s,
 html.privacy .vcard .big, html.privacy .finding .num,
 html.privacy .pv {

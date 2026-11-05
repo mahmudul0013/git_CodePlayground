@@ -175,3 +175,16 @@ code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 1
 .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1100px) { .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .g3 { grid-template-columns: 1fr; } }
+
+/* add / trim advice */
+.adv { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; cursor: help; white-space: nowrap; }
+.adv.ADD { background: rgba(38,166,154,.18); color: var(--green); }
+.adv.TRIM { background: rgba(247,201,72,.15); color: var(--gold); }
+.adv.CONSOLIDATE { background: rgba(144,133,233,.18); color: #b3a9f5; }
+.adv.REVIEW { background: rgba(239,83,80,.18); color: var(--red); }
+.adv.HOLD { background: rgba(120,123,134,.14); color: var(--text-dim); font-weight: 600; }
+.adv-amt { color: var(--text-dim); font-size: 11px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.adv-why { max-width: 560px; white-space: normal; color: var(--text); font-size: 12px; }
+.honest { border-left: 3px solid var(--gold); }
+.honest p { font-size: 12.5px; margin-top: 6px; }
+.honest .bt td, .honest .bt th { padding: 4px 10px; font-size: 12px; }

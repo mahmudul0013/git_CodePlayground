@@ -43,6 +43,8 @@
       <button class="tab active" data-tab="assets" role="tab">Assets</button>
       <button class="tab" data-tab="habits" role="tab">Trading habits &amp; costs</button>
       <button class="tab" data-tab="deposits" role="tab">Deposit behaviour</button>
+      <button class="tab" data-tab="dividends" role="tab">Dividends</button>
+      <button class="tab" data-tab="advice" role="tab">Advice</button>
     </div>
 
     <!-- ============== ASSETS ============== -->
@@ -104,6 +106,50 @@
           <p class="hint">Negative = cost you money vs. putting every deposit into the index. Picking &amp; timing is what remains after costs and dividends.</p></div>
       </section>
       <section class="panel method"><h3>How to read this</h3><ul id="dep-method"></ul></section>
+    </div>
+
+    <div id="tab-dividends" hidden>
+      <section id="div-kpis" class="kpi-row"></section>
+      <p class="hint" id="div-note"></p>
+      <div class="dep-controls">
+        <div><span class="lbl">Dividends per</span><div class="chips" id="div-gran">
+          <button class="chip" data-g="day">Day</button><button class="chip" data-g="week">Week</button><button class="chip active" data-g="month">Month</button></div></div>
+      </div>
+      <section class="panel dep-stack">
+        <h3>Dividends received (kr, tax withheld in grey)</h3><div class="cv dep-a"><canvas id="v-bar"></canvas></div>
+        <h3>Total received so far (kr, net)</h3><div class="cv dep-b"><canvas id="v-cum"></canvas></div>
+      </section>
+      <h2 class="sec">What the dividends tell you</h2>
+      <section id="div-insights" class="findings"></section>
+      <section class="grid g2">
+        <div class="panel"><h3>Top dividend payers (kr, net)</h3><div class="cv" style="height:340px"><canvas id="v-payers"></canvas></div>
+          <p class="hint">Green = still held, grey = sold since.</p></div>
+        <div class="panel"><h3>Net dividends per calendar month (kr)</h3><div class="cv" style="height:340px"><canvas id="v-season"></canvas></div>
+          <p class="hint">Which months of the year the money usually arrives.</p></div>
+      </section>
+      <section class="panel"><h3>All dividend payers</h3><div class="tbl-wrap"><table id="tb-payers"></table></div></section>
+      <section class="panel method"><h3>How to read this</h3><ul id="div-method"></ul></section>
+    </div>
+
+    <div id="tab-advice" hidden>
+      <section class="panel honest">
+        <h3>What this is (and is not)</h3>
+        <p>Rule-based <b>position management</b>, not a price forecast. The old "Tomorrow's Signals" score was back-tested on your 77 holdings (5 years of Yahoo daily data) and had <b>no predictive power</b>, so it was replaced. What is left is what can be measured and controlled: position size, theme concentration, tiny positions and fees, volatility, and trend health as a light tilt. Not investment advice.</p>
+        <table class="bt" id="adv-bt"></table>
+      </section>
+      <p class="hint" id="adv-status"></p>
+      <h2 class="sec">Where your portfolio stands</h2>
+      <section id="adv-cards" class="findings"></section>
+      <section class="grid g2">
+        <div class="panel"><h3>Theme (Yahoo sector) weights, % of holdings</h3><div class="cv" style="height:320px"><canvas id="a-theme"></canvas></div>
+          <p class="hint">Red = above the 40% cap; new adds in that theme are blocked.</p></div>
+        <div class="panel"><h3>Suggested actions</h3><div class="cv" style="height:320px"><canvas id="a-actions"></canvas></div>
+          <p class="hint">Count of holdings per suggestion.</p></div>
+      </section>
+      <section class="panel"><h3>Add ideas</h3><div class="tbl-wrap"><table id="tb-add"></table></div></section>
+      <section class="panel"><h3>Trim ideas (risk and concentration)</h3><div class="tbl-wrap"><table id="tb-trim"></table></div></section>
+      <section class="panel"><h3>Consolidate and review</h3><div class="tbl-wrap"><table id="tb-cons"></table></div></section>
+      <section class="panel method"><h3>How the rules work</h3><ul id="adv-method"></ul></section>
     </div>
 
     <!-- ============== HABITS ============== -->

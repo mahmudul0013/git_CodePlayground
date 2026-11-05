@@ -34,6 +34,7 @@ import trade_analytics   # Nordnet CSV -> analytics JSON (Analytics page)
 import symbols           # ISIN/name -> Yahoo symbol (cached)
 import benchmark         # index buy-and-hold comparison (Yahoo daily closes)
 import sectors           # sector / fund category per holding (Yahoo)
+import advisor           # rule-based add / trim review (history cache, no forecasts)
 
 PORT = 8000
 
@@ -192,7 +193,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self._proxy_yahoo()
         elif self.path.split('?')[0] == '/api/holdings':
             self._serve_holdings()
-        elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status', '/api/benchmark', '/api/overlay', '/api/sectors', '/api/assets', '/api/live', '/api/symbol'):
+        elif self.path.split('?')[0] in ('/api/trades', '/api/trades/status', '/api/benchmark', '/api/overlay', '/api/sectors', '/api/assets', '/api/live', '/api/advice', '/api/symbol'):
             self._serve_trades()
         else:
             super().do_GET()
@@ -229,6 +230,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 p = trade_analytics.get_payload()
                 held = [{'isin': x['isin'], 'name': x['name'], 'ccy': x.get('ccy')} for x in p['assets'] if x.get('value') and x.get('isin')]
                 body = {'ok': True, 'asof': datetime.now().isoformat(timespec='seconds'), 'quotes': _live_quotes(held)}
+            elif route == '/api/advice':
+                p = trade_analytics.get_payload()
+                held = [{'isin': x['isin'], 'name': x['name'], 'ccy': x.get('ccy')} for x in p['assets'] if x.get('value') and x.get('isin')]
+                body = advisor.get(p, _live_quotes(held))
             elif route == '/api/assets':
                 p = trade_analytics.get_payload()
                 body = {'generated': p['generated'], 'sources': p['sources'], 'assets': p['assets']}

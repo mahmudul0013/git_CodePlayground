@@ -787,6 +787,59 @@ def analyse(trades, assets, cash, cash_events, balance, holdings):
 # --------------------------------------------------------------------------
 # deposit behaviour: when does money go in, and what was the portfolio doing?
 # --------------------------------------------------------------------------
+def dividend_analysis(ledger, assets, net_deposits, all_time_pnl, today=None):
+    """Dividends received (UTDELNING) and the withholding tax booked against them (KÄLLSKATT etc.), from the ledger.
+    They are already inside the account value (they land in cash), so the all-time result includes them; this
+    only makes them visible: totals, per day / month, per asset and the yearly trend."""
+    held = {a['isin']: a.get('held') for a in assets}
+    days = defaultdict(lambda: {'gross': 0.0, 'tax': 0.0, 'n': 0})
+    per = defaultdict(lambda: {'name': '', 'isin': '', 'gross': 0.0, 'tax': 0.0, 'n': 0, 'last': '', 'first': ''})
+    for t in ledger:
+        ty = t['type']
+        if ty not in T_DIVIDEND and ty not in T_DIV_TAX:
+            continue
+        d = t['book']
+        p = per[t['isin'] or t['name']]
+        p['name'] = t['name'] or p['name']; p['isin'] = t['isin'] or p['isin']
+        if ty in T_DIVIDEND:
+            days[d]['gross'] += t['amount']; days[d]['n'] += 1
+            p['gross'] += t['amount']; p['n'] += 1
+            p['last'] = max(p['last'], d); p['first'] = min(p['first'] or d, d)
+        else:
+            days[d]['tax'] += -t['amount']; p['tax'] += -t['amount']
+    if not days:
+        return None
+    series = [{'date': d, 'gross': round(v['gross'], 2), 'tax': round(v['tax'], 2),
+               'net': round(v['gross'] - v['tax'], 2), 'n': v['n']} for d, v in sorted(days.items())]
+    gross = sum(r['gross'] for r in series); tax = sum(r['tax'] for r in series)
+    last = date.fromisoformat(series[-1]['date'])
+    ref = today or max(last, date.today())
+    ttm_from = (ref - timedelta(days=365)).isoformat()
+    ttm = sum(r['net'] for r in series if r['date'] >= ttm_from)
+    first = date.fromisoformat(series[0]['date'])
+    months = max(1, (ref.year - first.year) * 12 + ref.month - first.month + 1)
+    by_year = defaultdict(float)
+    for r in series:
+        by_year[r['date'][:4]] += r['net']
+    payers = sorted(({'name': v['name'], 'isin': v['isin'], 'gross': round(v['gross'], 2), 'tax': round(v['tax'], 2),
+                      'net': round(v['gross'] - v['tax'], 2), 'payments': v['n'], 'first': v['first'], 'last': v['last'],
+                      'held': bool(held.get(v['isin']))} for v in per.values() if v['n']), key=lambda x: -x['net'])
+    net = gross - tax
+    top3 = sum(p['net'] for p in payers[:3])
+    return {
+        'series': series, 'payers': payers,
+        'summary': {'gross': round(gross, 2), 'tax': round(tax, 2), 'net': round(net, 2), 'payments': sum(r['n'] for r in series),
+                    'payers': len(payers), 'first': series[0]['date'], 'last': series[-1]['date'], 'ttm_net': round(ttm, 2),
+                    'avg_month': round(net / months, 2), 'months': months,
+                    'pct_of_deposits': round(net / net_deposits * 100, 2) if net_deposits else None,
+                    'pct_of_result': round(net / all_time_pnl * 100, 1) if all_time_pnl and all_time_pnl > 0 else None,
+                    'tax_pct': round(tax / gross * 100, 1) if gross else None,
+                    'top3_share': round(top3 / net * 100, 1) if net > 0 else None,
+                    'by_year': {k: round(v, 2) for k, v in sorted(by_year.items())},
+                    'sold_payers': sum(1 for p in payers if not p['held'])},
+    }
+
+
 def deposit_behavior(trades, cash_events, assets, holdings_value, cash_balance):
     """Daily series of deposits, positions held, estimated portfolio value and a return index that
     ignores deposits (so a deposit never looks like a gain), plus one row per deposit day.
@@ -1030,6 +1083,7 @@ def get_payload():
     insights = analyse(trades, assets, cash, cash_events, balance, holdings)
     ov = insights['overview']
     insights['deposit_behavior'] = deposit_behavior(trades, cash_events, assets, ov['holdings_value'], ov['cash_balance'])
+    insights['dividends'] = dividend_analysis(ledger, assets, ov['net_deposits'], ov['all_time_pnl'])
     payload = {
         'generated': datetime.now().isoformat(timespec='seconds'),
         'sources': signature(),

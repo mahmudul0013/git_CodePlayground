@@ -27,7 +27,7 @@ const VIEWS = [
 const S = {
   data: null, sig: null, tab: 'assets', view: 'current',
   type: '', ccy: '', dom: '', q: '',
-  sort: { key: 'metric', dir: -1 }, open: new Set(), charts: {}, gran: 'month', metric: 'value', idx: new Set(), overlay: null,
+  sort: { key: 'metric', dir: -1 }, open: new Set(), charts: {}, gran: 'month', dgran: 'month', metric: 'value', idx: new Set(), overlay: null,
 };
 
 // ───────── helpers ─────────
@@ -56,17 +56,38 @@ async function getJSON(url) {
 }
 
 // ───────── data load + auto-sync ─────────
+// Holdings value today = export value rescaled by live Yahoo price (same rules as the heat map: skip Nordnet funds,
+// other-currency quotes and quotes that are >2x off the export price). Returns the change vs the export in kr.
+async function refreshLive() {
+  try {
+    S.live = await getJSON('/api/live');
+    const q = S.live.quotes || {}; let delta = 0, n = 0;
+    for (const a of S.data.assets) {
+      const l = q[a.isin];
+      if (!l || !a.value || !a.price || /^0P/.test(l.symbol || '')) continue;
+      if (String(l.currency || '').toUpperCase() !== String(a.ccy || '').toUpperCase()) continue;
+      const ratio = l.price / a.price;
+      if (!(ratio > .5 && ratio < 2)) continue;
+      delta += a.value * (ratio - 1); n++;
+    }
+    S.liveDelta = delta; S.liveN = n; S.liveAt = S.live.asof;
+    renderKpis();
+  } catch (e) { /* keep export values */ }
+}
+
 async function load(force) {
   try {
     const sig = await getJSON('/api/trades/status');
     const sigStr = JSON.stringify(sig);
-    if (!force && sigStr === S.sig && S.data) { setSync(true); return; }
+    if (!force && sigStr === S.sig && S.data) { setSync(true); refreshLive(); loadAdvice(); return; }
     const data = await getJSON('/api/trades');
     S.sig = sigStr;
     S.data = data;
     index();
     setSync(true);
     renderAll();
+    refreshLive();
+    loadAdvice();
   } catch (e) {
     setSync(false, e.message);
     if (!S.data) showBanner('Could not load data: ' + e.message + '. Start the app with <b>python server.py</b> and open http://localhost:8000/analytics.html', true);
@@ -157,6 +178,7 @@ function sortVal(r, key) {
     case 'metric': return r.metric;
     case 'name': return a.name.toLowerCase();
     case 'type': return a.type; case 'ccy': return a.ccy; case 'status': return a.held ? 1 : 0;
+    case 'advice': { const v = adviceOf(a); return v ? (ADV_RANK[v.action] ?? 9) * 1000 - v.score : 9999; }
     case 'qty': return a.qty; case 'value': return a.value;
     case 'bought': return w.bought; case 'sold': return w.sold;
     case 'trades': return w.nb + w.ns;
@@ -180,9 +202,13 @@ function kpi(l, v, s, c) {
 }
 
 function renderKpis() {
-  const o = S.data.insights.overview, c = S.data.insights.costs;
+  const o0 = S.data.insights.overview, c = S.data.insights.costs;
+  const d = S.liveDelta || 0;                       // live price change since the export (0 until quotes arrive)
+  const o = { ...o0, total_value: o0.total_value + d, holdings_value: o0.holdings_value + d, unrealized: o0.unrealized + d, all_time_pnl: o0.all_time_pnl + d,
+              all_time_pnl_pct: o0.all_time_pnl_pct == null || !o0.net_deposits ? o0.all_time_pnl_pct : (o0.all_time_pnl + d) / o0.net_deposits * 100 };
+  const live = S.liveN ? ` · live prices (${S.liveN} holdings)` : ' · export value';
   $('kpis').innerHTML =
-    kpi('Account value', fmt(o.total_value) + ' kr', `holdings ${fmt(o.holdings_value)} + cash ${fmt(o.cash_balance)}`) +
+    kpi('Account value', fmt(o.total_value) + ' kr', `holdings ${fmt(o.holdings_value)} + cash ${fmt(o.cash_balance)}${live}`) +
     kpi('Deposited (net)', fmt(o.net_deposits) + ' kr', `${o.deposit_count} deposits`) +
     kpi('All-time result', sgn(o.all_time_pnl) + ' kr', o.all_time_pnl_pct == null ? '' : `${pct(o.all_time_pnl_pct, 2)} on deposits`, cls(o.all_time_pnl)) +
     kpi('Broker costs paid', fmt(c.broker_total) + ' kr', `${pct(c.pct_of_net_deposits)} of deposits · ${pct(c.pct_of_turnover, 2)} of turnover`, 'neg') +
@@ -283,7 +309,7 @@ function renderTable(d) {
   const { v, list } = d;
   const win = v.win ? (v.win === 'w' ? ' (1W)' : ' (1M)') : '';
   const cols = [
-    col('name', 'Asset'), col('type', 'Type'), col('ccy', 'Ccy'), col('status', 'Status'),
+    col('name', 'Asset'), col('type', 'Type'), col('ccy', 'Ccy'), col('status', 'Status'), col('advice', 'Add / trim'),
     col('qty', 'Qty'), col('value', 'Value kr'),
     col('bought', 'Bought kr' + win), col('sold', 'Sold kr' + win), col('trades', 'Buys / sells' + win),
     col('last_buy', 'Last buy'), col('last_sell', 'Last sell'),
@@ -301,6 +327,7 @@ function renderTable(d) {
       <td class="name" title="${esc(a.name)} · ${esc(a.isin)}">${open ? '▾' : '▸'} ${esc(a.name)}</td>
       <td class="tag">${esc(a.type)}</td><td class="tag">${esc(a.ccy)}</td>
       <td><span class="badge ${a.held ? 'held' : 'closed'}">${a.held ? 'Held' : 'Closed'}</span></td>
+      <td>${adviceCell(a)}</td>
       <td>${a.held ? fmt2(a.qty).replace(/,00$/, '') : '—'}</td><td>${a.held ? fmt(a.value) : '—'}</td>
       <td>${fmt(w.bought)}</td><td>${fmt(w.sold)}</td><td>${w.nb} / ${w.ns}</td>
       <td class="tag">${a.last_buy || '—'}</td><td class="tag">${a.last_sell || '—'}</td>
@@ -310,7 +337,7 @@ function renderTable(d) {
     return h;
   }).join('');
   const sum = f => list.reduce((s, r) => s + (f(r) || 0), 0);
-  const foot = `<tr><td>Total (${list.length})</td><td></td><td></td><td></td><td></td><td>${fmt(sum(r => r.a.value))}</td>
+  const foot = `<tr><td>Total (${list.length})</td><td></td><td></td><td></td><td></td><td></td><td>${fmt(sum(r => r.a.value))}</td>
     <td>${fmt(sum(r => r.w.bought))}</td><td>${fmt(sum(r => r.w.sold))}</td><td>${sum(r => r.w.nb)} / ${sum(r => r.w.ns)}</td><td></td><td></td>
     <td>${fmt(sum(r => r.a.fees))}</td><td>${sgn(sum(r => r.a.realized))}</td><td>${sgn(sum(r => r.a.unrealized))}</td><td>${sgn(sum(r => r.a.total_pnl))}</td></tr>`;
   $('asset-table').innerHTML = `<thead><tr>${th}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:var(--text-dim)">No assets match this filter.</td></tr>`}</tbody><tfoot>${foot}</tfoot>`;
@@ -734,6 +761,167 @@ function renderDeposits() {
   ].map(x => `<li>${x}</li>`).join('');
 }
 
+// ───────── dividends tab ─────────
+const DIV = { net: C.s[2], tax: C.other };
+function divBuckets(series, gran) {
+  const key = gran === 'day' ? d => d : gran === 'week' ? weekStart : d => d.slice(0, 7);
+  const m = new Map();
+  for (const r of series) {
+    const k = key(r.date), b = m.get(k) || { key: k, net: 0, tax: 0, n: 0 };
+    b.net += r.net; b.tax += r.tax; b.n += r.n; m.set(k, b);
+  }
+  const out = [...m.values()];
+  if (gran === 'day' || out.length < 2) return out;
+  // show empty weeks / months as gaps instead of skipping them
+  const filled = [], by = new Map(out.map(b => [b.key, b])), last = out[out.length - 1].key;
+  let cur = out[0].key;
+  for (let guard = 0; guard < 3000; guard++) {
+    filled.push(by.get(cur) || { key: cur, net: 0, tax: 0, n: 0 });
+    if (cur === last) break;
+    if (gran === 'week') { const x = new Date(cur + 'T00:00:00'); x.setDate(x.getDate() + 7); cur = iso(x); }
+    else { let [y, mo] = cur.split('-').map(Number); mo++; if (mo > 12) { mo = 1; y++; } cur = y + '-' + String(mo).padStart(2, '0'); }
+  }
+  return filled;
+}
+
+function renderDividends() {
+  const D = S.data.insights.dividends, o = S.data.insights.overview;
+  if (!D) { $('div-kpis').innerHTML = ''; $('div-note').textContent = 'No dividends found in the ledger.'; return; }
+  document.querySelectorAll('#div-gran .chip').forEach(b => b.classList.toggle('active', b.dataset.g === S.dgran));
+  const Y = D.summary, without = o.all_time_pnl - Y.net;
+  const yieldNow = o.holdings_value > 0 ? Y.ttm_net / o.holdings_value * 100 : null;
+  $('div-kpis').innerHTML =
+    kpi('Dividends received (net)', fmt(Y.net) + ' kr', `${Y.payments} payments from ${Y.payers} companies`, 'pos') +
+    kpi('Gross / tax withheld', `${fmt(Y.gross)} / ${fmt(Y.tax)} kr`, `${pct(Y.tax_pct)} withheld at source`) +
+    kpi('Last 12 months', fmt(Y.ttm_net) + ' kr', yieldNow == null ? '' : `${pct(yieldNow, 2)} of today's holdings value`) +
+    kpi('Average per month', fmt(Y.avg_month) + ' kr', `since ${Y.first} (${Y.months} months)`) +
+    kpi('Share of deposits', pct(Y.pct_of_deposits, 2), `of ${fmt(o.net_deposits)} kr deposited`) +
+    kpi('Latest payment', Y.last, `${fmt(D.series[D.series.length - 1].net)} kr net that day`);
+  $('div-note').innerHTML = `<b>Already counted:</b> dividends are paid into your account, so they are inside the account value and the all-time result (${sgn(o.all_time_pnl)} kr). `
+    + `Without them the result would be ${sgn(without)} kr. Nothing was missing from the totals; this tab makes them visible. Amounts are in kr, as booked by Nordnet.`;
+
+  const B = divBuckets(D.series, S.dgran), labels = B.map(b => b.key);
+  const base = { interaction: { mode: 'index', intersect: false } };
+  const xs = { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0, font: { size: 10 } } };
+  const ys = { grid: { color: C.grid }, ticks: { callback: v => fmt(v), maxTicksLimit: 5 } };
+  mkChart('v-bar', { type: 'bar', plugins: [crossPlugin],
+    data: { labels, datasets: [
+      { label: 'Net received', data: B.map(b => Math.round(b.net * 100) / 100), backgroundColor: DIV.net, borderRadius: 3, maxBarThickness: 28, stack: 's' },
+      { label: 'Tax withheld', data: B.map(b => Math.round(b.tax * 100) / 100), backgroundColor: DIV.tax, borderRadius: 3, maxBarThickness: 28, stack: 's' }] },
+    options: { ...base, plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt2(c.parsed.y)} kr`,
+          footer: it => { const b = B[it[0].dataIndex]; return b.n ? `${b.n} payment${b.n > 1 ? 's' : ''} · gross ${fmt2(b.net + b.tax)} kr` : 'no payments'; } } } },
+      scales: { x: { ...xs, stacked: true }, y: { ...ys, stacked: true, beginAtZero: true } } } });
+  let acc = 0;
+  mkChart('v-cum', { type: 'line', plugins: [crossPlugin],
+    data: { labels, datasets: [{ label: 'Total received (net)', data: B.map(b => (acc += b.net, Math.round(acc * 100) / 100)), borderColor: DIV.net, backgroundColor: DIV.net + '22', fill: true, borderWidth: 2, pointRadius: 0, stepped: true }] },
+    options: { ...base, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` Total received: ${fmt2(c.parsed.y)} kr` } } },
+      scales: { x: xs, y: { ...ys, beginAtZero: true } } } });
+  linkCharts(['v-bar', 'v-cum']);
+
+  const mon = Array(12).fill(0), mname = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  D.series.forEach(r => { mon[+r.date.slice(5, 7) - 1] += r.net; });
+  mkChart('v-season', { type: 'bar', data: { labels: mname, datasets: [{ data: mon.map(v => Math.round(v * 100) / 100), backgroundColor: DIV.net, borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt2(c.parsed.y)} kr` } } },
+      scales: { x: { grid: { display: false } }, y: ys } } });
+
+  const top = D.payers.slice(0, 12);
+  mkChart('v-payers', { type: 'bar', data: { labels: top.map(p => p.name), datasets: [{ data: top.map(p => p.net), backgroundColor: top.map(p => p.held ? C.s[2] : C.other), borderRadius: 3 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt2(c.parsed.x)} kr net · ${top[c.dataIndex].payments} payments${top[c.dataIndex].held ? '' : ' · sold'}` } } },
+      scales: { x: { grid: { color: C.grid }, ticks: { callback: v => fmt(v) } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } } } });
+
+  const nm = new Set(D.series.map(r => r.date.slice(0, 7))).size, cards = [];
+  const card = (sev, t, num, txt) => cards.push(`<div class="finding"><h4><span class="sev ${sev}">${sev === 'info' ? 'NOTE' : 'WATCH'}</span>${t}</h4><div class="num">${num}</div><p>${txt}</p></div>`);
+  card('info', 'Dividends in your result', sgn(Y.net) + ' kr',
+    `Your all-time result is ${sgn(o.all_time_pnl)} kr including dividends and ${sgn(without)} kr without them. Dividends equal ${pct(Y.pct_of_deposits, 2)} of the money you deposited.`);
+  card('info', 'Income rate', yieldNow == null ? '—' : pct(yieldNow, 2),
+    `The last 12 months paid ${fmt(Y.ttm_net)} kr net, about ${fmt(Y.ttm_net / 12)} kr a month, against ${fmt(o.holdings_value)} kr in holdings. This is a growth-oriented mix (a broad market index yields roughly 1-2%), so dividends are a bonus rather than income.`);
+  card(Y.top3_share > 40 ? 'med' : 'info', 'Spread of payers', pct(Y.top3_share, 0) + ' from top 3',
+    `${Y.payers} companies paid something; the three largest (${D.payers.slice(0, 3).map(p => esc(p.name)).join(', ')}) gave ${pct(Y.top3_share, 0)} of the total. Payments arrived in ${nm} of ${Y.months} months, so the flow is ${nm / Y.months > .75 ? 'steady' : 'lumpy'}.`);
+  card(Y.tax_pct > 15 ? 'med' : 'info', 'Withholding tax', fmt(Y.tax) + ' kr',
+    `${pct(Y.tax_pct)} of the gross dividends was withheld at source, mostly on foreign shares (for example US 15%). Whether part of it can be reclaimed depends on your account type and tax rules; check with Nordnet or Skatteverket.`);
+  card('info', 'Sold payers', `${Y.sold_payers} of ${Y.payers}`,
+    `${Y.sold_payers} of the dividend-paying companies are no longer held. Their dividends stay in the totals above; with frequent trading the dividend stream keeps restarting from zero.`);
+  $('div-insights').innerHTML = cards.join('');
+
+  table('tb-payers', ['Company', 'Status', 'Payments', 'First', 'Last', 'Gross kr', 'Tax kr', 'Net kr'],
+    D.payers.map(p => [esc(p.name), p.held ? 'Held' : 'Sold', p.payments, p.first, p.last, fmt2(p.gross), fmt2(p.tax), { v: fmt2(p.net), c: 'pos' }]));
+
+  $('div-method').innerHTML = [
+    '<b>Source:</b> ledger rows of type UTDELNING (dividend) and KÄLLSKATT / TYSK SOL SKATT UTD (tax withheld on a dividend), on the Nordnet booking date, in kr.',
+    '<b>Net</b> = gross dividend minus withholding tax. This cash is already in the account value, so the all-time result is not changed by this tab.',
+    '<b>Not included:</b> accumulating funds and ETFs (they pay no cash dividend), interest, and dividends not yet booked in the ledger (it lags a day).',
+    'Not investment advice; this describes past activity only.',
+  ].map(x => `<li>${x}</li>`).join('');
+}
+
+// ───────── advice tab + Add / trim column (rules in advisor.py, served by /api/advice) ─────────
+const ADV_RANK = { TRIM: 0, ADD: 1, REVIEW: 2, CONSOLIDATE: 3, HOLD: 4 };
+const ADV_LABEL = { ADD: 'ADD', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
+
+async function loadAdvice() {
+  if (S.advLoading) return;
+  S.advLoading = true;
+  try {
+    const r = await getJSON('/api/advice');
+    if (r.ok) { S.advice = r; if (S.tab === 'assets') renderTable(derive()); if (S.tab === 'advice') renderAdvice(); }
+  } catch (e) { /* column stays empty */ }
+  S.advLoading = false;
+}
+
+const adviceOf = a => (S.advice && S.advice.assets && S.advice.assets[a.isin]) || null;
+
+function adviceCell(a) {
+  if (!a.held) return '<span class="tag">—</span>';
+  const v = adviceOf(a);
+  if (!v) return '<span class="tag">…</span>';
+  const tip = esc(v.reasons.join(' '));
+  const amt = v.amount ? `<span class="adv-amt pv">${v.action === 'ADD' ? '+' : '−'}${fmt(v.amount)} kr</span>` : '';
+  return `<span class="adv ${v.action}" title="${tip}">${ADV_LABEL[v.action] || v.action}</span>${amt}`;
+}
+
+function renderAdvice() {
+  const A = S.advice;
+  if (!A) { $('adv-status').textContent = 'Loading price history from Yahoo for the first time can take up to a minute…'; loadAdvice(); return; }
+  const rows = Object.entries(A.assets).map(([isin, v]) => ({ isin, ...v }));
+  const Y = A.summary;
+  $('adv-status').textContent = `Based on ${Y.positions} holdings (${Y.covered} with Yahoo price history), valued ${A.asof.replace('T', ' ')}. Weights are % of holdings.`;
+  $('adv-bt').innerHTML = `<thead><tr><th>Back-test on your holdings, 2021-2026</th><th>Result</th><th>Verdict</th></tr></thead><tbody>
+    <tr><td>Old "Strong Buy" score, next day</td><td>avg −0.25%, up only 43% of days (all days: +0.14%, 53%)</td><td class="neg">No edge, removed</td></tr>
+    <tr><td>Old score vs next 21 / 63 days (rank correlation)</td><td>−0.03 / −0.05</td><td class="neg">Slightly wrong way round</td></tr>
+    <tr><td>"Trim when overbought" (RSI>75 or far above 50-day)</td><td>next 63 days +15.3% vs +9.6% for the rest</td><td class="neg">Would have sold winners, not used</td></tr>
+    <tr><td>Add: uptrend + pulled back 5-25% + RSI&lt;68</td><td>next 63 days +12.8% vs +10.5% for all</td><td>Small tilt, used lightly</td></tr>
+    <tr><td>Broken trend (below 200-day, negative momentum)</td><td>next 63 days +12.9% vs +10.5%</td><td>No sell edge: flag for review only</td></tr></tbody>`;
+  const sev = { high: 'ACT', med: 'WATCH', info: 'NOTE' };
+  $('adv-cards').innerHTML = A.cards.map(c => `<div class="finding"><h4><span class="sev ${c.sev}">${sev[c.sev] || 'NOTE'}</span>${esc(c.title)}</h4><div class="num">${esc(c.num)}</div><p>${esc(c.text)}</p></div>`).join('');
+
+  const th = Object.entries(Y.theme);
+  mkChart('a-theme', { type: 'bar', data: { labels: th.map(x => x[0]), datasets: [{ data: th.map(x => x[1]), backgroundColor: th.map(x => x[1] > 40 && x[0] !== 'Unclassified' && x[0] !== 'Funds' ? C.red : C.s[0]), borderRadius: 3 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x.toFixed(1)}% of holdings` } } },
+      scales: { x: { grid: { color: C.grid }, ticks: { callback: v => v + '%' } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } } } });
+  const ac = Object.entries(Y.counts);
+  const accol = { ADD: C.green, TRIM: C.s[3], CONSOLIDATE: C.s[6], REVIEW: C.red, HOLD: C.other };
+  mkChart('a-actions', { type: 'bar', data: { labels: ac.map(x => x[0]), datasets: [{ data: ac.map(x => x[1]), backgroundColor: ac.map(x => accol[x[0]]), borderRadius: 3, maxBarThickness: 40 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: C.grid }, ticks: { precision: 0 } } } } });
+
+  const head = ['Asset', 'Weight', 'Amount kr', 'Score', 'Trend', '12m momentum', 'From 52w high', 'Why'];
+  const line = v => [esc(v.name), pct(v.weight, 1), { v: `<span class="pv">${v.amount ? fmt(v.amount) : '—'}</span>` },
+    v.score || '—', (v.metrics && v.metrics.trend) || '—', v.metrics && v.metrics.mom12_1 != null ? pct(v.metrics.mom12_1 * 100, 0) : '—',
+    v.metrics && v.metrics.dd52 != null ? pct(v.metrics.dd52 * 100, 0) : '—', { v: `<span class="adv-why">${esc(v.reasons.join(' '))}</span>` }];
+  const by = (acts, f) => rows.filter(r => acts.includes(r.action)).sort(f || ((x, y) => y.score - x.score)).map(line);
+  table('tb-add', head, by(['ADD']), 'No add ideas right now: nothing is both in an uptrend, pulled back and under-weight outside an over-weight theme.');
+  table('tb-trim', head, by(['TRIM']), 'No position breaks the size or theme limits.');
+  table('tb-cons', head, by(['CONSOLIDATE', 'REVIEW'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.amount - x.amount), 'Nothing to consolidate.');
+  $('adv-method').innerHTML = [
+    '<b>TRIM</b>: a position above 4% of holdings is cut back to 4%; in a theme above 40% the holdings of 2.5% or more give back a fifth. Risk rules only; overbought or "extended" is NOT a trim reason (the back-test says it would have hurt).',
+    '<b>ADD</b>: weight under 1.5%, price above its 200-day with the 50-day above it, positive 12-1 month momentum, 5-25% below the 52-week high, RSI under 68, and the theme not over its cap. Fill to about 2% in orders of at least 1 500 kr. Score = momentum rank, pullback depth and low volatility.',
+    '<b>CONSOLIDATE</b>: under 1 500 kr. A round trip costs about 16 kr courtage and the position cannot change the result; sell it or top it up.',
+    '<b>REVIEW</b>: below the 200-day, negative momentum and more than 15% under your cost. Not a sell order: re-check why you own it.',
+    '<b>Data</b>: Yahoo adjusted daily closes (2 years, cached 6 h in history_cache.json), live prices for weights, Yahoo sectors, your ledger for cost and unrealised result. Funds without Yahoo history are kept as is.',
+    'Not investment advice. Rules limit risk and cost; they do not predict prices. Check tax effects (selling a loss or a gain) and liquidity before acting.',
+  ].map(x => `<li>${x}</li>`).join('');
+}
+
 // ───────── benchmark score + good practice ─────────
 const tone = sc => sc == null ? '' : sc >= 70 ? 'good' : sc >= 40 ? 'mid' : 'bad';
 
@@ -821,6 +1009,7 @@ function bind() {
     e.target.checked ? S.idx.add(e.target.value) : S.idx.delete(e.target.value);
     renderDeposits();
   });
+  $('div-gran').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.dgran = b.dataset.g; renderDividends(); } });
   $('dep-metric').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.metric = b.dataset.m; renderDeposits(); } });
 }
 
@@ -830,11 +1019,13 @@ function setTab(tab) {
   $('tab-assets').hidden = tab !== 'assets';
   $('tab-habits').hidden = tab !== 'habits';
   $('tab-deposits').hidden = tab !== 'deposits';
+  $('tab-dividends').hidden = tab !== 'dividends';
+  $('tab-advice').hidden = tab !== 'advice';
   history.replaceState(null, '', '#' + tab);
   if (S.data) renderTab();
 }
-function tabFromHash() { const h = location.hash.slice(1); return ['habits', 'deposits'].includes(h) ? h : 'assets'; }
-function renderTab() { ({ assets: renderAssets, habits: renderHabits, deposits: renderDeposits })[S.tab](); }
+function tabFromHash() { const h = location.hash.slice(1); return ['habits', 'deposits', 'dividends', 'advice'].includes(h) ? h : 'assets'; }
+function renderTab() { ({ assets: renderAssets, habits: renderHabits, deposits: renderDeposits, dividends: renderDividends, advice: renderAdvice })[S.tab](); }
 
 bind();
 setTab(tabFromHash());

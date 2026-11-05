@@ -61,7 +61,16 @@ Verified (headless Chrome, 2026-10-23): benchmark score + index chart + good-pra
 - Exact portfolio value history from Yahoo closes per holding (replace the estimate).
 - Account-value-over-time chart (needs historical prices per holding).
 - Monthly fee budget / "order too small" warning on the page.
-- Dividend/yield analysis page; tax (ISK) view.
+- Tax (ISK) view; dividend forecast / yield per holding.
+
+## Dividends tab
+`dividend_analysis()` in trade_analytics.py (from the ledger: UTDELNING = dividend, KÄLLSKATT / TYSK SOL SKATT UTD = tax; kr, booking date) -> `insights.dividends` {series per day, payers, summary}. Dividends were always inside the account value / all-time result (they land in cash); the tab only makes them visible: KPI row, per day/week/month stacked net+tax columns, cumulative line, per-calendar-month seasonality, top payers (green held / grey sold), payer table, insight cards. Privacy CSS masks `#div-kpis`. Result at 2026-11-01: 2 444 kr net (2 833 gross, 389 tax) from 79 companies; all-time result -1 076 kr incl., -3 521 kr without.
+
+## Advice engine (replaces "Tomorrow's Signals")
+`advisor.py` -> `/api/advice` (cached per payload + hour; Yahoo 2y adjusted closes in `history_cache.json`, gitignored, 6 h TTL). Position management, NOT a forecast. A back-test on the 77 held assets (5y daily, ~70k samples; scripts were in the session scratchpad, numbers are shown in the Advice tab) found: the old 8-indicator next-day score had no edge (Strong Buy: -0.25% next day, 43% up; rank IC ~ -0.02..-0.05), "trim when overbought" would have sold winners (+15% vs +9.6% next 63d), broken-trend has no sell edge, pullback-in-uptrend add is only a small tilt (+12.8% vs +10.5%). Caveats: survivorship (stocks you chose) and a 2021-26 bull market. So actions: TRIM = weight > 4% or theme (Yahoo sector) > 40% and weight >= 2.5% (give back a fifth); ADD = weight < 1.5%, close > 200d and 50d > 200d, 12-1 momentum > 0, 5-25% below 52w high, RSI < 68, theme not over cap (fill to 2%, min order 1 500 kr, score = momentum rank + pullback + low vol); CONSOLIDATE = < 1 500 kr; REVIEW = downtrend + negative momentum + > 15% under cost. Cards: fragmentation, theme concentration, portfolio vol / 1y max drawdown / avg correlation of top 30 (effective bets), trend health, size of changes. Constants at the top of advisor.py. UI: Analytics tab "Advice", column "Add / trim" in the Assets table (sortable, tooltip = reasons), Portfolio page "Add / Trim Ideas" panel (`loadPredictions()` in app.js now calls /api/advice; the old client-side scoring was deleted). Known gap: the Assets table "Value kr" column still shows the export snapshot (KPI row and Portfolio page are live).
+
+## Live headline values
+Portfolio page and Analytics KPI "Account value / All-time result / Unrealised" are rescaled by live Yahoo price vs export price (same-currency, 0.5-2x guard, funds keep export). Export values are only a snapshot from the day it was made.
 - Let the user override asset type/country (`asset_overrides.json`).
 
 ## Privacy toggle
