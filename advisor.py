@@ -29,6 +29,7 @@ import symbols
 HERE = os.path.dirname(os.path.abspath(__file__))
 HIST_FILE = os.path.join(HERE, 'history_cache.json')
 HIST_TTL = 6 * 3600
+CACHE_SECONDS = 600      # how long a finished Add / Trim answer is reused (live prices move the weights)
 HEAD = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
 
 MAX_W = 4.0          # % of holdings: above this a position is trimmed back
@@ -401,13 +402,13 @@ def _portfolio_stats(rows, total):
 
 
 def get(payload, live=None, profile=DEFAULT_PROFILE):
-    """Cached per payload version and calendar hour (single slot, memory stays flat)."""
-    key = (payload.get('generated'), time.strftime('%Y%m%d%H'), bool(live), profile)
+    """Cached per payload version, live-price flag and profile for 10 minutes (single slot, memory stays flat)."""
+    key = (payload.get('generated'), bool(live), profile)
     with _LOCK:
         if _cache['key'] == key and time.time() < _cache.get('exp', 0):
             return _cache['data']
     data = advise(payload, live, profile)
     with _LOCK:
         # price history / sectors still loading in the background: retry soon instead of holding a partial answer for an hour
-        _cache['key'], _cache['data'], _cache['exp'] = key, data, time.time() + (90 if data.get('partial') else 3600)
+        _cache['key'], _cache['data'], _cache['exp'] = key, data, time.time() + (90 if data.get('partial') else CACHE_SECONDS)
     return data

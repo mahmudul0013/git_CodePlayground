@@ -1356,7 +1356,7 @@ async function init() {
     // Background: load sparklines + prediction signals
     loadSparklines();
     loadPredictions();
-    setInterval(loadPredictions, 30 * 60_000);
+    setInterval(loadPredictions, 10 * 60_000);
 
     // Auto-refresh prices every minute
     setInterval(refreshPrices, CFG.refreshMs);
