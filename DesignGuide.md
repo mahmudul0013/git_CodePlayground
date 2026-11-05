@@ -144,39 +144,25 @@ Eye icon button in the header of both pages (gold border when values are hidden)
 
 ---
 
-## File Structure (Recommended)
-```
-/trading-dashboard/
-├── index.html
-├── style.css
-├── app.js
-├── data/
-│   ├── stocks.csv
-│   └── funds.csv
-├── components/
-│   ├── ticker.js
-│   ├── table.js
-│   ├── cards.js
-│   └── sparkline.js
-└── api/
-    └── prices.js
-```
-```
+## File Structure
+
+See the *Project structure* section of [README.md](README.md) for the current file list (Portfolio page, Analytics page, heat map, privacy toggle, `server.py`, `trade_analytics.py`, `advisor.py`, launchers and the Nordnet CSVs).
 
 ---
 
 ## Phase 3 — Nordnet Integration & Last Buy Tracking
 
-### Data Flow (updated)
+### Data Flow (current)
 ```
-Nordnet Website → Export CSV → nordnet_sync.py
-  --watch mode  → auto-copy from Downloads → "Innehav Tabell Export, accno N, DATE.csv" (stocks + ETFs + funds)
-  --api mode    → Nordnet REST API (session token) → same file format
+Nordnet website -> export CSVs -> dropped into the project folder by hand
+  start-dashboard.bat runs nordnet_sync.py once (portfolio_baseline.json from the 2 newest holdings exports)
 
-Newest Innehav file → server.py /api/holdings → app.js (loadHoldings, split by isFundName)
-  → detectAndSaveBuys()  → localStorage snapshot
-  → Yahoo Finance API    → live prices (60s refresh)
-  → 5-min CSV auto-reload (setInterval csvRefreshMs)
+Newest Innehav file -> server.py /api/holdings -> app.js (loadHoldings, split by isFundName)
+  -> detectAndSaveBuys()  -> localStorage snapshot
+  -> /yahoo/* proxy       -> live prices (60 s refresh, works on any host name)
+  -> 5-min CSV auto-reload (setInterval csvRefreshMs)
+Ledger + holdings -> trade_analytics.py -> /api/trades, /api/assets (Analytics, heat map)
+Live Yahoo quotes -> /api/live (25 s) ; price history -> advisor.py -> /api/advice (10 min)
 ```
 
 ### Last Buy Display
@@ -213,51 +199,12 @@ Columns that show last-buy data (gold `.lb-tag` text below main value):
 
 ---
 
-## STEP 2 — Project Architecture Plan
-
-Here's the full tech stack decision (simple, no framework needed):
+## Tech stack
 
 | Layer | Choice | Reason |
 |---|---|---|
-| UI | Plain HTML + CSS + Vanilla JS | No build step, fast, Claude Code handles it easily |
-| Charts | Chart.js (CDN) | Simple sparklines + pie chart |
-| Data | Your CSV files | Already have them |
-| Live Prices | Yahoo Finance via `https://query1.finance.yahoo.com` | Free, no API key needed |
-| Server | Python `http.server` or Node `live-server` | Just to serve files locally |
-
----
-
-## STEP 3 — Where YOU Engage Claude Code (in VS Code)
-
-Here's exactly what to do, step by step in **VS Code with Claude Code**:
-
-### 🔵 Open Claude Code terminal in VS Code:
-Press `Ctrl + ~` to open terminal, then type `claude` to start Claude Code.
-
----
-
-### Task 1 — Give Claude Code this prompt:
-```
-Read the WishList.md and DesignGuide.md files in this project. Then read stocks.csv and funds.csv to understand the data structure. Create a complete trading dashboard as a single-page web app (index.html, style.css, app.js) that matches the design guide. Use the color palette, layout, and component specs exactly. Load data from the CSV files. Show stocks and funds in separate tables with SEK and USD currency tabs. Include summary cards at the top. Make it look like TradingView dark theme. No frameworks — plain HTML/CSS/JS only.
-```
-
-### Task 2 — After Claude Code generates files, ask:
-```
-Now add live price fetching from Yahoo Finance API for each ticker symbol found in the CSV files. Update the "Latest Price" and "Today's Change %" columns dynamically when the page loads. Handle CORS using a proxy if needed.
-```
-
-### Task 3 — For the ticker bar:
-```
-Add a scrolling top ticker bar showing OMXS30, DAX, SP500F, Gold, and USD/SEK with live data from Yahoo Finance. Color code each: green if positive, red if negative.
-```
-
-### Task 4 — Final polish:
-```
-Add sparkline mini-charts to each row in the tables using Chart.js. Use green color for positive total return, red for negative. Also add company logo images using Clearbit API (logo.clearbit.com). Add a currency toggle button to switch all values between SEK and USD.
-```
-
-### Task 5 — Start local server:
-start server>python -m http.server 8000
-kill server> taskkill /IM python.exe /F
-```
-Start a local development server so I can view the dashboard in my browser. Tell me the URL.
+| UI | Plain HTML + CSS + vanilla JS | No build step |
+| Charts | Chart.js 4.4.0 (CDN) | Sparklines, doughnuts, bars, lines |
+| Data | Nordnet CSV exports (ledger + holdings) | Ground truth for positions, cost and trades |
+| Live data | Yahoo Finance via the local `/yahoo/*` proxy and `server.py` endpoints | Free, no API key |
+| Server | Python standard library (`ThreadingHTTPServer`), started by `start-dashboard.bat` or `python server.py` | No dependencies |

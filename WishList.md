@@ -71,28 +71,18 @@ Funds section below stocks section.
 ## Nice-to-Have (Phase 2)
 - Candlestick chart on row click (mini modal)
 - Export portfolio to PDF
-- Allocation heatmap
+- Allocation heatmap *(done: Portfolio page, see below)*
 - News feed widget per stock
 - Target price / alerts
 
 ## Phase 3 — Implemented Features (2026-03-30)
 
 ### Nordnet Portfolio Sync (`nordnet_sync.py`)
-- **File-watch mode**: Monitors your Downloads folder for newly exported Nordnet CSVs
-  (`Innehav*Export*{account}*.csv`, one combined file for stocks, ETFs and funds)
-  and copies new ones into the project folder. *(Updated 2026-10-26: replaces the old
-  `aktier_kontonummer-*` / `fonder_kontonummer-*` pair and the fixed `portfolio_*.csv` copies.)*
-- **API mode**: Fetches live positions from Nordnet REST API using a session token
-  (obtained from browser DevTools after logging in with BankID).
-- **One-shot baseline**: Builds `portfolio_baseline.json` from the second-newest `Innehav` export
-  in the project folder. The dashboard itself always reads the newest export via `/api/holdings`.
-
-Usage:
-```
-python nordnet_sync.py            # rebuild last-buy baseline from the 2 newest exports
-python nordnet_sync.py --watch    # auto-copy from Downloads (keep running)
-python nordnet_sync.py --api      # live fetch via Nordnet API
-```
+- **Manual drop (current workflow)**: export `Innehav Tabell Export, accno N, DATE.csv` (stocks, ETFs and funds in one file)
+  and `transactions-and-notes-export.csv` from Nordnet and put them in the project folder. The server always uses the newest of each.
+- **One-shot baseline**: `start-dashboard.bat` runs `python nordnet_sync.py` once, which builds `portfolio_baseline.json`
+  (previous state for last-buy tracking) from the second-newest `Innehav` export.
+- *(Not used any more: `--watch` auto-copy from Downloads was dropped on purpose; `--api` mode with a session token still exists but is optional.)*
 
 ### Auto Portfolio Reload
 - Dashboard re-reads CSVs every **5 minutes** automatically (no browser refresh needed).
@@ -114,28 +104,25 @@ python nordnet_sync.py --api      # live fetch via Nordnet API
 
 ## Phase 2 — Implemented Features
 
-### Tomorrow's Signals Widget
-Displays Top 5 stocks with the strongest bullish setup and Top 5 with the
-strongest bearish setup from your portfolio, ranked by composite signal score.
+### Add / Trim Ideas (replaced "Tomorrow's Signals")
+The old 8-indicator next-day score was back-tested on 77 holdings over 5 years (~70 000 samples) and had no predictive power, so it was removed.
+Ideas now come from `advisor.py` (`/api/advice`): TRIM (position over 4% or sector over 40%), ADD (under-weight, uptrend, pulled back),
+BUY BACK (the same test on closed positions), CONSOLIDATE (under 1 500 kr) and REVIEW (downtrend and over 15% under cost).
+Three entry profiles (Conservative / Balanced / Aggressive). Shown on the Portfolio page, in the Assets table (*Add / trim* column) and in Analytics → Advice.
 
-**8-factor technical model (scored independently, then summed):**
+---
 
-| Factor | Max Weight | Signal Logic |
-|---|---|---|
-| MACD (12,26,9) | ±3 | Crossover = strongest signal; trend confirmation = ±1–2 |
-| RSI (14-period, Wilder) | ±2 | <30 oversold bullish; >70 overbought bearish |
-| Bollinger Bands (20, 2σ) | ±2 | Price at/below lower band = buy; at/above upper = sell |
-| Stochastic %K (14-period) | ±2 | <20 oversold; >80 overbought |
-| SMA5 vs SMA20 crossover | ±2.5 | Golden cross = +2.5; death cross = −2.5; trend = ±1 |
-| Volume confirmation | ±1.5 | High vol on up/down day validates the move |
-| Classic Pivot Points | ±1 | Price near S1/S2 support = bullish; near R1/R2 = bearish |
-| Rate of Change (5-day) | ±1 | >3% strong momentum; <−3% strong downswing |
+## Phase 4 — Implemented Features (2026-10 / 11)
 
-**Total max score ≈ ±15.**
-Confidence% = |score| / 15 × 100, capped at 92%.
+- **Portfolio heat map** (Portfolio page, below the tables): Yahoo sectors, live prices, auto-sync with the CSV.
+- **Analytics page** (Assets, Trading habits & costs, Deposit behaviour, Dividends, Advice) built from the ledger and the holdings export,
+  with index overlays (OMXS30, S&P 500, Nasdaq 100 futures).
+- **Live headline values**: Portfolio and Analytics totals are rescaled by live Yahoo prices (the export is only a snapshot).
+- **Privacy toggle** (eye button) hides money values on both pages.
+- **Run without VS Code**: `start-dashboard.bat` / `stop-dashboard.bat` (optional autostart); threaded server for several browsers; reachable over LAN / Tailscale.
 
-**Labels:** Strong Buy/Sell (score ≥ 7) · Buy/Sell (≥ 4) · Weak Buy/Sell (< 4)
-
-**Data source:** Yahoo Finance v8 chart API (~60 trading days OHLCV, 3mo range)
-Fetched automatically in background after page load (200ms gap between requests).
-
+## Ideas not done yet
+- Exact portfolio value history from Yahoo closes per holding (the current history is an estimate).
+- Assets table "Value kr" column rescaled by live prices.
+- Look-through sector exposure of ETFs and funds.
+- Tax (ISK) view; dividend forecast.
