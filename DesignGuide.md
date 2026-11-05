@@ -90,7 +90,7 @@ TradingView.com — professional dark-themed trading interface.
 
 ## Analytics Page
 
-Same dark tokens as the Portfolio page. Three tabs: **Assets**, **Trading habits & costs**, **Deposit behaviour**.
+Same dark tokens as the Portfolio page. Five tabs: **Assets**, **Trading habits & costs**, **Deposit behaviour**, **Dividends**, **Advice**.
 
 ### Chart colours
 - Categorical series use a fixed order, never cycled: `#3987e5` `#d95926` `#199e70` `#c98500` `#d55181` `#008300` `#9085e9` `#e66767`. After seven slots the rest folds into a grey "Other" (`#5d6170`).
@@ -99,12 +99,20 @@ Same dark tokens as the Portfolio page. Three tabs: **Assets**, **Trading habits
 - One axis per chart. Different units get separate charts that share an x axis (Deposit behaviour: deposits, portfolio and positions stacked, with a linked crosshair and tooltips).
 - Thin marks (2 px lines, rounded bar ends), recessive grid, a legend for two or more series, a tooltip on every chart.
 
+### Dividends tab
+KPI row (privacy-masked), a Day / Week / Month chip row, a stacked column chart (net green, tax grey) over a running-total area chart with a linked crosshair, insight cards, a top-payers horizontal bar (green = still held, grey = sold), a per-calendar-month bar and a payer table.
+
+### Advice tab and the Add / trim column
+- Action badges (`.adv`): ADD green, BUY BACK blue, TRIM gold, CONSOLIDATE purple, REVIEW red, HOLD grey. The kr amount sits under the badge (`.adv-amt`, masked by privacy). The tooltip holds the reasons.
+- A gold-edged "What this is (and is not)" panel with the back-test table sits at the top; the entry-profile chips (Conservative / Balanced / Aggressive) follow, then risk cards, a theme bar (red above the 40% cap) and the action tables.
+- Assets table: no horizontal scrolling at 1100-1440 px with 13 px text. Type and Ccy share one column, Last buy / Last sell are gone, and below 1360 px the Bought / Sold columns hide (CSS `nth-child` 7 and 8; keep those positions if columns change).
+
 ### Cards
 - `.vcard` verdict cards (left border: red = act, gold = watch, green = ok) and `.finding` insight cards with an ACT / WATCH / NOTE badge, a big number, a sentence and a grey tip.
 
 ## Portfolio Page Layout (continuous)
 
-Summary cards, Tomorrow's Signals, Stocks & ETFs, Funds, then the Heat map section. The header nav has only **Portfolio** and **Heat map**; they scroll to the top / to the heat map and highlight by scroll position.
+Summary cards, Add / Trim Ideas (two panels: add or buy back, trim / consolidate / review), Stocks & ETFs, Funds, then the Heat map section. The header nav has only **Portfolio** and **Heat map**; they scroll to the top / to the heat map and highlight by scroll position.
 
 ## Heat Map
 

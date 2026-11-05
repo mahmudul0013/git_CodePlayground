@@ -26,7 +26,7 @@ No frameworks — plain HTML + CSS + Vanilla JS, served locally via Python.
 /testTrading/
 ├── index.html            ← Dashboard UI
 ├── style.css             ← TradingView dark theme styles
-├── app.js                ← All dashboard logic (data, live prices, signals)
+├── app.js                ← All dashboard logic (data, live prices, Add / Trim ideas)
 ├── server.py             ← Local HTTP server + Yahoo Finance CORS proxy
 ├── nordnet_sync.py       ← Nordnet export sync (baseline/watch/API)
 ├── Innehav Tabell Export, accno N, DATE.csv ← holdings (stocks+ETFs+funds); newest file is used
@@ -76,7 +76,7 @@ No frameworks — plain HTML + CSS + Vanilla JS, served locally via Python.
 │          │  ─────────────────────────────               │
 │          │  FUNDS TABLE                                  │
 │          ├───────────────────────────────────────────────┤
-│          │  TOMORROW'S SIGNALS WIDGET (Top 5 Buy/Sell)   │
+│          │  ADD / TRIM IDEAS (top 5 each)            │
 └──────────┴───────────────────────────────────────────────┘
 ```
 
@@ -195,31 +195,9 @@ the true diff from the previous export to the current one.
 
 ---
 
-## Tomorrow's Signals Widget (Top 5 Buy / Top 5 Sell)
+## Add / Trim Ideas widget (replaced "Tomorrow's Signals")
 
-Ranks all portfolio holdings by composite technical signal score.
-Data: Yahoo Finance v8 chart API — ~60 trading days OHLCV, 3mo range.
-Requests staggered 200ms apart to avoid rate limiting.
-
-### 8-Factor Scoring Model (max score ≈ ±15)
-
-| Factor | Weight | Bullish Logic | Bearish Logic |
-|---|---|---|---|
-| MACD (12,26,9) | ±3 | Crossover above signal | Crossover below signal |
-| RSI 14 (Wilder) | ±2 | < 30 oversold | > 70 overbought |
-| Bollinger Bands (20, 2σ) | ±2 | Price ≤ lower band | Price ≥ upper band |
-| Stochastic %K 14 | ±2 | < 20 oversold | > 80 overbought |
-| SMA5 vs SMA20 crossover | ±2.5 | Golden cross | Death cross |
-| Volume confirmation | ±1.5 | High vol on up day | High vol on down day |
-| Pivot Points (classic) | ±1 | Near S1/S2 support | Near R1/R2 resistance |
-| Rate of Change 5-day | ±1 | > +3% momentum | < −3% downswing |
-
-**Confidence%** = `|score| / 15 × 100`, capped at 92%
-
-**Labels:**
-- Score ≥ 7 → Strong Buy / Strong Sell
-- Score ≥ 4 → Buy / Sell
-- Score < 4 → Weak Buy / Weak Sell
+The old 8-indicator next-day score (MACD, RSI, Bollinger, Stochastic, SMA5/20, volume, pivots, ROC) was back-tested on 77 holdings over 5 years of Yahoo daily data (~70 000 samples) and had no predictive power (Strong Buy: -0.25% next day, 43% up days; rank correlation about -0.02 to -0.05), so it was removed. `loadPredictions()` in app.js now calls `/api/advice` (advisor.py): position size, sector concentration, tiny positions and trend health, with entry profiles (conservative / balanced / aggressive, localStorage `tv_advice_profile`). Full rules, results and caveats: `.claude/skills/trading-analytics/SKILL.md` ("Advice engine") and Analytics -> Advice.
 
 ---
 
@@ -282,4 +260,4 @@ Exchange suffix conventions:
 - Allocation heatmap
 - News feed widget per stock
 - Target price / alerts
-- Strategy update for "Top 5" signal model based on market conditions
+- Strategy update for the Add / Trim rules based on market conditions

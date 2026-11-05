@@ -9,17 +9,22 @@ A personal, browser-based portfolio dashboard inspired by TradingView's dark the
 - Scrolling market ticker (OMXS30, DAX, S&P futures, Gold, USD/SEK, EUR/USD)
 - Watchlist sidebar and SEK/USD currency toggle
 - Last-buy tracking: new shares and buy price shown in gold under Qty and Price
-- Tomorrow's Signals: top 5 buy and top 5 sell from an 8-factor technical model
+- Add / Trim Ideas: top 5 add or buy-back and top 5 trim / consolidate / review ideas (replaced the old next-day signals; see below)
 - Live price refresh every 60 s; portfolio CSV reload every 5 min
 - **One continuous Portfolio page**: summary, signals, stocks, funds, then the **Heat map** (the nav buttons *Portfolio* / *Heat map* just scroll)
 - **Portfolio heat map**: treemap of the current holdings, size = market value, colour = today's change or unrealised return, grouped by Yahoo Finance sector (or type / country), with distribution doughnut, breakdown table and concentration notes. It syncs by itself: a new or changed Nordnet CSV is picked up within 10 s and live Yahoo prices refresh every 30 s
-- **Add / Trim ideas** (Portfolio page, Analytics → Advice, and the *Add / trim* column of the Assets table): rule-based position management from position size, Yahoo sector concentration, tiny positions and trend health (50/200-day averages, 12-1 month momentum, pullback). It is not a price forecast; the Advice tab shows the back-test that led to dropping the old next-day signals. Price history is cached in `history_cache.json`
+- **Add / Trim ideas** (Portfolio page, Analytics → Advice, and the *Add / trim* column of the Assets table): rule-based position management from position size, Yahoo sector concentration, tiny positions and trend health (50/200-day averages, 12-1 month momentum, pullback). It is not a price forecast; the Advice tab shows the back-test that led to dropping the old next-day signals. Closed positions are checked too (**BUY BACK** ideas). Three entry profiles (Conservative / Balanced / Aggressive, chips in the Advice tab) change how strict the add and buy-back test is. The answer is recalculated with live prices every 10 minutes and straight away when a CSV changes. Price history is cached in `history_cache.json` (git-ignored)
 - **Privacy toggle** (eye button in the header of both pages): blurs summary rows, headline numbers, money/size table columns, "... kr" amounts in text and kr chart axes/tooltips. Remembered between pages and reloads (visual masking only)
 
-- **Analytics page** (`/analytics.html`), three tabs:
+- **Analytics page** (`/analytics.html`), five tabs:
   - **Assets**: asset explorer (all ever held / current / closed / bought or sold in the last 1 week or 1 month, with type, currency and country filters and charts)
   - **Trading habits & costs**: habit score, broker costs, benchmark against OMXS30 / S&P 500 / Nasdaq 100 futures, good-practice tips, fee and holding-time analysis
   - **Deposit behaviour**: deposits per day / week / month as columns, estimated portfolio value (or deposit-free return) and positions held as lines on one shared axis, optional index overlays (OMXS30, S&P 500, Nasdaq 100 futures `NQ=F`), insight cards (return vs market, risk, idle cash, deposit timing, why you are ahead or behind the index, money per position)
+
+  - **Dividends**: dividends received (net of withholding tax) per day / week / month, running total, per-calendar-month pattern, top payers, payer table and insight cards. Dividends were always inside the account value; this tab makes them visible
+  - **Advice**: honest back-test summary, portfolio risk cards (too many small positions, sector concentration, volatility / drawdown / correlation, trend health), theme weights, and the Add / buy-back, Trim and Consolidate / Review tables with reasons and kr amounts
+
+  Headline values (Account value, All-time result, Unrealised and the Portfolio page totals) are rescaled by live Yahoo prices; the holdings export is only a snapshot from the day it was made.
 
   It is built from `transactions-and-notes-export*.csv` and `Innehav*Export*.csv` in the project folder; the newest matching file wins and the page re-syncs by itself when a file changes.
 
@@ -126,9 +131,9 @@ Yahoo symbol suffixes: `.ST` Sweden, `.OL` Norway, `.HE` Finland, `.CO` Denmark,
 testTrading/
 ├── index.html               Portfolio page (summary, tables, heat map section)
 ├── style.css                TradingView dark theme styles
-├── app.js                   Portfolio logic (data, live prices, signals, nav scroll)
+├── app.js                   Portfolio logic (data, live prices, Add / Trim ideas, nav scroll)
 ├── heatmap.js / heatmap.css Portfolio heat map (treemap, doughnut, live sync)
-├── analytics.html/css/js    Analytics page (Assets, Trading habits, Deposit behaviour)
+├── analytics.html/css/js    Analytics page (Assets, Trading habits, Deposit behaviour, Dividends, Advice)
 ├── asset_chart.js           Per-asset price chart with BUY/SELL markers
 ├── privacy.js / privacy.css Master privacy toggle (eye button)
 ├── server.py                Local HTTP server + Yahoo proxy + JSON API (see below)
@@ -136,6 +141,7 @@ testTrading/
 ├── benchmark.py             Index comparison and overlay series (OMXS30, S&P 500, NQ=F)
 ├── symbols.py / symbol_cache.json   ISIN -> Yahoo symbol (hand edits kept)
 ├── sectors.py / sector_cache.json   Sector / fund category per holding from Yahoo
+├── advisor.py               Add / Trim / Buy back rules, entry profiles, portfolio risk (history_cache.json)
 ├── nordnet_sync.py          Nordnet export sync (baseline, watch, API)
 ├── start-dashboard.bat      Run nordnet_sync.py once, then the server without VS Code (auto-restart)
 ├── stop-dashboard.bat       Stop it
@@ -157,6 +163,7 @@ testTrading/
 | `/api/assets` | Assets only (used by the heat map) |
 | `/api/live` | Live Yahoo quotes for current holdings (25 s cache) |
 | `/api/sectors` | Yahoo sector / fund category per holding (30-day cache) |
+| `/api/advice?profile=` | Add / Trim / Buy back review (`conservative`, `balanced`, `aggressive`); cached 10 min |
 | `/api/benchmark`, `/api/overlay` | Index comparison and daily index curves |
 | `/api/symbol` | ISIN / name -> Yahoo symbol |
 | `/yahoo/*` | Yahoo Finance proxy |
@@ -167,5 +174,5 @@ Memory: every server cache holds one entry that is replaced, not grown (measured
 
 - [WishList.md](WishList.md): feature requirements and implemented phases
 - [DesignGuide.md](DesignGuide.md): colors, typography and component specs
-- [.claude/skill.md](.claude/skill.md): architecture, last-buy logic, signal model and ticker map
+- [.claude/skill.md](.claude/skill.md): architecture, last-buy logic, the (old) signal model and ticker map
 - [.claude/skills/trading-analytics/SKILL.md](.claude/skills/trading-analytics/SKILL.md): analytics, heat map, live-price and privacy notes
