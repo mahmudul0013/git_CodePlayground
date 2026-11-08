@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account · TradeView</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="auth.css">
+  <script src="auth.js"></script>
+</head>
+<body class="auth-page">
+  <header class="auth-top">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect width="20" height="20" rx="4" fill="#2962FF"/>
+        <polyline points="3,14 7,9 11,12 17,5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="logo-text">TradeView</span>
+    </div>
+    <nav class="nav"><a href="/index.html">Portfolio</a><a href="/analytics.html">Analytics</a></nav>
+    <div id="user-menu"></div>
+  </header>
+
+  <main class="acct">
+    <h1>Your account</h1>
+    <p class="lead" id="who">Loading…</p>
+
+    <!-- ============== FILES ============== -->
+    <section class="card" id="upload">
+      <h2>Your Nordnet files</h2>
+      <p class="hint">Export both files from Nordnet and add them here. Everything is calculated from them and kept private to your account. Upload newer exports at any time to update.</p>
+      <div id="up-msg" class="msg" hidden role="alert"></div>
+      <div class="drops">
+        <div class="drop" id="drop-holdings">
+          <h3>1 · Holdings</h3>
+          <div class="fn">Innehav Tabell Export, accno 12345678, 2026-11-01.csv<br>or the older pair: aktier_kontonummer-12345678_2026-11-01.csv + fonder_kontonummer-12345678_2026-11-01.csv (same date)</div>
+          <input type="file" id="in-holdings" accept=".csv,text/csv">
+          <button type="button" class="abtn" data-pick="holdings">Browse…</button>
+          <div class="st" id="st-holdings"></div>
+        </div>
+        <div class="drop" id="drop-ledger">
+          <h3>2 · Transactions</h3>
+          <div class="fn">transactions-and-notes-export.csv (all transactions)</div>
+          <input type="file" id="in-ledger" accept=".csv,text/csv">
+          <button type="button" class="abtn" data-pick="ledger">Browse…</button>
+          <div class="st" id="st-ledger"></div>
+        </div>
+      </div>
+      <div class="row-actions">
+        <a class="abtn primary disabled" id="open-btn" href="/index.html">Open my portfolio</a>
+        <span class="grow" id="open-hint">Add both files to continue. You can also drop a file onto its box.</span>
+      </div>
+    </section>
+
+    <!-- ============== ACCOUNT ============== -->
+    <section class="card" id="account">
+      <h2>Password</h2>
+      <p class="hint">Use at least 8 characters.</p>
+      <div id="pw-msg" class="msg" hidden role="alert"></div>
+      <form id="f-pw" class="inline" autocomplete="off" novalidate>
+        <label class="field"><span>Current password</span><input type="password" id="pw-old" autocomplete="current-password"></label>
+        <label class="field"><span>New password</span><input type="password" id="pw-new" autocomplete="new-password"></label>
+        <label class="field"><span>Repeat new password</span><input type="password" id="pw-new2" autocomplete="new-password"></label>
+        <button class="abtn" type="submit">Change password</button>
+      </form>
+    </section>
+
+    <!-- ============== ADMIN ============== -->
+    <section class="card" id="admin" hidden>
+      <h2>Admin: invites and users</h2>
+      <p class="hint">Each invite code works once and expires after 7 days. Send it to the person; they open the sign-in page and choose "Create your account".</p>
+      <div id="ad-msg" class="msg" hidden role="alert"></div>
+      <div class="row-actions"><button type="button" class="abtn primary" id="inv-new">Create invite code</button></div>
+      <div id="inv-code" hidden>
+        <div class="codebox"><code id="inv-val"></code><button type="button" class="abtn small" id="inv-copy">Copy</button><span class="tag gold" id="inv-exp"></span></div>
+        <p class="hint">This code is shown only now. Copy it before you leave the page.</p>
+      </div>
+      <h2 style="margin-top:14px">Invites</h2>
+      <div class="tbl-wrap"><table id="tb-inv"></table></div>
+      <h2 style="margin-top:14px">Users</h2>
+      <div class="tbl-wrap"><table id="tb-users"></table></div>
+      <p class="hint" style="margin-top:8px">Admins can manage accounts but cannot open another user's portfolio.</p>
+    </section>
+
+    <!-- ============== DANGER ============== -->
+    <section class="card danger" id="danger">
+      <h2 id="del-title">Delete my profile</h2>
+      <p class="hint" id="del-hint">Removes your account, your uploaded files and your saved baseline from the server. This cannot be undone.</p>
+      <div id="del-msg" class="msg" hidden role="alert"></div>
+      <form id="f-del" class="inline" autocomplete="off" novalidate>
+        <label class="field"><span>Confirm with your password</span><input type="password" id="del-pass" autocomplete="current-password"></label>
+        <button class="abtn danger" id="del-btn" type="submit">Delete my profile</button>
+      </form>
+    </section>
+  </main>
+  <script src="account.js"></script>
+</body>
+</html>

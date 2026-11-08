@@ -9,9 +9,11 @@
      - kr axes and tooltips of charts (detected from their callbacks)                                         */
 'use strict';
 (function () {
-  const KEY = 'tv_privacy';
+  const KEY = 'tv_privacy', HINT = 'tv_privacy_hint';      // HINT: last choice on this browser (not secret), only used before the user is known so there is no flash of real numbers
   const root = document.documentElement;
-  const get = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+  const userKey = () => (window.TV && TV.sid) ? TV.key(KEY) : null;
+  const get = () => { try { const k = userKey(); return localStorage.getItem(k || HINT) === '1'; } catch (e) { return false; } };
+  const save = s => { try { const k = userKey(); if (k) localStorage.setItem(k, s ? '1' : '0'); localStorage.setItem(HINT, s ? '1' : '0'); } catch (e) { /* private mode */ } };
   const on = () => root.classList.contains('privacy');
 
   // ---------- 1. money / size table columns -> class pv on their cells ----------
@@ -90,9 +92,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     apply(get());
     const b = document.getElementById('privacy-btn');
-    if (b) b.addEventListener('click', () => { const s = !get(); try { localStorage.setItem(KEY, s ? '1' : '0'); } catch (e) { /* private mode */ } apply(s); });
+    if (b) b.addEventListener('click', () => { const s = !get(); save(s); apply(s); });
     new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
     scan();
   });
-  window.addEventListener('storage', e => { if (e.key === KEY) apply(get()); });   // another open tab/page follows
+  // once the user is known, switch to that user's own saved state (and refresh the hint for the next page)
+  if (window.TV) TV.ready.then(() => { const s = get(); save(s); apply(s); });
+  window.addEventListener('storage', e => { if (e.key === HINT || e.key === userKey()) apply(get()); });   // another open tab/page follows
 })();

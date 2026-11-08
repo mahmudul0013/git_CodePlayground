@@ -20,6 +20,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import date
 
@@ -57,26 +58,30 @@ DEFAULT_PROFILE = 'balanced'
 _LOCK = threading.Lock()
 _fail = {}                            # symbol -> time of a failed fetch (not retried for an hour)
 _hist = None                          # {symbol: {'at': ts, 'c': [closes], 'd': [epoch days]}}
-_cache = {'key': None, 'data': None}
+_CACHE_MAX = 6                         # answers kept in memory, least recently used leaves first
+_cache = OrderedDict()                 # (owner, payload.generated, live?, profile) -> {'data', 'exp', 'payload'}; per-user data lives ONLY here
 
 
 # ───────── price history (Yahoo v8 chart, adjusted close, 2 years) ─────────
 def _load():
     global _hist
-    if _hist is None:
-        try:
-            with open(HIST_FILE, encoding='utf-8') as f:
-                _hist = json.load(f)
-        except Exception:
-            _hist = {}
-    return _hist
+    with _LOCK:
+        if _hist is None:
+            try:
+                with open(HIST_FILE, encoding='utf-8') as f:
+                    _hist = json.load(f)
+            except Exception:
+                _hist = {}
+        return _hist
 
 
 def _save():
     try:
+        with _LOCK:
+            snap = dict(_hist)             # other users' threads may add symbols while we write
         fd, tmp = tempfile.mkstemp(dir=HERE, suffix='.tmp')
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
-            json.dump(_hist, f)
+            json.dump(snap, f)
         os.replace(tmp, HIST_FILE)
     except Exception:
         pass
@@ -401,14 +406,30 @@ def _portfolio_stats(rows, total):
     return {'vol': round(vol, 4), 'max_dd': round(dd, 4), 'corr': round(corr, 3), 'n': n, 'eff_n': round(eff, 1), 'days': len(port)}
 
 
-def get(payload, live=None, profile=DEFAULT_PROFILE):
-    """Cached per payload version, live-price flag and profile for 10 minutes (single slot, memory stays flat)."""
-    key = (payload.get('generated'), bool(live), profile)
+def get(payload, live=None, profile=DEFAULT_PROFILE, owner=None):
+    """Advice for one user, cached per (owner, payload version, live flag, profile) for CACHE_SECONDS.
+    `owner` is the profile's id: two users never share an entry. Without an owner (CLI use) the entry is also bound to the
+    payload object itself, so even a careless caller cannot be served another user's answer."""
+    key = (owner, payload.get('generated'), bool(live), profile)
+    now = time.time()
     with _LOCK:
-        if _cache['key'] == key and time.time() < _cache.get('exp', 0):
-            return _cache['data']
+        e = _cache.get(key)
+        if e and now < e['exp'] and (owner is not None or e['payload'] is payload):
+            _cache.move_to_end(key)
+            return e['data']
     data = advise(payload, live, profile)
     with _LOCK:
-        # price history / sectors still loading in the background: retry soon instead of holding a partial answer for an hour
-        _cache['key'], _cache['data'], _cache['exp'] = key, data, time.time() + (90 if data.get('partial') else CACHE_SECONDS)
+        # price history / sectors still loading in the background: retry soon instead of holding a partial answer
+        _cache[key] = {'data': data, 'payload': payload if owner is None else None,
+                       'exp': time.time() + (90 if data.get('partial') else CACHE_SECONDS)}
+        _cache.move_to_end(key)
+        while len(_cache) > _CACHE_MAX:
+            _cache.popitem(last=False)
     return data
+
+
+def forget(owner):
+    """Drop everything cached for one user (called when the profile is deleted or its files are replaced)."""
+    with _LOCK:
+        for k in [k for k in _cache if k[0] == owner]:
+            del _cache[k]

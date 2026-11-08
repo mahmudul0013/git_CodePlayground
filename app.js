@@ -8,6 +8,8 @@
 // blocked requests. server.py listens on every interface, so that proxy is
 // same-origin whatever hostname the page was opened with (localhost, a LAN IP,
 // a machine name). Only a file:// page has no proxy and must call Yahoo direct.
+// per-user localStorage key (auth.js adds the user's id suffix so people sharing a browser never share state)
+const LS = n => (window.TV ? TV.key(n) : n);
 const HAS_PROXY = location.protocol === 'http:' || location.protocol === 'https:';
 
 // ────────────────────────────────────────────────────────────
@@ -332,22 +334,22 @@ function isFundName(name) {
 // ────────────────────────────────────────────────────────────
 async function loadLastBuyData() {
   try {
-    S.lastBuy   = JSON.parse(localStorage.getItem('portfolio_lastbuy')  || '{}');
-    S._snapshot = JSON.parse(localStorage.getItem('portfolio_snapshot') || '{}');
+    S.lastBuy   = JSON.parse(localStorage.getItem(LS('portfolio_lastbuy'))  || '{}');
+    S._snapshot = JSON.parse(localStorage.getItem(LS('portfolio_snapshot')) || '{}');
   } catch (_) {
     S.lastBuy   = {};
     S._snapshot = {};
   }
 
-  // Always fetch portfolio_baseline.json (written by nordnet_sync.py just BEFORE
+  // Always fetch the profile's baseline from /api/baseline (built by the server from the previous export; was portfolio_baseline.json, written by nordnet_sync.py, just BEFORE
   // overwriting the CSVs).  If the baseline is newer than the localStorage
   // snapshot, use it — this ensures buy detection works after every sync.
   try {
-    const resp = await fetch('portfolio_baseline.json?t=' + Date.now());
+    const resp = await fetch('/api/baseline?t=' + Date.now(), { cache: 'no-store' });
     if (resp.ok) {
       const baseline = await resp.json();
       const baselineTs = baseline.__ts || 0;
-      const localTs    = Number(localStorage.getItem('portfolio_snapshot_ts') || 0);
+      const localTs    = Number(localStorage.getItem(LS('portfolio_snapshot_ts')) || 0);
       if (baselineTs > localTs || !Object.keys(S._snapshot).length) {
         // Baseline is fresher than localStorage — replace snapshot AND wipe stale
         // lastBuy so detectAndSaveBuys() starts clean from this known-good baseline
@@ -355,7 +357,7 @@ async function loadLastBuyData() {
           Object.entries(baseline).filter(([k]) => k !== '__ts'));
         S._snapshot = clean;
         S.lastBuy   = {};
-        console.log('[snapshot] Seeded from portfolio_baseline.json (ts=' + baselineTs + ')');
+        console.log('[snapshot] Seeded from the profile baseline (ts=' + baselineTs + ')');
       }
     }
   } catch (_) {}
@@ -397,7 +399,7 @@ function detectAndSaveBuys() {
     }
     // qty unchanged: preserve existing lastBuy (last-buy context still relevant)
   });
-  localStorage.setItem('portfolio_lastbuy', JSON.stringify(S.lastBuy));
+  localStorage.setItem(LS('portfolio_lastbuy'), JSON.stringify(S.lastBuy));
   // Save new snapshot for next comparison
   const newSnap = {};
   [...S.stocks, ...S.funds].forEach(item => {
@@ -405,8 +407,8 @@ function detectAndSaveBuys() {
   });
   S._snapshot = newSnap;
   const nowTs = Date.now();
-  localStorage.setItem('portfolio_snapshot',    JSON.stringify(newSnap));
-  localStorage.setItem('portfolio_snapshot_ts', nowTs);
+  localStorage.setItem(LS('portfolio_snapshot'),    JSON.stringify(newSnap));
+  localStorage.setItem(LS('portfolio_snapshot_ts'), nowTs);
 }
 
 // ────────────────────────────────────────────────────────────
@@ -550,7 +552,6 @@ async function refreshPrices() {
     ...new Set([
       ...S.stocks.filter(s => s.ticker).map(s => s.ticker),
       ...CFG.tickerSymbols,
-      ...WATCHLIST.map(w => w.sym),   // ensure watchlist symbols always fetched
     ]),
   ];
 
@@ -591,7 +592,6 @@ async function refreshPrices() {
 
   S.liveLoaded = true;
   renderAll();
-  renderWatchlist();
   setStatus('live', 'Live · ' + new Date().toLocaleTimeString() + (S.holdingsFile ? ' · ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
 }
 
@@ -1001,46 +1001,6 @@ function fundRow(f) {
 }
 
 // ────────────────────────────────────────────────────────────
-// RENDER — WATCHLIST SIDEBAR
-// ────────────────────────────────────────────────────────────
-const WATCHLIST = [
-  { sym: '^OMX',    label: 'OMXS30' },
-  { sym: '^GDAXI',  label: 'DAX' },
-  { sym: 'ES=F',    label: 'S&P 500F' },
-  { sym: 'GC=F',    label: 'Gold' },
-  { sym: 'USDSEK=X',label: 'USD/SEK' },
-  { sym: 'NVDA',    label: 'NVIDIA' },
-  { sym: 'AAPL',    label: 'Apple' },
-  { sym: 'MSFT',    label: 'Microsoft' },
-  { sym: 'TSLA',    label: 'Tesla' },
-  { sym: 'META',    label: 'Meta' },
-  { sym: 'NOVO-B.CO', label: 'Novo Nordisk' },
-];
-
-function renderWatchlist() {
-  const el = document.getElementById('watchlist-container');
-  if (!el) return;
-
-  el.innerHTML = WATCHLIST.map(({ sym, label }) => {
-    const q   = S.quotes[sym];
-    const up  = q ? q.changePercent >= 0 : null;
-    const cls = up === null ? 'flat' : up ? 'up' : 'down';
-    const shortSym = sym.replace(/[^=F]/g, s => s).replace('^', '').replace('=X', '').replace('=F', '');
-
-    return `<div class="wl-item">
-      <div class="wl-left">
-        <span class="wl-sym">${escHtml(shortSym)}</span>
-        <span class="wl-name">${escHtml(label)}</span>
-      </div>
-      <div class="wl-right">
-        <span class="wl-price">${q ? fmtNum(q.price, 2) : '—'}</span>
-        <span class="wl-chg ${cls}">${q ? fmtPct(q.changePercent) : '—'}</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ────────────────────────────────────────────────────────────
 // TECHNICAL ANALYSIS — TOMORROW'S SIGNALS
 // 8-factor model: MACD · RSI · Bollinger · Stochastic ·
 //                 SMA crossover · Volume · Pivot Points · ROC
@@ -1155,6 +1115,43 @@ function calcStochK(data, period = 14) {
   return hh === ll ? 50 : ((data[data.length - 1].close - ll) / (hh - ll)) * 100;
 }
 
+// ────────────────────────────────────────────────────────────
+// REPORTS CALENDAR — earnings + ex-dividend dates of the holdings (server: reports.py, Yahoo calendarEvents)
+// ────────────────────────────────────────────────────────────
+async function loadReports() {
+  const badge = document.getElementById('rep-badge');
+  try {
+    const r = await (await fetch('/api/reports', { cache: 'no-store' })).json();
+    if (!r.ok) throw new Error(r.message || r.error || 'no data');
+    S.reports = r;
+    renderReports();
+    if (r.pending) setTimeout(loadReports, 15_000);        // first load is still fetching dates from Yahoo: ask again soon
+  } catch (e) {
+    console.warn('[reports]', e.message);
+    if (badge) badge.textContent = 'unavailable';
+  }
+}
+
+function renderReports() {
+  const r = S.reports, el = document.getElementById('rep-list'), badge = document.getElementById('rep-badge');
+  if (!r || !el) return;
+  const c = r.counts;
+  if (badge) badge.textContent = (c.today + c.tomorrow + c.week) + (r.pending ? ' · loading' : '');
+  const fmtD = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  const item = x => {
+    const earn = x.kind === 'earnings';
+    const tip = [x.name, earn ? 'Earnings report' : 'Ex-dividend date', fmtD(x.date) + (x.estimate ? ' (date still an estimate)' : ''), x.weight.toFixed(1) + '% of your portfolio', earn && x.eps != null ? 'Analysts expect EPS ' + fmtNum(x.eps, 2) : ''].filter(Boolean).join(' · ');
+    return `<div class="rep-item${x.weight >= 2 ? ' big' : ''}" title="${escHtml(tip)}">
+      <div class="rep-top"><span class="rep-name">${escHtml(x.name)}</span><span class="rep-tag ${earn ? 'rep-earn' : 'rep-div'}">${earn ? 'EARN' : 'EX-DIV'}</span></div>
+      <div class="rep-sub">${fmtD(x.date)}${x.estimate ? ' (est.)' : ''} · ${x.weight.toFixed(1)}%</div></div>`;
+  };
+  const sec = (title, hint, list) => `<div class="rep-sec"><span>${title}</span><em>${hint}</em><i>${list.length}</i></div>`
+    + (list.length ? list.map(item).join('') : '<div class="rep-none">Nothing</div>');
+  const g = r.groups;
+  el.innerHTML = sec('Today', fmtD(r.today), g.today) + sec('Tomorrow', '', g.tomorrow) + sec('This week', 'next 7 days', g.week)
+    + (r.stale ? `<div class="rep-foot">${r.stale} holdings just reported; Yahoo has no new date yet.</div>` : '');
+}
+
 /**
  * Add / Trim ideas (replaces the old "Tomorrow's Signals").
  * The old 8-indicator next-day score was back-tested on 77 holdings over 5 years and had no predictive power
@@ -1164,7 +1161,7 @@ function calcStochK(data, period = 14) {
 async function loadPredictions() {
   const badge = document.getElementById('pred-badge');
   try {
-    const r = await (await fetch('/api/advice?profile=' + (localStorage.getItem('tv_advice_profile') || 'balanced'), { cache: 'no-store' })).json();
+    const r = await (await fetch('/api/advice?profile=' + (localStorage.getItem(LS('tv_advice_profile')) || 'balanced'), { cache: 'no-store' })).json();
     if (!r.ok) throw new Error(r.error || 'no data');
     const named = Object.entries(r.assets).map(([isin, v]) => ({ isin, ...v }));
     const stock = n => S.stocks.find(s => s.name === n) || S.funds.find(f => f.name === n);
@@ -1345,7 +1342,6 @@ async function init() {
 
     // First render with CSV data only
     renderAll();
-    renderWatchlist();
     bindEvents();
 
     setStatus('loading', 'Fetching live prices…');
@@ -1357,6 +1353,8 @@ async function init() {
     loadSparklines();
     loadPredictions();
     setInterval(loadPredictions, 10 * 60_000);
+    loadReports();
+    setInterval(loadReports, 30 * 60_000);
 
     // Auto-refresh prices every minute
     setInterval(refreshPrices, CFG.refreshMs);
@@ -1376,4 +1374,4 @@ async function init() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => (window.TV ? TV.ready : Promise.resolve()).then(init));

@@ -42,7 +42,7 @@ Funds section below stocks section.
 - Live-style scrolling ticker showing: OMXS30, DAX, SP500, Gold, USD/SEK
 - Color coded: green for up, red for down
 
-### 5. Watchlist Sidebar
+### 5. Watchlist Sidebar *(replaced in 2026-11 by the Reports Calendar sidebar: earnings and ex-dividend dates of the holdings, Today / Tomorrow / This week)*
 - Add/remove stocks manually
 - Shows current price and daily change %
 
@@ -121,7 +121,12 @@ Three entry profiles (Conservative / Balanced / Aggressive). Shown on the Portfo
 - **Privacy toggle** (eye button) hides money values on both pages.
 - **Run without VS Code**: `start-dashboard.bat` / `stop-dashboard.bat` (optional autostart); threaded server for several browsers; reachable over LAN / Tailscale.
 
+## Phase 5 - Multi-user (2026-11)
+- Accounts with login (username + password), single-use invite codes from the admin, one private profile per user (own two Nordnet CSVs uploaded in the browser, account number checked inside the files), all on port 8000.
+- Local rule-based chat and search, tile help icons, fluid layout for phones, tablets and desktops.
+
 ## Ideas not done yet
+- Optional HTTPS mode; several Nordnet accounts per profile; encryption at rest; Swedish answers in the assistant; follow-up context in the chat.
 - Exact portfolio value history from Yahoo closes per holding (the current history is an estimate).
 - Assets table "Value kr" column rescaled by live prices.
 - Look-through sector exposure of ETFs and funds.

@@ -9,7 +9,13 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="privacy.css">
   <link rel="stylesheet" href="heatmap.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="assistant.css">
+  <link rel="stylesheet" href="help.css">
+  <link rel="stylesheet" href="responsive.css">
+  <script src="auth.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="responsive.js"></script>
   <script src="privacy.js"></script>
 </head>
 <body>
@@ -24,12 +30,13 @@
   <!-- App Layout -->
   <div id="app">
 
-    <!-- Sidebar Watchlist -->
-    <aside id="sidebar">
+    <!-- Sidebar: reports calendar (earnings + ex-dividend dates of the holdings) -->
+    <aside id="sidebar" aria-label="Reports calendar">
       <div class="sidebar-header">
-        <span class="sidebar-title">Watchlist</span>
+        <span class="sidebar-title">Reports Calendar</span>
+        <span class="rep-count" id="rep-badge"></span>
       </div>
-      <div id="watchlist-container">
+      <div id="rep-list">
         <div class="loading-row">Loading...</div>
       </div>
     </aside>
@@ -67,6 +74,7 @@
             <span class="dot live" id="status-dot"></span>
             <span id="last-updated-time">Connecting...</span>
           </div>
+          <div id="user-menu"></div>
         </div>
       </header>
 
@@ -224,5 +232,7 @@
 
   <script src="app.js"></script>
   <script src="heatmap.js"></script>
+  <script src="assistant.js"></script>
+  <script src="help.js"></script>
 </body>
 </html>

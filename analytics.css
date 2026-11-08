@@ -57,6 +57,9 @@ main { max-width: 1500px; margin: 0 auto; padding: 16px; }
 
 /* tabs & filters */
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+/* five tabs do not fit a phone: scroll them sideways instead of widening the page */
+.tabs { overflow-x: auto; scrollbar-width: thin; }
+.tab { white-space: nowrap; flex: none; }
 .tab { background: none; border: none; color: var(--text-dim); font: inherit; font-weight: 600; padding: 9px 16px;
   cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tab:hover { color: var(--text); }

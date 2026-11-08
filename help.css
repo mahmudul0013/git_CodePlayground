@@ -1,0 +1,37 @@
+/* Tile help button and popover (help.js). Vector icon, 40 px touch area, no hover dependence. */
+.tv-help {
+  /* the button box is 40 px (touch target); negative margins keep its layout footprint at the 18 px icon */
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 40px; height: 40px; margin: -11px -11px -11px -6px; padding: 0;
+  border: 0; background: none; border-radius: 50%; cursor: pointer; vertical-align: middle;
+  color: var(--text-dim, #787B86); opacity: .65; font: inherit; text-transform: none; letter-spacing: 0; -webkit-tap-highlight-color: transparent;
+}
+.tv-help svg { width: 18px; height: 18px; pointer-events: none; display: block; }
+.tv-help:hover, .tv-help[aria-expanded="true"] { opacity: 1; color: var(--accent, #2962FF); }
+.tv-help:focus-visible { outline: 2px solid var(--accent, #2962FF); outline-offset: -4px; opacity: 1; }
+th .tv-help { margin-left: -8px; margin-right: -14px; }
+
+.tv-pop {
+  position: fixed; z-index: 400; box-sizing: border-box; width: 280px; max-width: calc(100vw - 16px); overflow: auto;
+  background: var(--surface, #1E2130); color: var(--text, #D1D4DC); border: 1px solid var(--border, #2A2E39); border-radius: 8px;
+  padding: 10px 40px 11px 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, .55); font: 400 12.5px/1.45 var(--font, 'Inter', sans-serif);
+  text-align: left; text-transform: none; letter-spacing: 0; white-space: normal; outline: none;
+}
+.tv-pop::before {                                    /* arrow pointing at the icon */
+  content: ''; position: absolute; left: calc(var(--ax, 24px) - 6px); top: -6px; width: 10px; height: 10px; transform: rotate(45deg);
+  background: var(--surface, #1E2130); border-left: 1px solid var(--border, #2A2E39); border-top: 1px solid var(--border, #2A2E39);
+}
+.tv-pop.up::before { top: auto; bottom: -6px; transform: rotate(225deg); }
+.tv-pop h5 { margin: 0 0 3px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim, #787B86); }
+.tv-pop p { margin: 0; color: var(--text, #D1D4DC); font-size: 12.5px; }
+.tv-pop a { color: var(--accent, #2962FF); text-decoration: none; white-space: nowrap; font-size: 12px; }
+.tv-pop a:hover { text-decoration: underline; }
+.tv-pop-x {
+  position: absolute; top: 0; right: 0; width: 40px; height: 40px; border: 0; background: none; cursor: pointer;
+  color: var(--text-dim, #787B86); font: 400 20px/1 var(--font, sans-serif);
+}
+.tv-pop-x:hover, .tv-pop-x:focus-visible { color: var(--white, #fff); }
+.tv-wait { color: var(--text-dim, #787B86); font-style: italic; }
+.tv-wait::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: tv-dots 1.2s steps(4) infinite; }
+@keyframes tv-dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+@media (prefers-reduced-motion: reduce) { .tv-wait::after { animation: none; content: '…'; } }

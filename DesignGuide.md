@@ -132,6 +132,13 @@ Summary cards, Add / Trim Ideas (two panels: add or buy back, trim / consolidate
 - Hover tooltip: name, value, weight, today, unrealised, sector / industry / type / country.
 - Status line with a live dot (green = live Yahoo prices, grey = export values only).
 
+## Accounts, Help and Responsive Rules
+
+- **Login / account pages** (`login.html`, `account.html`): centred card on the dark background, same tokens as the dashboard; errors in plain language under the field; the invite code is shown once with a copy button. The header shows a round user button (initial) with a menu: Upload / replace files, Account, Admin (admin only), Log out.
+- **Chat button** (`#as-fab`, bottom right) opens a 336x440 px panel (`#as-panel`) that never covers the header; answers are one or two lines with an optional link chip. `/` focuses it, Esc closes it.
+- **Tile help**: an 18 px vector ⓘ (`.tv-help`, 40 px hit area) on tiles, chart titles and table headers; tap opens a popover (`.tv-pop`, max 280 px, clamped to the viewport, flips above/below).
+- **Responsive**: fluid text with `clamp()`, no sideways page scroll at 320 px and wider, tables in a scroll box with the name column sticky and low-priority columns hidden by width, chart heights `clamp(220px, 40vw, 360px)`, tap targets of at least 40 px at 900 px and below, charts and the heat map refit after resize and rotation (`responsive.js`).
+
 ## Privacy Toggle
 
 Eye icon button in the header of both pages (gold border when values are hidden). Hidden values are blurred (`color: transparent` plus a soft `text-shadow`), labels stay visible, and the state is kept in `localStorage` (`tv_privacy`) and shared by both pages. Mark any new private number with `<span class="pv">`. Chart kr axes and tooltips are switched off while hidden.

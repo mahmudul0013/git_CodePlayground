@@ -1,0 +1,174 @@
+/* Fluid / responsive layer for both pages. Load LAST in <head> (after style.css / analytics.css / heatmap.css / privacy.css).
+   Rules: no horizontal page scroll from 320 px up; text >= 11 px (labels) / 12 px (data); touch targets >= 40 px;
+   charts and tables scale; lower-priority columns hide before text gets small. */
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+canvas:not(.sparkline-canvas) { max-width: 100%; }
+.panel, .hm-panel, .card, .kpi, .vcard, .finding, .table-section, .pred-panel, main, #main-content { min-width: 0; }
+.card-value, .kpi .v, .vcard .big, .finding .num, .vcard p, .finding p, .hint, .card-sub, .kpi .s, .hm-notes li { overflow-wrap: anywhere; }
+
+/* ───────── minimum text sizes (labels 11 px, data 12 px) ───────── */
+.card-label, .data-table th, .stock-ticker, .lb-tag, .wl-name, .sidebar-title, .count-badge, .sort-icon,
+.pred-ticker, .pred-signals, .pred-price, .pred-rsi, .pred-signal-label { font-size: 11px; }
+.wl-sym, .wl-price, .wl-chg, .pred-name, .filter-tab, .search-input, .currency-btn, .refresh-btn { font-size: 12px; }
+
+/* fluid headline numbers */
+.card-value { font-size: clamp(16px, 1.4vw + 11px, 20px); }
+.kpi .v { font-size: clamp(16px, 1.2vw + 11px, 20px); }
+.kpi-row.small .kpi .v { font-size: clamp(15px, 1vw + 10px, 17px); }
+.vcard .big { font-size: clamp(18px, 1.4vw + 12px, 22px); }
+.sec { font-size: clamp(14px, 1vw + 10px, 16px); }
+
+/* ───────── Portfolio page ───────── */
+@supports (height: 100dvh) { #app { height: calc(100dvh - var(--ticker-h, 34px)); } }   /* phone browser bars */
+#scroll-body { padding: clamp(8px, 2.4vw, 14px); gap: clamp(10px, 2vw, 14px); overscroll-behavior: contain; }
+#summary-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1100px) { #summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { #summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .card { padding: 10px 11px; } }   /* beats the old single column */
+@media (max-width: 340px) { #summary-cards { grid-template-columns: minmax(0, 1fr); } }
+#predictions-section { margin: 0; }
+@media (max-width: 900px) { .pred-grid { grid-template-columns: minmax(0, 1fr); } .pred-meta { margin-left: 0; } }
+.pred-card { min-width: 0; }
+.pred-right { max-width: 44%; }
+
+/* watchlist: drawer on narrow screens */
+.wl-toggle { display: none; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+.wl-toggle:hover { border-color: var(--accent); }
+#wl-backdrop { display: none; }
+@media (max-width: 900px) {
+  .wl-toggle { display: inline-flex; }
+  #sidebar { display: flex; position: fixed; z-index: 170; top: var(--ticker-h, 34px); bottom: 0; left: 0; width: min(280px, 82vw);
+    transform: translateX(-102%); visibility: hidden; transition: transform .2s ease, visibility 0s linear .2s; box-shadow: none; }
+  body.wl-open #sidebar { transform: none; visibility: visible; transition: transform .2s ease; box-shadow: 8px 0 24px rgba(0, 0, 0, .5); }
+  body.wl-open #wl-backdrop { display: block; position: fixed; inset: var(--ticker-h, 34px) 0 0 0; z-index: 160; background: rgba(0, 0, 0, .45); }
+}
+@media (prefers-reduced-motion: reduce) { #sidebar { transition: none; } }
+
+/* ticker: one line, smooth; reduced motion = manual scroll */
+.ticker-track { backface-visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { #ticker-bar { overflow-x: auto; } .ticker-track { animation: none; } }
+
+/* header: wraps, nothing cut off */
+#main-header { padding-inline: clamp(8px, 2vw, 18px); }
+.header-right { min-width: 0; }
+#last-updated-time { white-space: normal; overflow-wrap: anywhere; }
+.status-bar { white-space: normal; min-width: 0; }
+@media (max-width: 700px) { .header-left { gap: 8px; } .header-right { margin-left: 0; width: 100%; justify-content: flex-start; } }
+
+/* data tables: scroll sideways inside their box, name column stays, low-priority columns hide first */
+.table-wrap, .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.data-table td.col-name, .data-table th.col-name { position: sticky; left: 0; z-index: 3; background-color: var(--surface); }
+.data-table tbody td.col-name { background-color: inherit; }
+.data-table tbody tr:nth-child(odd) td.col-name { background-color: var(--bg); }
+.data-table tbody tr:nth-child(even) td.col-name { background-color: var(--surface2); }
+.data-table th.col-name { background-color: #2A2E39; z-index: 12; }
+.col-name { min-width: 130px; max-width: min(220px, 40vw); }
+.name-cell { max-width: min(210px, 38vw); }
+@media (max-width: 900px) {
+  #stocks-table th:nth-child(5), #stocks-table td:nth-child(5), #funds-table th:nth-child(5), #funds-table td:nth-child(5),     /* GAV */
+  #stocks-table th:nth-child(11), #stocks-table td:nth-child(11), #funds-table th:nth-child(11), #funds-table td:nth-child(11) { display: none; }   /* 7D chart */
+}
+@media (max-width: 700px) {
+  #stocks-table th:nth-child(3), #stocks-table td:nth-child(3), #funds-table th:nth-child(3), #funds-table td:nth-child(3),     /* currency */
+  #stocks-table th:nth-child(4), #stocks-table td:nth-child(4), #funds-table th:nth-child(4), #funds-table td:nth-child(4),     /* quantity */
+  #stocks-table th:nth-child(10), #stocks-table td:nth-child(10), #funds-table th:nth-child(10), #funds-table td:nth-child(10) { display: none; }   /* return kr */
+  .data-table th, .data-table td { padding-inline: 7px; }
+  .table-header-row { padding: 10px; }
+}
+@media (max-width: 520px) {
+  #stocks-table th:nth-child(1), #stocks-table td:nth-child(1), #funds-table th:nth-child(1), #funds-table td:nth-child(1),     /* logo */
+  #stocks-table th:nth-child(6), #stocks-table td:nth-child(6), #funds-table th:nth-child(6), #funds-table td:nth-child(6) { display: none; }   /* price: name, day %, value and return % stay */
+  .col-num { min-width: 60px; }
+  .col-name { min-width: 108px; }
+  .data-table th, .data-table td { padding-inline: 6px; }
+  .search-input { width: 100%; }
+}
+
+/* heat map: height follows width, controls wrap, legend and tooltip never leave the screen */
+#heat-map { height: clamp(420px, 62vw, 560px); }
+@media (min-width: 761px) { #heat-map { height: clamp(380px, 46vw, 560px); } }
+.heat-scale i { width: min(180px, 40vw); }
+.heat-tip { max-width: calc(100vw - 24px); }
+#heatmap-section .hm-controls { gap: 10px 18px; }
+#heatmap-section .tbl-wrap { max-width: 100%; }
+
+/* ───────── Analytics page ───────── */
+main { padding: clamp(10px, 2vw, 16px); }
+.tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; white-space: nowrap; scroll-snap-align: start; }
+.chips { gap: 6px; }
+input[type=search] { max-width: 100%; }
+.findings { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+.verdict { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+@media (max-width: 600px) {
+  .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 9px 10px; }
+  .kpi .s { font-size: 11px; }
+  .filters { gap: 8px; }
+  input[type=search], .selects select { width: 100%; }
+  .selects { width: 100%; }
+}
+.cv { height: clamp(220px, 40vw, 360px); }
+.cv.tall { height: clamp(240px, 42vw, 360px); }
+.cv[style*="height"] { height: clamp(240px, 50vw, 340px) !important; }       /* a few charts carry an inline height */
+.dep-stack .cv { height: clamp(150px, 28vw, 190px); }
+.dep-stack .cv.dep-b { height: clamp(190px, 34vw, 240px); }
+.dep-stack .cv.dep-c { height: clamp(120px, 22vw, 140px); }
+.panel-head { flex-wrap: wrap; gap: 8px; }
+.detail-inner { max-width: 100%; }
+.asset-chart canvas { max-width: 100%; }
+
+/* tables in panels: scroll inside, first column stays */
+.table-wrap > table > tbody > tr:not(.detail) > td:first-child,
+.tbl-wrap > table > tbody > tr > td:first-child { position: sticky; left: 0; z-index: 1; background-color: inherit; }
+.table-wrap > table > thead > tr > th:first-child, .tbl-wrap > table > thead > tr > th:first-child { left: 0; z-index: 4; }
+.table-wrap > table > tbody > tr > td.name { max-width: min(175px, 38vw); }
+
+/* asset table: hide columns by width (positions: 1 name, 2 type+ccy, 3 status, 4 add/trim, 5 qty, 6 value, 7 bought, 8 sold, 9 buys/sells, 10 fees, 11 realised, 12 unrealised, 13 total) */
+@media (max-width: 1100px) {
+  #asset-table tr.row > td:nth-child(10), #asset-table thead th:nth-child(10), #asset-table tfoot td:nth-child(10) { display: none; }
+}
+@media (max-width: 900px) {
+  #asset-table tr.row > td:nth-child(9), #asset-table thead th:nth-child(9), #asset-table tfoot td:nth-child(9),
+  #asset-table tr.row > td:nth-child(7), #asset-table thead th:nth-child(7), #asset-table tfoot td:nth-child(7),
+  #asset-table tr.row > td:nth-child(8), #asset-table thead th:nth-child(8), #asset-table tfoot td:nth-child(8) { display: none; }
+}
+@media (max-width: 620px) {
+  #asset-table tr.row > td:nth-child(2), #asset-table thead th:nth-child(2), #asset-table tfoot td:nth-child(2),
+  #asset-table tr.row > td:nth-child(3), #asset-table thead th:nth-child(3), #asset-table tfoot td:nth-child(3),
+  #asset-table tr.row > td:nth-child(5), #asset-table thead th:nth-child(5), #asset-table tfoot td:nth-child(5),
+  #asset-table tr.row > td:nth-child(11), #asset-table thead th:nth-child(11), #asset-table tfoot td:nth-child(11),
+  #asset-table tr.row > td:nth-child(12), #asset-table thead th:nth-child(12), #asset-table tfoot td:nth-child(12) { display: none; }
+}
+
+/* ───────── touch targets >= 40 px ───────── */
+@media (max-width: 900px), (pointer: coarse) {
+  .nav-tab, a.nav-link-out, .nav-link, .currency-btn, .refresh-btn, .privacy-btn, .btn, .chip, .tab, .filter-tab, .wl-toggle,
+  #heatmap-section .chip, #heatmap-section .refresh-btn { min-height: 40px; min-width: 40px; }
+  .chip, #heatmap-section .chip { display: inline-flex; align-items: center; }
+  .nav-tab, a.nav-link-out, .nav-link { display: inline-flex; align-items: center; justify-content: center; }
+  .privacy-btn { width: 40px; height: 40px; }
+  select, input[type=search], input[type=text].search-input { min-height: 40px; }
+  .filter-tab { padding: 0 12px; }
+  .wl-item { min-height: 44px; }
+}
+
+/* small standalone tables (back-test, payer tables) scroll inside their box instead of widening the page */
+.honest .bt, table.bt { display: block; max-width: 100%; overflow-x: auto; }
+
+/* fixed tiny sizes in style.css */
+.company-initials, .pred-logo-wrap .company-initials { font-size: 11px; letter-spacing: 0; }
+.cur-badge { font-size: 11px; }
+
+/* phones: the help icon sits in the top-right corner of a tile so a long label never leaves it alone on a second line */
+@media (max-width: 600px) {
+  .kpi, .card, .vcard { position: relative; }
+  .kpi .l, .card-label, .vcard .t { padding-right: 20px; }
+  .kpi .l > .tv-help, .card-label > .tv-help, .vcard .t > .tv-help { position: absolute; top: -2px; right: -4px; margin: 0; }
+}
+
+/* heat map tile names: heatmap.js writes font-size:10px inline on small tiles; keep labels >= 11 px */
+#heat-map .hm-tile b[style*="font-size:10px"] { font-size: 11px !important; }
+
+@media (max-width: 520px) { .data-table th:not(.sort-asc):not(.sort-desc) .sort-icon { display: none; } }   /* sorting still works by tapping the header */

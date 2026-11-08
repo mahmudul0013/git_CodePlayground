@@ -4,3 +4,6 @@ benchmark_overlay_cache.json
 .env
 .nordnet_session.json
 history_cache.json
+data/
+benchmark_series_cache.json
+report_cache.json

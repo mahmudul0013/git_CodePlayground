@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in · TradeView</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="auth.css">
+  <script src="auth.js"></script>
+</head>
+<body class="auth-page">
+  <div class="auth-wrap">
+    <main class="auth-card">
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <rect width="20" height="20" rx="4" fill="#2962FF"/>
+          <polyline points="3,14 7,9 11,12 17,5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text">TradeView</span>
+      </div>
+      <h1 id="ttl">Sign in</h1>
+      <p class="sub" id="sub">Your portfolio is private to your account.</p>
+      <div id="msg" class="msg" hidden role="alert"></div>
+
+      <form id="f-login" autocomplete="on" novalidate>
+        <label class="field"><span>Username</span><input type="text" id="l-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+        <label class="field"><span>Password</span><input type="password" id="l-pass" name="password" autocomplete="current-password" required></label>
+        <button class="abtn primary" id="l-go" type="submit">Sign in</button>
+        <p class="switch">Have an invite code? <button type="button" data-show="register">Create your account</button></p>
+      </form>
+
+      <form id="f-register" autocomplete="on" novalidate hidden>
+        <label class="field"><span>Invite code</span><input type="text" id="r-code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" required></label>
+        <label class="field"><span>Choose a username</span><input type="text" id="r-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+        <label class="field"><span>Password (8+ characters)</span><input type="password" id="r-pass" name="password" autocomplete="new-password" required></label>
+        <label class="field"><span>Repeat password</span><input type="password" id="r-pass2" autocomplete="new-password" required></label>
+        <button class="abtn primary" id="r-go" type="submit">Create account</button>
+        <p class="switch">Already have an account? <button type="button" data-show="login">Sign in</button></p>
+      </form>
+
+      <form id="f-setup" autocomplete="on" novalidate hidden>
+        <label class="field"><span>Setup code (printed in the server window)</span><input type="text" id="s-code" name="setup_code" autocomplete="off" autocapitalize="characters" spellcheck="false" required></label>
+        <label class="field"><span>Admin username</span><input type="text" id="s-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+        <label class="field"><span>Password (8+ characters)</span><input type="password" id="s-pass" name="password" autocomplete="new-password" required></label>
+        <label class="field"><span>Repeat password</span><input type="password" id="s-pass2" autocomplete="new-password" required></label>
+        <label class="check"><input type="checkbox" id="s-import" checked><span>Import the existing files in the project folder<small>Copies your current Nordnet CSVs into this account. The originals stay where they are.</small></span></label>
+        <button class="abtn primary" id="s-go" type="submit">Create admin account</button>
+      </form>
+    </main>
+  </div>
+  <script src="login.js"></script>
+</body>
+</html>

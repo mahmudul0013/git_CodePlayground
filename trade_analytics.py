@@ -24,7 +24,8 @@ import glob
 import os
 import re
 import statistics
-from collections import defaultdict, deque
+import threading
+from collections import OrderedDict, defaultdict, deque
 from datetime import date, datetime, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -57,31 +58,37 @@ def _file_date(path):
     return m.group(0) if m else ''
 
 
-def _newest(patterns):
+def _base(base_dir):
+    """Folder that holds one profile's CSVs; None = the project folder (CLI use, legacy single-user layout)."""
+    return os.path.abspath(base_dir) if base_dir else HERE
+
+
+def _newest(patterns, base_dir=None):
     """Latest export: date in the file name wins, file mtime breaks ties / covers undated names."""
+    base = _base(base_dir)
     hits = []
     for p in patterns:
-        hits += glob.glob(os.path.join(HERE, p))
+        hits += glob.glob(os.path.join(glob.escape(base), p))
     hits = [h for h in hits if os.path.isfile(h)]
     return max(hits, key=lambda h: (_file_date(h), os.path.getmtime(h))) if hits else None
 
 
-def newest_holdings():
+def newest_holdings(base_dir=None):
     """Path of the latest 'Innehav ... Export' file (the single source for current holdings)."""
-    return _newest(['Innehav*Export*.csv'])
+    return _newest(['Innehav*Export*.csv'], base_dir)
 
 
-def find_sources():
+def find_sources(base_dir=None):
     return {
-        'transactions': _newest(['transactions-and-notes-export*.csv']),
-        'holdings': newest_holdings(),
+        'transactions': _newest(['transactions-and-notes-export*.csv'], base_dir),
+        'holdings': newest_holdings(base_dir),
     }
 
 
-def signature():
+def signature(base_dir=None):
     """Cheap change detector for the browser to poll."""
     out = {}
-    for k, p in find_sources().items():
+    for k, p in find_sources(base_dir).items():
         if p:
             st = os.stat(p)
             out[k] = {'file': os.path.basename(p), 'mtime': st.st_mtime, 'size': st.st_size}
@@ -90,18 +97,33 @@ def signature():
     return out
 
 
-def _read_table(path):
-    raw = open(path, 'rb').read()
-    for enc in ('utf-16', 'utf-8-sig', 'cp1252'):
+def _table_from_bytes(raw, encodings=None):
+    """(header, rows) from the raw bytes of a Nordnet CSV; raises ValueError when nothing usable is in it.
+    Without `encodings` the order follows the file: UTF-16 when it has a UTF-16 BOM or NUL bytes (Nordnet's own exports),
+    otherwise UTF-8 then cp1252 (decoding such text as UTF-16 can 'succeed' with garbage)."""
+    if encodings is None:
+        utf16 = raw[:2] in (b'\xff\xfe', b'\xfe\xff') or b'\x00' in raw[:200]
+        encodings = ('utf-16', 'utf-8-sig', 'cp1252') if utf16 else ('utf-8-sig', 'cp1252')
+    text = None
+    for enc in encodings:
         try:
             text = raw.decode(enc)
             break
         except UnicodeDecodeError:
             continue
+    if text is None or not text.strip():
+        raise ValueError('unreadable or empty')
     first = text.split('\n', 1)[0]
     delim = '\t' if first.count('\t') >= first.count(';') else ';'
     rows = list(csv.reader(io.StringIO(text), delimiter=delim))
+    if not rows:
+        raise ValueError('unreadable or empty')
     return rows[0], [r for r in rows[1:] if any(c.strip() for c in r)]
+
+
+def _read_table(path):
+    with open(path, 'rb') as f:
+        return _table_from_bytes(f.read())
 
 
 def _num(s):
@@ -135,7 +157,10 @@ def _col(header, *names, after=None):
 # ledger parsing
 # --------------------------------------------------------------------------
 def parse_ledger(path):
-    header, rows = _read_table(path)
+    return _parse_ledger_table(*_read_table(path))
+
+
+def _parse_ledger_table(header, rows):
     c = {
         'id': _col(header, 'id'),
         'book': _col(header, 'bokföringsdag'),
@@ -203,7 +228,10 @@ def parse_ledger(path):
 def parse_holdings(path):
     if not path:
         return {}
-    header, rows = _read_table(path)
+    return _parse_holdings_table(*_read_table(path))
+
+
+def _parse_holdings_table(header, rows):
     ix = {
         'name': _col(header, 'namn'), 'ccy': _col(header, 'valuta'),
         'qty': _col(header, 'antal'), 'gav': _col(header, 'gav/snittkurs', 'gav', 'snittkurs'),
@@ -229,6 +257,129 @@ def parse_holdings(path):
             'pnl_pct': v('pct'), 'pnl_sek': v('pnl') or 0.0,
         }
     return out
+
+
+# --------------------------------------------------------------------------
+# upload validation (pure: bytes in, verdict out; used by profiles.py before anything is stored)
+# --------------------------------------------------------------------------
+HOLDINGS_NAME_RE = re.compile(r'^Innehav Tabell Export, accno (\d{4,20}), (\d{4}-\d{2}-\d{2})\.csv$', re.I)
+# Older Nordnet exports, one file per table: aktier_kontonummer-N_DATE.csv (stocks / ETFs: GAV instead of GAV/snittkurs plus
+# an extra native-currency 'Värde' column) and fonder_kontonummer-N_DATE.csv (funds: Snittkurs, 1 dag %, Senaste NAV,
+# Inköpsv. SEK, no ISIN). Converted to the standard layout on upload; the two files of one date are combined by profiles.py.
+AKTIER_NAME_RE = re.compile(r'^aktier_kontonummer-(\d{4,20})_(\d{4}-\d{2}-\d{2})\.csv$', re.I)
+FONDER_NAME_RE = re.compile(r'^fonder_kontonummer-(\d{4,20})_(\d{4}-\d{2}-\d{2})\.csv$', re.I)
+_ACCNO_RE = re.compile(r'^\d{4,20}$')
+
+
+def _verdict(ok, error=None, **kw):
+    out = {'ok': ok, 'error': error, 'accno': None, 'rows': 0}
+    out.update(kw)
+    return out
+
+
+def validate_ledger(data):
+    """Is `data` a Nordnet 'transactions-and-notes-export' (UTF-16, tab separated) of exactly ONE account?
+    -> {ok, error, accno, rows, first_date, last_date}. Never raises, never touches the disk."""
+    def bad(msg):
+        return _verdict(False, msg, first_date=None, last_date=None)
+    try:
+        if not data:
+            return bad('The file is empty.')
+        try:
+            header, rows = _table_from_bytes(data, ('utf-16',))
+        except ValueError:
+            return bad('Not a Nordnet transactions export (a UTF-16 text file is expected).')
+        dep = _col(header, 'depå', 'depa')
+        if _col(header, 'transaktionstyp') is None or dep is None:
+            return bad('Not a Nordnet transactions export (the Transaktionstyp / Depå columns are missing).')
+        try:
+            ledger = _parse_ledger_table(header, rows)
+        except ValueError as e:
+            return bad(str(e))
+        if not ledger:
+            return bad('No transaction rows could be read.')
+        if len(rows) - len(ledger) > max(5, len(rows) // 20):
+            return bad(f'{len(rows) - len(ledger)} of {len(rows)} rows could not be read.')
+        accs = {re.sub(r'[\s-]', '', r[dep]) for r in rows if dep < len(r) and r[dep].strip()}
+        if not accs:
+            return bad('No account number found in the Depå column.')
+        if len(accs) > 1:
+            return bad('The file mixes several accounts (' + ', '.join(sorted(accs)[:3]) + '); export one account at a time.')
+        acc = accs.pop()
+        if not _ACCNO_RE.match(acc):
+            return bad('Unexpected account number in the Depå column.')
+        dates = [t['date'] for t in ledger]
+        return _verdict(True, None, accno=acc, rows=len(ledger), first_date=min(dates), last_date=max(dates))
+    except Exception:
+        return bad('The file could not be read as a Nordnet transactions export.')
+
+
+STD_HEADER = ['Namn', 'Valuta', 'Antal', 'GAV/snittkurs', 'Idag %', 'Senaste kurs', 'Belåningsv.\xa0SEK', 'Värde\xa0SEK',
+              'Avkast. %', 'Avkast.\xa0SEK', 'ISIN', 'Market']
+_STD_FROM = [('namn',), ('valuta',), ('antal',), ('gav/snittkurs', 'gav', 'snittkurs'), ('idag %', '1 dag %'),
+             ('senaste kurs', 'senaste nav'), ('belåningsv. sek',), ('värde sek',), ('avkast. %',), ('avkast. sek',), ('isin',), ('market',)]
+
+
+def _std_bytes(rows):
+    lines = ['\t'.join(STD_HEADER)] + ['\t'.join(r) for r in rows]
+    return ('\ufeff' + '\r\n'.join(lines) + '\r\n').encode('utf-16-le')
+
+
+def _standard_holdings(header, rows):
+    """Bytes of any Nordnet holdings table (Innehav, aktier_kontonummer or fonder_kontonummer layout) in the standard
+    'Innehav Tabell Export' layout: GAV / Snittkurs -> GAV/snittkurs, 1 dag % -> Idag %, Senaste NAV -> Senaste kurs,
+    extra 'Värde' (native currency) and 'Inköpsv. SEK' dropped, ISIN / Market added empty when the old file has none."""
+    norm = [h.strip().lower().replace('\xa0', ' ') for h in header]
+    pos = [next((norm.index(n) for n in names if n in norm), None) for names in _STD_FROM]
+    return _std_bytes([[(r[i].strip() if i is not None and i < len(r) else '') for i in pos] for r in rows])
+
+
+def merge_standard(parts):
+    """One standard-layout table from several standard-layout parts (stocks file + funds file of the same date)."""
+    rows = []
+    for raw in parts:
+        _, r = _table_from_bytes(raw)
+        rows.extend(r)
+    return _std_bytes(rows)
+
+
+def validate_holdings(data, filename):
+    """Is `data` a Nordnet holdings export? The name may be 'Innehav Tabell Export, accno N, YYYY-MM-DD.csv' or the older
+    'aktier_kontonummer-N_YYYY-MM-DD.csv' (stocks / ETFs only; converted to the standard layout, returned in 'data').
+    -> {ok, error, accno, date, rows, data, kind ('innehav'|'aktier'|'fonder'), note}. Never raises, never touches the disk."""
+    def bad(msg):
+        return _verdict(False, msg, date=None)
+    try:
+        base = os.path.basename(str(filename or '').replace('\\', '/')).strip()
+        kind = 'innehav'
+        m = HOLDINGS_NAME_RE.match(base)
+        if not m:
+            m = AKTIER_NAME_RE.match(base)
+            kind = 'aktier'
+        if not m:
+            m = FONDER_NAME_RE.match(base)
+            kind = 'fonder'
+        if not m:
+            return bad("The file name must look like 'Innehav Tabell Export, accno 12345678, 2026-01-31.csv', 'aktier_kontonummer-12345678_2026-01-31.csv' or 'fonder_kontonummer-12345678_2026-01-31.csv' (the account number and date are read from it).")
+        try:
+            datetime.strptime(m.group(2), '%Y-%m-%d')
+        except ValueError:
+            return bad('The date in the file name is not a real date.')
+        if not data:
+            return bad('The file is empty.')
+        try:
+            header, rows = _table_from_bytes(data)
+        except ValueError:
+            return bad('The file is empty or not readable text.')
+        if _col(header, 'namn') is None or _col(header, 'värde sek') is None:
+            return bad('Not a Nordnet holdings export (the Namn / Värde SEK columns are missing).')
+        holdings = _parse_holdings_table(header, rows)
+        if not holdings or not any(h['value_sek'] for h in holdings.values()):
+            return bad('No holdings rows with a value were found.')
+        std = None if kind == 'innehav' else _standard_holdings(header, rows)
+        return _verdict(True, None, accno=m.group(1), date=m.group(2), rows=len(holdings), data=std or data, kind=kind, note=None)
+    except Exception:
+        return bad('The file could not be read as a Nordnet holdings export.')
 
 
 # --------------------------------------------------------------------------
@@ -1064,17 +1215,13 @@ def build_scorecard(out, trades, assets, cum):
 # --------------------------------------------------------------------------
 # public entry
 # --------------------------------------------------------------------------
-_cache = {'key': None, 'data': None}
+_CACHE_MAX = 6                         # profiles kept in memory (least recently used leaves first)
+_cache = OrderedDict()                 # base dir -> {'key': file signature, 'data': payload}
+_cache_lock = threading.Lock()         # guards _cache and _dir_locks only; never held while parsing
+_dir_locks = {}                        # base dir -> lock, so one profile is parsed once but others are never blocked
 
 
-def get_payload():
-    src = find_sources()
-    if not src['transactions']:
-        return {'error': 'No transactions-and-notes-export*.csv found in the project folder.',
-                'sources': signature()}
-    key = tuple((p, os.path.getmtime(p), os.path.getsize(p)) if p else None for p in src.values())
-    if _cache['key'] == key:
-        return _cache['data']
+def _compute_payload(src, base):
     ledger = parse_ledger(src['transactions'])
     holdings = parse_holdings(src['holdings'])
     trades, assets, cash, cash_events, balance, warnings = build(ledger, holdings)
@@ -1084,17 +1231,51 @@ def get_payload():
     ov = insights['overview']
     insights['deposit_behavior'] = deposit_behavior(trades, cash_events, assets, ov['holdings_value'], ov['cash_balance'])
     insights['dividends'] = dividend_analysis(ledger, assets, ov['net_deposits'], ov['all_time_pnl'])
-    payload = {
+    return {
         'generated': datetime.now().isoformat(timespec='seconds'),
-        'sources': signature(),
+        'sources': signature(base),
         'warnings': warnings,
         'trades': trades,
         'assets': assets,
         'insights': insights,
         'cashflows': [{'date': d, 'kind': k, 'amount': round(a, 2)} for d, k, a in cash_events if k in ('deposit', 'withdrawal')],
     }
-    _cache.update(key=key, data=payload)
-    return payload
+
+
+def get_payload(base_dir=None):
+    """Analytics payload of the CSVs in `base_dir` (None = project folder). Cached per folder, re-parsed when a file changes."""
+    base = _base(base_dir)
+    src = find_sources(base)
+    if not src['transactions']:
+        return {'error': 'No transactions-and-notes-export*.csv found for this profile.', 'code': 'no_files',
+                'sources': signature(base)}
+    key = tuple((p, os.path.getmtime(p), os.path.getsize(p)) if p else None for p in src.values())
+
+    def hit():
+        e = _cache.get(base)
+        if e and e['key'] == key:
+            _cache.move_to_end(base)
+            return e['data']
+        return None
+
+    with _cache_lock:
+        d = hit()
+        lock = _dir_locks.setdefault(base, threading.Lock())
+    if d is not None:
+        return d
+    with lock:                          # one parse per folder at a time; other folders run in parallel
+        with _cache_lock:
+            d = hit()
+        if d is not None:
+            return d
+        payload = _compute_payload(src, base)
+        with _cache_lock:
+            _cache[base] = {'key': key, 'data': payload}
+            _cache.move_to_end(base)
+            while len(_cache) > _CACHE_MAX:
+                old, _ = _cache.popitem(last=False)
+                _dir_locks.pop(old, None)
+        return payload
 
 
 if __name__ == '__main__':

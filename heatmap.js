@@ -160,7 +160,7 @@ function renderHeat() {
       const big = t.w > 64 && t.h > 36, mid = t.w > 34 && t.h > 20;
       const m = t.item.m, label = m == null ? '' : (m > 0 ? '+' : '') + m.toFixed(1).replace('.', ',') + '%';
       html += `<div class="hm-tile" data-i="${id}" style="left:${t.x}px;top:${t.y}px;width:${t.w - 1}px;height:${t.h - 1}px;background:${heatColor(m, kind)}">`
-        + (mid ? `<b style="font-size:${big ? 12 : 10}px">${esc(a.name)}</b>` : '') + (big ? `<span>${label}</span>` : '') + '</div>';
+        + (mid ? `<b style="font-size:${big ? 12 : 11}px">${esc(a.name)}</b>` : '') + (big ? `<span>${label}</span>` : '') + '</div>';
     }
   }
   box.innerHTML = html;

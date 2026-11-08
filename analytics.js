@@ -857,7 +857,7 @@ function renderDividends() {
 const ADV_RANK = { TRIM: 0, ADD: 1, BUYBACK: 2, REVIEW: 3, CONSOLIDATE: 4, HOLD: 5 };
 const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
 
-const advProfile = () => { try { return localStorage.getItem('tv_advice_profile') || 'balanced'; } catch (e) { return 'balanced'; } };
+const advProfile = () => { try { return localStorage.getItem(window.TV ? TV.key('tv_advice_profile') : 'tv_advice_profile') || 'balanced'; } catch (e) { return 'balanced'; } };
 
 async function loadAdvice() {
   if (S.advLoading) return;
@@ -1014,7 +1014,7 @@ function bind() {
   });
   $('adv-profile').addEventListener('click', e => {
     const b = e.target.closest('.chip'); if (!b) return;
-    try { localStorage.setItem('tv_advice_profile', b.dataset.p); } catch (err) { /* private mode */ }
+    try { localStorage.setItem(window.TV ? TV.key('tv_advice_profile') : 'tv_advice_profile', b.dataset.p); } catch (err) { /* private mode */ }
     S.advice = null; $('adv-status').textContent = 'Recalculating…'; loadAdvice();
   });
   $('div-gran').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.dgran = b.dataset.g; renderDividends(); } });
@@ -1035,7 +1035,10 @@ function setTab(tab) {
 function tabFromHash() { const h = location.hash.slice(1); return ['habits', 'deposits', 'dividends', 'advice'].includes(h) ? h : 'assets'; }
 function renderTab() { ({ assets: renderAssets, habits: renderHabits, deposits: renderDeposits, dividends: renderDividends, advice: renderAdvice })[S.tab](); }
 
-bind();
-setTab(tabFromHash());
-load(true);
-setInterval(() => load(false), POLL_MS);
+// nothing is fetched or read from per-user storage before auth.js knows who is signed in
+(window.TV ? TV.ready : Promise.resolve()).then(() => {
+  bind();
+  setTab(tabFromHash());
+  load(true);
+  setInterval(() => load(false), POLL_MS);
+});
