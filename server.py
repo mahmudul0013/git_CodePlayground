@@ -564,6 +564,14 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
     def r_admin_invites(self, user):
         self._json(200, {'ok': True, 'invites': auth.list_invites()})
 
+    def r_admin_invite_delete(self, user):
+        b = self._json_body()
+        try:
+            auth.delete_invite(user['uid'], b.get('id'))
+        except auth.AuthError as e:
+            raise self._auth_error(e)
+        self._json(200, {'ok': True})
+
     def r_admin_reset(self, user):
         b = self._json_body()
         try:
@@ -686,6 +694,7 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         '/api/upload/ledger':   {'POST': ('user', 'r_upload_ledger')},
         '/api/admin/users':     {'GET':  ('admin', 'r_admin_users')},
         '/api/admin/invites':   {'GET':  ('admin', 'r_admin_invites'), 'POST': ('admin', 'r_admin_invite_new')},
+        '/api/admin/invites/delete': {'POST': ('admin', 'r_admin_invite_delete')},
         '/api/admin/users/reset':  {'POST': ('admin', 'r_admin_reset')},
         '/api/admin/users/delete': {'POST': ('admin', 'r_admin_delete')},
         '/api/holdings':        {'GET':  ('user', 'r_holdings')},

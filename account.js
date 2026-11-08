@@ -145,11 +145,12 @@
   async function loadAdmin() {
     const [inv, usr] = await Promise.all([api('/api/admin/invites'), api('/api/admin/users')]);
     const now = Date.now();
-    table('tb-inv', ['Created', 'Expires', 'Status'], list(inv.d, 'invites').map(i => {
-      const exp = typeof i.expires === 'number' ? (i.expires < 1e12 ? i.expires * 1000 : i.expires) : Date.parse(i.expires);
-      const used = i.used_by || i.used;
-      const state = used ? '<span class="tag good">used</span>' : exp && exp < now ? '<span class="tag">expired</span>' : '<span class="tag gold">open</span>';
-      return `<tr><td>${esc(when(i.created))}</td><td>${esc(when(i.expires))}</td><td>${state}</td></tr>`;
+    table('tb-inv', ['Code', 'Created', 'Expires', 'Status', ''], list(inv.d, 'invites').map(i => {
+      const open = i.status === 'open';
+      const state = i.status === 'used' ? `<span class="tag good">used by ${esc(i.used_by || '?')}</span>` : i.status === 'expired' ? '<span class="tag">expired</span>' : '<span class="tag gold">open</span>';
+      const code = open ? (i.code ? `<code>${esc(i.code)}</code>` : '<span class="mut" title="Created before codes were kept. Revoke it and create a new one.">not stored</span>') : '<span class="mut">—</span>';
+      const acts = (open && i.code ? '<button type="button" class="abtn small" data-copy>Copy</button> ' : '') + `<button type="button" class="abtn small danger" data-inv-del>${open ? 'Revoke' : 'Remove'}</button>`;
+      return `<tr data-inv="${esc(i.id)}" data-code="${esc(i.code || '')}"><td>${code}</td><td>${esc(when(i.created))}</td><td>${esc(when(i.expires))}</td><td>${state}</td><td>${acts}</td></tr>`;
     }), 'No invites yet.');
     table('tb-users', ['Username', 'Role', 'Account', 'Last login', 'Files', ''], list(usr.d, 'users').map(u => {
       const self = me && u.username === me.username;
@@ -174,6 +175,20 @@
       }
       $('inv-copy').textContent = 'Copied';
       setTimeout(() => { $('inv-copy').textContent = 'Copy'; }, 1500);
+    });
+    $('tb-inv').addEventListener('click', async e => {
+      const tr = e.target.closest('tr[data-inv]'); if (!tr) return;
+      if (e.target.closest('[data-copy]')) {
+        const t = tr.dataset.code;
+        try { await navigator.clipboard.writeText(t); } catch (err) { const s = document.createRange(); s.selectNodeContents(tr.querySelector('code')); const g = getSelection(); g.removeAllRanges(); g.addRange(s); }
+        e.target.textContent = 'Copied'; setTimeout(() => { e.target.textContent = 'Copy'; }, 1500);
+      } else if (e.target.closest('[data-inv-del]')) {
+        const open = !!tr.dataset.code || /open/.test(tr.innerText);
+        if (open && !confirm('Revoke this invite code? Anyone holding it will no longer be able to register.')) return;
+        const { r, d } = await api('/api/admin/invites/delete', 'POST', { id: tr.dataset.inv });
+        say('ad-msg', r.ok && d.ok !== false ? 'ok' : 'err', r.ok && d.ok !== false ? 'Invite removed.' : (d.message || 'Could not remove the invite.'));
+        loadAdmin();
+      }
     });
     $('tb-users').addEventListener('click', async e => {
       const tr = e.target.closest('tr[data-uid]'); if (!tr) return;

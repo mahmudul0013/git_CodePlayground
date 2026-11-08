@@ -216,6 +216,19 @@ def _norm_code(code):
     return c.translate(str.maketrans({'O': '0', 'I': '1', 'L': '1'}))
 
 
+USED_INVITE_KEEP = 7 * 86400          # a used invite stays in the list this long after its original expiry date, then it is dropped
+
+
+def _purge_invites(now):
+    """Drop what is no longer useful so the list cannot grow for ever: unused invites that expired, and used ones after a week of history.
+    Call with _LOCK held. Returns True when something was removed."""
+    keep = [i for i in _invites if (i['used_by'] and now < i['expires'] + USED_INVITE_KEEP) or (not i['used_by'] and now < i['expires'])]
+    if len(keep) == len(_invites):
+        return False
+    _invites[:] = keep
+    return True
+
+
 def create_invite(admin_uid):
     _ensure()
     with _LOCK:
@@ -224,7 +237,9 @@ def create_invite(admin_uid):
             raise AuthError('forbidden')
         raw = _new_code(12)
         now = time.time()
-        _invites.append({'code_hash': _sha(raw), 'created_by': admin_uid, 'created': now, 'expires': now + INVITE_TTL, 'used_by': None})
+        _purge_invites(now)
+        # the code itself is kept only while the invite is open, so the admin can look it up again; it is erased the moment it is used
+        _invites.append({'code_hash': _sha(raw), 'code': raw, 'created_by': admin_uid, 'created': now, 'expires': now + INVITE_TTL, 'used_by': None})
         _save_users()
         return f'{raw[:4]}-{raw[4:8]}-{raw[8:]}', now + INVITE_TTL
 
@@ -239,6 +254,7 @@ def register(code, username, password):
             raise AuthError('bad_invite', message='That invite code is invalid, used or expired.')
         u = _new_user(username, password, 'user')      # raises before the invite is consumed
         inv['used_by'] = u['uid']
+        inv['code'] = None
         _save_users()
         return _public(u)
 
@@ -247,10 +263,30 @@ def list_invites():
     _ensure()
     now = time.time()
     with _LOCK:
+        if _purge_invites(now):
+            _save_users()
         names = {u['uid']: u['username'] for u in _users}
-        return [{'id': i['code_hash'][:8], 'created': i['created'], 'expires': i['expires'],
-                 'status': 'used' if i['used_by'] else ('expired' if i['expires'] < now else 'open'),
-                 'used_by': names.get(i['used_by'])} for i in _invites]
+        out = []
+        for i in _invites:
+            status = 'used' if i['used_by'] else ('expired' if i['expires'] < now else 'open')
+            c = i.get('code') if status == 'open' else None
+            out.append({'id': i['code_hash'][:8], 'created': i['created'], 'expires': i['expires'], 'status': status,
+                        'used_by': names.get(i['used_by']), 'code': f'{c[:4]}-{c[4:8]}-{c[8:]}' if c else None})
+        return out
+
+
+def delete_invite(admin_uid, inv_id):
+    """Revoke an open invite (its code stops working) or clear a used / expired entry from the list."""
+    _ensure()
+    with _LOCK:
+        a = _find(admin_uid)
+        if not a or a['role'] != 'admin':
+            raise AuthError('forbidden')
+        inv = next((i for i in _invites if i['code_hash'][:8] == str(inv_id or '')), None)
+        if not inv:
+            raise AuthError('not_found', message='No such invite.')
+        _invites.remove(inv)
+        _save_users()
 
 
 # ───────── login (throttled) ─────────
