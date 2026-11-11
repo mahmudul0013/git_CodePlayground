@@ -1071,8 +1071,9 @@ async function loadPredictions() {
     S.predictions = {
       // signals first (ADD, BUY BACK by score), then the ones that are close (WATCH, nearest to the buy level first)
       up:   named.filter(v => ['ADD', 'BUYBACK', 'WATCH'].includes(v.action)).sort((a, b) => ({ ADD: 0, BUYBACK: 1, WATCH: 2 }[a.action] - { ADD: 0, BUYBACK: 1, WATCH: 2 }[b.action]) || b.score - a.score).slice(0, 5).map(mk),
-      down: named.filter(v => ['TRIM', 'REVIEW', 'CONSOLIDATE'].includes(v.action))
-                 .sort((a, b) => ({ TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[a.action] - { TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[b.action]) || b.score - a.score || b.amount - a.amount)
+      // order: trim / take-profit signals, review flags, then the ones that are close (TRIM WATCH), housekeeping (consolidate) last
+      down: named.filter(v => ['TRIM', 'REVIEW', 'TRIMWATCH', 'CONSOLIDATE'].includes(v.action))
+                 .sort((a, b) => ({ TRIM: 0, REVIEW: 1, TRIMWATCH: 2, CONSOLIDATE: 3 }[a.action] - { TRIM: 0, REVIEW: 1, TRIMWATCH: 2, CONSOLIDATE: 3 }[b.action]) || b.score - a.score || b.amount - a.amount)
                  .slice(0, 5).map(mk),
     };
     S.adviceCounts = r.summary.counts;
@@ -1088,10 +1089,10 @@ function renderPredictions() {
   const badge = document.getElementById('pred-badge');
   if (!upEl || !downEl) return;
   const c = S.adviceCounts || {};
-  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.BUYBACK || 0} buy back · ${c.WATCH || 0} watch · ${c.TRIM || 0} trim · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
+  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.BUYBACK || 0} buy back · ${c.WATCH || 0} watch · ${c.TRIM || 0} trim · ${c.TRIMWATCH || 0} trim watch · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
 
   const card = (e, rank) => {
-    const watch = e.action === 'WATCH', up = e.action === 'ADD' || e.action === 'BUYBACK', cls = watch ? 'signal-watch' : up ? 'signal-bull' : 'signal-bear';
+    const watch = e.action === 'WATCH' || e.action === 'TRIMWATCH', up = e.action === 'ADD' || e.action === 'BUYBACK', cls = watch ? 'signal-watch' : up ? 'signal-bull' : 'signal-bear';
     const rsi = e.metrics && e.metrics.rsi != null ? 'RSI ' + Math.round(e.metrics.rsi) : '';
     const sign = up ? '+' : '−';
     const why = (e.reasons[0] || '').replace(/\s+/g, ' ');
@@ -1100,7 +1101,7 @@ function renderPredictions() {
       <div class="pred-logo-wrap" data-logo="${escHtml(e.name)}"></div>
       <div class="pred-info">
         <div class="pred-name" title="${escHtml(e.name)}">${escHtml(e.name)}</div>
-        <div class="pred-ticker"><span class="pred-signal-label ${cls}">${e.action === 'BUYBACK' ? 'BUY BACK' : e.action}</span>&nbsp;${e.closed ? 'sold earlier, not held' : e.weight.toFixed(1) + '% of portfolio'} · ${escHtml(e.sector)}</div>
+        <div class="pred-ticker"><span class="pred-signal-label ${cls}">${e.action === 'BUYBACK' ? 'BUY BACK' : e.action === 'TRIMWATCH' ? 'TRIM WATCH' : e.action}</span>&nbsp;${e.closed ? 'sold earlier, not held' : e.weight.toFixed(1) + '% of portfolio'} · ${escHtml(e.sector)}</div>
         <div class="pred-signals" title="${escHtml(e.reasons.join(' '))}">${escHtml(why)}</div>
       </div>
       <div class="pred-right">
@@ -1111,7 +1112,7 @@ function renderPredictions() {
     </div>`;
   };
   upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">Nothing is oversold (RSI) in an uptrend right now, and nothing is close to it</div>';
-  downEl.innerHTML = S.predictions.down.length ? S.predictions.down.map((e, i) => card(e, i + 1)).join('') : '<div class="pred-loading">Nothing to trim, consolidate or review</div>';
+  downEl.innerHTML = S.predictions.down.length ? S.predictions.down.map((e, i) => card(e, i + 1)).join('') : '<div class="pred-loading">Nothing to trim, review or consolidate, and nothing close to a take-profit level</div>';
   document.querySelectorAll('#predictions-section [data-logo]').forEach(el => { el.appendChild(buildLogoEl(el.dataset.logo)); });
 }
 

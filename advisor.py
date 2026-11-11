@@ -59,7 +59,7 @@ PROFILES = {
                    'about': 'buy when RSI(14) is below 40 in an up or mixed trend, up to 60% below the high, 3 days after a sell; take profit above RSI 70. Acts earlier and more often, so more of it fails'},
 }
 TAKE_PROFIT_FRACTION = 1 / 3       # share of a holding in profit that the RSI take-profit idea sells
-WATCH_MARGIN = 10                  # RSI points above the buy level that still count as 'close to a buy signal' (WATCH)
+WATCH_MARGIN = 10                  # RSI points above the buy level (WATCH) / below the sell level (TRIMWATCH) that still count as 'close to a signal'
 WATCH_MAX_CLOSED = 8               # at most this many WATCH ideas among positions you already sold
 DEFAULT_PROFILE = 'balanced'
 
@@ -296,6 +296,11 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
             res.update(action='WATCH', score=int(max(1, 100 - (f['rsi'] - P['rsi_buy']) * 8)))
             why.append(f'Close to a buy signal: RSI(14) is {f["rsi"]:.0f} (buy below {P["rsi_buy"]}), {_trend_phrase(f).lower()}, {f["dd52"] * 100:.0f}% below its 52-week high. Wait for the RSI to dip below {P["rsi_buy"]}.')
             done = True
+        # TRIM WATCH: in profit and approaching the take-profit level (RSI within WATCH_MARGIN below the sell level): no order yet
+        if not done and f and f['rsi'] is not None and P['rsi_sell'] - WATCH_MARGIN <= f['rsi'] <= P['rsi_sell'] and (up or 0) > 0 and a['value'] >= DUST:
+            res.update(action='TRIMWATCH', score=int(max(1, 100 - (P['rsi_sell'] - f['rsi']) * 8)))
+            why.append(f'Close to a take-profit signal: RSI(14) is {f["rsi"]:.0f} (take profit above {P["rsi_sell"]}) and the position is {up:.0f}% in profit. Nothing to do yet.')
+            done = True
         if not done:
             if f and f['trend'] == 'up':
                 why.append('Healthy trend, no action needed.' if w >= ADD_BELOW_W else f'Uptrend, RSI(14) {f["rsi"] or 0:.0f}: not oversold yet (adds start below {P["rsi_buy"]}).')
@@ -374,7 +379,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
          f'{len(adds)} ADD ideas (plus {sum(1 for v in out.values() if v["action"] == "BUYBACK")} buy-backs of closed positions) and {len(trims)} TRIM ideas. Execute with few, larger orders (at least {MIN_ORDER} kr) and let sells fund the buys so no new deposit is needed.')
 
     summary = {'positions': len(rows), 'total': round(total), 'theme': {k: round(v, 1) for k, v in sorted(theme.items(), key=lambda x: -x[1])},
-               'counts': {k: sum(1 for v in out.values() if v['action'] == k) for k in ('ADD', 'BUYBACK', 'WATCH', 'TRIM', 'CONSOLIDATE', 'REVIEW', 'HOLD')},
+               'counts': {k: sum(1 for v in out.values() if v['action'] == k) for k in ('ADD', 'BUYBACK', 'WATCH', 'TRIM', 'TRIMWATCH', 'CONSOLIDATE', 'REVIEW', 'HOLD')},
                'profile': profile, 'profile_about': P['about'], 'portfolio': port, 'covered': sum(1 for r in rows if r['f']) , 'asof': date.today().isoformat()}
     return {'ok': True, 'partial': partial, 'asof': time.strftime('%Y-%m-%dT%H:%M:%S'), 'assets': out, 'cards': cards, 'summary': summary}
 

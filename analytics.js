@@ -897,8 +897,8 @@ function renderDividends() {
 }
 
 // ───────── advice tab + Add / trim column (rules in advisor.py, served by /api/advice) ─────────
-const ADV_RANK = { TRIM: 0, ADD: 1, BUYBACK: 2, WATCH: 3, REVIEW: 4, CONSOLIDATE: 5, HOLD: 6 };
-const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', WATCH: 'WATCH', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
+const ADV_RANK = { TRIM: 0, TRIMWATCH: 1, ADD: 2, BUYBACK: 3, WATCH: 4, REVIEW: 5, CONSOLIDATE: 6, HOLD: 7 };
+const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', WATCH: 'WATCH', TRIMWATCH: 'TRIM WATCH', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
 
 const advProfile = () => { try { return localStorage.getItem(window.TV ? TV.key('tv_advice_profile') : 'tv_advice_profile') || 'balanced'; } catch (e) { return 'balanced'; } };
 
@@ -939,7 +939,7 @@ function renderAdvice() {
     options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x.toFixed(1)}% of holdings` } } },
       scales: { x: { grid: { color: C.grid }, ticks: { callback: v => v + '%' } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } } } });
   const ac = Object.entries(Y.counts);
-  const accol = { ADD: C.green, BUYBACK: C.s[0], WATCH: C.s[7], TRIM: C.s[3], CONSOLIDATE: C.s[6], REVIEW: C.red, HOLD: C.other };
+  const accol = { ADD: C.green, BUYBACK: C.s[0], WATCH: C.s[7], TRIMWATCH: C.s[3], TRIM: C.s[3], CONSOLIDATE: C.s[6], REVIEW: C.red, HOLD: C.other };
   mkChart('a-actions', { type: 'bar', data: { labels: ac.map(x => x[0]), datasets: [{ data: ac.map(x => x[1]), backgroundColor: ac.map(x => accol[x[0]]), borderRadius: 3, maxBarThickness: 40 }] },
     options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: C.grid }, ticks: { precision: 0 } } } } });
 
@@ -949,12 +949,13 @@ function renderAdvice() {
     v.metrics && v.metrics.dd52 != null ? pct(v.metrics.dd52 * 100, 0) : '—', { v: `<span class="adv-why">${esc(v.reasons.join(' '))}</span>` }];
   const by = (acts, f) => rows.filter(r => acts.includes(r.action)).sort(f || ((x, y) => y.score - x.score)).map(line);
   table('tb-add', head, by(['ADD', 'BUYBACK', 'WATCH'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.score - x.score), 'No add, buy-back or watch ideas right now: nothing is close to oversold (RSI) in an uptrend, or the sector is already over its cap.');
-  table('tb-trim', head, by(['TRIM']), 'No position breaks the size or theme limits.');
+  table('tb-trim', head, by(['TRIM', 'TRIMWATCH'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.score - x.score), 'No position breaks the size or theme limits, and none is overbought or close to it.');
   table('tb-cons', head, by(['CONSOLIDATE', 'REVIEW'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.amount - x.amount), 'Nothing to consolidate.');
   $('adv-method').innerHTML = [
     '<b>TRIM</b>: (1) a position above 4% of holdings is cut back to 4%; (2) in a theme above 40% the holdings of 2.5% or more give back a fifth; (3) <b>take profit</b>: RSI(14) above the profile\'s sell level (Balanced 75) on a holding that is in profit, about a third of it. Strong stocks often stay overbought for weeks, so (3) is discipline, not a prediction.',
     '<b>ADD</b>: weight under 1.5%, the theme not over its cap, the price above its 200-day average (uptrend, no falling knives), 5-25% below the 52-week high, and RSI(14) below the profile\'s buy level (Balanced 35, Conservative 30, Aggressive 40). Fill to about 2% in orders of at least 1 500 kr. Score = momentum rank, pullback depth and low volatility.',
     '<b>WATCH</b>: close to an ADD or BUY BACK signal: same trend and pullback test, but RSI(14) is between the buy level and 10 points above it (Balanced 35-45). No order yet; it tells you which names to look at next and which RSI level to wait for.',
+    '<b>TRIM WATCH</b>: the mirror of WATCH: a holding in profit whose RSI(14) is within 10 points below the take-profit level (Balanced 65-75). No order yet; it shows what will become a take-profit idea next.',
     '<b>BUY BACK</b>: same trend and pullback test applied to positions you have closed (so a good exit is not a lost opportunity), at least 7 days after your last sell, in one order of about 1.5% of the portfolio. The sell price and today\'s price are shown when both are in the same currency.',
     '<b>CONSOLIDATE</b>: under 1 500 kr. A round trip costs about 16 kr courtage and the position cannot change the result; sell it or top it up.',
     '<b>REVIEW</b>: below the 200-day, negative momentum and more than 15% under your cost. Not a sell order: re-check why you own it.',

@@ -78,10 +78,24 @@ def find_series(lo, hi):
         if lo < f['rsi'] < hi and f['trend'] == 'up' and f['dd52'] <= -0.06:
             return c
     raise SystemExit('no test series with RSI in %s-%s' % (lo, hi))
+def find_hot(lo, hi):
+    # a long rise, then a choppy climb (up days bigger than down days): RSI between lo and hi
+    for up, down in ((0.012, -0.006), (0.010, -0.006), (0.014, -0.008), (0.009, -0.005), (0.016, -0.01), (0.008, -0.005)):
+        c, v = [], 100.0
+        for i in range(N):
+            v *= 1.003 if i < N - 30 else 1 + (up if i % 2 == 0 else down)
+            c.append(round(v, 4))
+        f = advisor._features(c)
+        if lo < f['rsi'] < hi:
+            return c
+    raise SystemExit('no test series with RSI in %s-%s' % (lo, hi))
+hist['HOT.ST'] = {'at': now, 'c': find_hot(66, 74), 'd': list(range(N)), 'ccy': 'SEK'}
+hist['HOL.ST'] = hist['HOT.ST']
+sym_of.update({'H': 'HOT.ST', 'J': 'HOL.ST'})
 hist['TNY.ST'] = {'at': now, 'c': series(100, 0.003, 0, -0.015, 15), 'd': list(range(N)), 'ccy': 'SEK'}
 hist['WCH.ST'] = {'at': now, 'c': find_series(36, 44), 'd': list(range(N)), 'ccy': 'SEK'}
 sym_of.update({'T': 'TNY.ST', 'W': 'WCH.ST'})
-assets += [asset('T', 'Tiny', 300, -2), asset('W', 'Watchme', 2500, 3)]
+assets += [asset('T', 'Tiny', 300, -2), asset('W', 'Watchme', 2500, 3), asset('H', 'Hotish', 2500, 40), asset('J', 'Hotloss', 2500, -10)]
 payload = {'assets': assets, 'trades': [], 'insights': {}, 'generated': 'x'}
 r = advisor.advise(payload, None, 'balanced')
 A = r['assets']
@@ -92,6 +106,9 @@ ok('oversold but below the 200-day average -> no ADD', A['C']['action'] != 'ADD'
 ok('tiny oversold holding in an uptrend -> ADD (top-up), not CONSOLIDATE', A['T']['action'] == 'ADD' and 'tops it up' in A['T']['reasons'][0], (A['T']['action'], A['T']['reasons'][0][-60:]))
 ok('RSI 36-44 in an uptrend, small weight -> WATCH with the level to wait for', A['W']['action'] == 'WATCH' and 'Wait for the RSI to dip below 35' in A['W']['reasons'][0], (A['W']['action'], A['W']['reasons'][0][:80]))
 ok('counts include WATCH', r['summary']['counts'].get('WATCH', 0) >= 1, r['summary']['counts'])
+ok('in profit, RSI 66-74 (just under the 75 sell level) -> TRIMWATCH, no amount', A['H']['action'] == 'TRIMWATCH' and A['H']['amount'] == 0 and 'take-profit' in A['H']['reasons'][0], (A['H']['action'], A['H']['reasons'][0][:80]))
+ok('same RSI but at a loss -> not TRIMWATCH', A['J']['action'] != 'TRIMWATCH', A['J']['action'])
+ok('counts include TRIMWATCH', r['summary']['counts'].get('TRIMWATCH', 0) >= 1, r['summary']['counts'])
 r2 = advisor.advise(payload, None, 'conservative')
 ok('conservative also finds the deeply oversold pullback', r2['assets']['B']['action'] == 'ADD')
 r3 = advisor.advise(payload, None, 'aggressive')

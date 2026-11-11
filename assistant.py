@@ -479,7 +479,7 @@ def i_rsi(c):
 def i_watch(c):
     n = sum(1 for v in c.advice().get('assets', {}).values() if v.get('action') == 'WATCH') if c.adv else None
     return two('WATCH means close to a buy signal: the stock is in an uptrend and pulled back, and its RSI(14) is within 10 points above the buy level (Balanced 35). No order yet.',
-               f'Right now {n} on watch.' if n is not None else None)
+               f'Right now {n} on watch. TRIM WATCH is the mirror: a holding in profit whose RSI is close to the take-profit level.' if n is not None else None)
 
 
 @intent('pullback', 'glossary', 'gloss', ['pullback', 'pulled back', 'below 52 week high', '52 week high', 'dip', 'from the high'], 'What is a pullback?', 'advice')

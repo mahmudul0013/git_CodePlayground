@@ -24,7 +24,7 @@
     [/^net asset value/, 'what is net asset value', 'Everything the account is worth on each day: holdings at the closing prices of each day plus cash. The growth view removes deposits, so only real performance shows.'],
     [/^add \/ trim ideas/, 'what are add and trim ideas', 'Rule-based ideas from position size, sector concentration, tiny positions and trend health. A to-check list, not a price forecast.'],
     [/^add \/ buy back/, 'what is an add or buy back idea', 'ADD / BUY BACK: RSI(14) is below the buy level (Balanced 35) while the price is above its 200-day average. WATCH: close to that (RSI up to 10 points above), nothing to do yet. Rule-based, not a forecast.'],
-    [/^trim \/ consolidate/, 'what do trim consolidate and review mean', 'TRIM: position or sector too big. CONSOLIDATE: under 1 500 kr. REVIEW: downtrend and over 15% under your cost.'],
+    [/^trim \/ review/, 'what do trim consolidate and review mean', 'TRIM: position or sector too big, or RSI above the take-profit level on a holding in profit. TRIM WATCH: close to that. REVIEW: downtrend and over 15% under your cost. CONSOLIDATE: under 1 500 kr.'],
     [/^stocks & etfs/, 'what is in the stocks and etfs table', 'Every stock, ETF and ETC you hold: quantity, average cost, live price, today and return. Click a header to sort.'],
     [/^funds$/, 'what is in the funds table', 'Your mutual funds. The price is the fund NAV and keeps the export values, not live quotes.'],
     [/^(qty|units)$/, 'what is quantity', 'Number of shares or fund units you own. Gold (+n) marks units added since the last export.'],
