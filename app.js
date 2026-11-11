@@ -1,7 +1,7 @@
 /* ============================================================
    TRADING DASHBOARD — app.js
    Loads CSV holdings, fetches live prices from Yahoo Finance,
-   renders sparklines via Chart.js, company logos via Clearbit.
+   company logos via Clearbit.
    ============================================================ */
 
 // All Yahoo Finance calls go through server.py's /yahoo/* proxy — no CORS, no
@@ -31,7 +31,6 @@ const CFG = {
 
   refreshMs:    60_000,       // live-price refresh interval (ms)
   csvRefreshMs: 5 * 60_000,  // portfolio CSV re-check interval (ms)
-  sparkLimit:   25,           // max sparklines to fetch (rate-limit caution)
 };
 
 // ────────────────────────────────────────────────────────────
@@ -229,7 +228,6 @@ const S = {
   stocks:        [],   // parsed stock objects
   funds:         [],   // parsed fund objects
   quotes:        {},   // symbol → { price, changePercent, change }
-  sparkData:     {},   // symbol → number[] (closing prices, 7 days)
   predictions:   { up: [], down: [] },
   charts:        {},   // canvasId → Chart instance
   displayCur:    'SEK',
@@ -444,12 +442,12 @@ async function reloadPortfolio() {
 // ────────────────────────────────────────────────────────────
 function resolveTickerFor(item) {
   // Once the server has valued the portfolio its symbol is the only one used (it is the instrument the price comes from);
-  // a holding whose live price is not trusted gets no symbol and therefore no sparkline of some other instrument.
+  // a holding whose live price is not trusted gets no symbol rather than the symbol of some other instrument.
   if (S.snap) {
     const a = S.snapByName.get(item.name.trim());
     return a && a.live ? a.symbol : null;
   }
-  // before the snapshot arrives (or when it failed): the static map, for sparklines only
+  // before the snapshot arrives (or when it failed): the static map, only for the small ticker label in the name cell
   const name  = item.name.trim();
   const entry = TICKER_MAP[name];
   if (!entry) return null;
@@ -516,17 +514,6 @@ async function fetchQuotesBatch(symbols) {
   }
 }
 
-async function fetchSparkline(symbol) {
-  const url = `${CFG.yahooBase}/v8/finance/chart/${symbol}?interval=1d&range=7d&includePrePost=false`;
-  try {
-    const d = await yahooGet(url);
-    const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
-    return closes.filter(v => v != null);
-  } catch (_) {
-    return [];
-  }
-}
-
 // ────────────────────────────────────────────────────────────
 // LIVE VALUATION
 // The server (valuation.py) values the portfolio once: GET /api/snapshot. Rows and tiles only copy those numbers.
@@ -544,6 +531,8 @@ function applySnapshot() {
     r.dayChange  = a.day_pct;
     r.liveDayPct = a.day_pct;
     r.livePrice  = a.live ? a.price : null;
+    r.vol        = a.vol_3m ? a.vol_3m.daily : null;
+    r.volInfo    = a.vol_3m || null;
   });
 }
 
@@ -575,27 +564,6 @@ async function refreshPrices() {
   const usdSek = S.quotes['USDSEK=X'];
   if (usdSek?.price) S.fx.USD = usdSek.price;
   renderAll();
-}
-
-// Sparklines — fetched lazily in the background after first render
-async function loadSparklines() {
-  const tickers = [...new Set(
-    S.stocks.filter(s => s.ticker).map(s => s.ticker),
-  )].slice(0, CFG.sparkLimit);
-
-  for (const sym of tickers) {
-    if (S.sparkData[sym]) continue;
-    const data = await fetchSparkline(sym);
-    if (data.length >= 3) S.sparkData[sym] = data;
-    await sleep(220);
-  }
-
-  // Re-paint sparklines on whatever rows are currently visible
-  S.stocks.forEach((s, idx) => {
-    if (s.ticker && S.sparkData[s.ticker]) {
-      drawSparkline(`spark-s-${idx}`, S.sparkData[s.ticker], s.returnPct >= 0);
-    }
-  });
 }
 
 // ────────────────────────────────────────────────────────────
@@ -674,44 +642,6 @@ function buildInitialsEl(name) {
   el.style.background = avatarColor(name);
   el.textContent = initials;
   return el;
-}
-
-// ────────────────────────────────────────────────────────────
-// SPARKLINE RENDERING (Chart.js)
-// ────────────────────────────────────────────────────────────
-function drawSparkline(canvasId, data, isPositive) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas || !data || data.length < 2) return;
-
-  const color = isPositive ? '#26A69A' : '#EF5350';
-  const fill  = isPositive ? 'rgba(38,166,154,0.12)' : 'rgba(239,83,80,0.12)';
-
-  if (S.charts[canvasId]) {
-    S.charts[canvasId].destroy();
-    delete S.charts[canvasId];
-  }
-
-  S.charts[canvasId] = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: data.map((_, i) => i),
-      datasets: [{
-        data,
-        borderColor:     color,
-        backgroundColor: fill,
-        borderWidth:     1.5,
-        pointRadius:     0,
-        tension:         0.3,
-        fill:            true,
-      }],
-    },
-    options: {
-      responsive:  false,
-      animation:   false,
-      plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { x: { display: false }, y: { display: false } },
-    },
-  });
 }
 
 // ────────────────────────────────────────────────────────────
@@ -831,6 +761,22 @@ function getVisibleStocks() {
   return rows;
 }
 
+// Daily volatility over 3 months (server: volatility.py, in the snapshot): colour only when it is high
+function volCell(x) {
+  const v = x.vol, i = x.volInfo;
+  if (v == null || !i) return '<td class="col-vol" title="No Yahoo price history for this holding">—</td>';
+  const cls = v >= 5 ? 'vol-high' : v >= 3 ? 'vol-mid' : '';
+  const tip = `Daily volatility over the last 3 months (${i.days} trading days): the typical size of a one-day move. About ${i.annual}% a year; the average absolute daily move is ${String(i.avg_abs).replace('.', ',')}%.`;
+  return `<td class="col-vol ${cls}" title="${escHtml(tip)}">${v.toFixed(2)}%</td>`;
+}
+
+// Day %: bold when today's move is at least twice the usual daily move (the Vol 3M column right before it); the tooltip says how many times
+function dayCell(pct, x) {
+  const v = x.vol, z = (v && pct != null && !isNaN(pct)) ? pct / v : null;
+  const tip = z == null ? '' : ` title="Today's move is ${Math.abs(z).toFixed(1)}x its usual daily move (3-month volatility ${v.toFixed(2)}%)"`;
+  return `<td class="${pctClass(pct)}${z != null && Math.abs(z) >= 2 ? ' big-move' : ''}"${tip}>${fmtPct(pct)}</td>`;
+}
+
 function sortVal(item, col) {
   switch (col) {
     case 'name':      return item.name;
@@ -842,6 +788,7 @@ function sortVal(item, col) {
     case 'value':     return item.valueSEK;
     case 'returnPct': return item.returnPct;
     case 'returnAbs': return item.returnSEK;
+    case 'vol':       return item.vol ?? -1;          // holdings without history sort last when descending
     default:          return 0;
   }
 }
@@ -860,14 +807,11 @@ function renderStocksTable() {
 
   tbody.innerHTML = rows.map(s => stockRow(s)).join('');
 
-  // Inject DOM-based logo + sparkline (can't do this in innerHTML)
+  // Inject the DOM-based logo (can't do this in innerHTML)
   rows.forEach(s => {
     const idx = S.stocks.indexOf(s);
     const logoCell = document.getElementById(`sl-${idx}`);
     if (logoCell) logoCell.appendChild(buildLogoEl(s.name));
-    if (s.ticker && S.sparkData[s.ticker]) {
-      drawSparkline(`spark-s-${idx}`, S.sparkData[s.ticker], s.returnPct >= 0);
-    }
   });
 }
 
@@ -901,13 +845,11 @@ function stockRow(s) {
     <td>${qtyCell}</td>
     <td ${liveMark}>${fmtNum(s.gav, 2)}</td>
     <td ${liveMark}>${priceCell}</td>
-    <td class="${pctClass(dayPct)}">${fmtPct(dayPct)}</td>
+    ${volCell(s)}
+    ${dayCell(dayPct, s)}
     <td>${valDisp}</td>
     <td class="${pctClass(s.returnPct)}">${fmtPct(s.returnPct)}</td>
     <td class="${pctClass(s.returnSEK)}">${retDisp}</td>
-    <td class="col-spark">
-      <canvas id="spark-s-${idx}" width="80" height="32" class="sparkline-canvas"></canvas>
-    </td>
   </tr>`;
 }
 
@@ -974,13 +916,11 @@ function fundRow(f) {
     <td>${qtyCell}</td>
     <td>${fmtNum(f.gav, 2)}</td>
     <td>${priceCell}</td>
-    <td class="${pctClass(f.dayChange)}">${fmtPct(f.dayChange)}</td>
+    ${volCell(f)}
+    ${dayCell(f.dayChange, f)}
     <td>${valDisp}</td>
     <td class="${pctClass(f.returnPct)}">${fmtPct(f.returnPct)}</td>
     <td class="${pctClass(f.returnSEK)}">${retDisp}</td>
-    <td class="col-spark">
-      <canvas id="spark-f-${idx}" width="80" height="32" class="sparkline-canvas"></canvas>
-    </td>
   </tr>`;
 }
 
@@ -1129,7 +1069,8 @@ async function loadPredictions() {
     const stock = n => S.stocks.find(s => s.name === n) || S.funds.find(f => f.name === n);
     const mk = v => ({ ...v, stock: stock(v.name) });
     S.predictions = {
-      up:   named.filter(v => v.action === 'ADD' || v.action === 'BUYBACK').sort((a, b) => b.score - a.score).slice(0, 5).map(mk),
+      // signals first (ADD, BUY BACK by score), then the ones that are close (WATCH, nearest to the buy level first)
+      up:   named.filter(v => ['ADD', 'BUYBACK', 'WATCH'].includes(v.action)).sort((a, b) => ({ ADD: 0, BUYBACK: 1, WATCH: 2 }[a.action] - { ADD: 0, BUYBACK: 1, WATCH: 2 }[b.action]) || b.score - a.score).slice(0, 5).map(mk),
       down: named.filter(v => ['TRIM', 'REVIEW', 'CONSOLIDATE'].includes(v.action))
                  .sort((a, b) => ({ TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[a.action] - { TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 }[b.action]) || b.score - a.score || b.amount - a.amount)
                  .slice(0, 5).map(mk),
@@ -1147,10 +1088,11 @@ function renderPredictions() {
   const badge = document.getElementById('pred-badge');
   if (!upEl || !downEl) return;
   const c = S.adviceCounts || {};
-  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.BUYBACK || 0} buy back · ${c.TRIM || 0} trim · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
+  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.BUYBACK || 0} buy back · ${c.WATCH || 0} watch · ${c.TRIM || 0} trim · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
 
   const card = (e, rank) => {
-    const up = e.action === 'ADD' || e.action === 'BUYBACK', cls = up ? 'signal-bull' : 'signal-bear';
+    const watch = e.action === 'WATCH', up = e.action === 'ADD' || e.action === 'BUYBACK', cls = watch ? 'signal-watch' : up ? 'signal-bull' : 'signal-bear';
+    const rsi = e.metrics && e.metrics.rsi != null ? 'RSI ' + Math.round(e.metrics.rsi) : '';
     const sign = up ? '+' : '−';
     const why = (e.reasons[0] || '').replace(/\s+/g, ' ');
     return `<div class="pred-card">
@@ -1162,13 +1104,13 @@ function renderPredictions() {
         <div class="pred-signals" title="${escHtml(e.reasons.join(' '))}">${escHtml(why)}</div>
       </div>
       <div class="pred-right">
-        <div class="pred-prob pv">${e.amount ? sign + fmtNum(e.amount, 0) + ' kr' : '—'}</div>
+        <div class="pred-prob${watch ? '' : ' pv'}">${watch ? rsi : e.amount ? sign + fmtNum(e.amount, 0) + ' kr' : '—'}</div>
         <div class="pred-bar-wrap"><div class="pred-bar-fill" style="width:${Math.max(8, Math.min(100, e.score))}%"></div></div>
-        <div class="pred-rsi">priority ${e.score}</div>
+        <div class="pred-rsi">${watch ? 'close to a signal' : 'priority ' + e.score}</div>
       </div>
     </div>`;
   };
-  upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">No add ideas: nothing is under-weight, in an uptrend and pulled back right now</div>';
+  upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">Nothing is oversold (RSI) in an uptrend right now, and nothing is close to it</div>';
   downEl.innerHTML = S.predictions.down.length ? S.predictions.down.map((e, i) => card(e, i + 1)).join('') : '<div class="pred-loading">Nothing to trim, consolidate or review</div>';
   document.querySelectorAll('#predictions-section [data-logo]').forEach(el => { el.appendChild(buildLogoEl(el.dataset.logo)); });
 }
@@ -1311,8 +1253,7 @@ async function init() {
     // The server's valuation (rows, tiles) and the ticker bar quotes
     await Promise.all([refreshSnapshot(), refreshPrices()]);
 
-    // Background: load sparklines + prediction signals
-    loadSparklines();
+    // Background: add / trim ideas
     loadPredictions();
     setInterval(loadPredictions, 10 * 60_000);
     loadReports();

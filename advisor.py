@@ -42,17 +42,25 @@ MIN_ORDER = 1500     # kr: smaller orders are mostly courtage
 BUYBACK_W = 1.5      # % of holdings: size of a buy-back into a closed position
 BUYBACK_WAIT = 7     # days after the last sell before a buy-back is suggested (0-1 day flips lose money in your history)
 
-# Entry profiles for ADD and BUYBACK (the size / theme / dust rules are the same for all).
-#   dd = allowed distance from the 52-week high, rsi = max RSI(14), trend = allowed 50/200-day states,
-#   mom = require positive 12-1 month momentum, above50 = price must be back above its 50-day average, wait = days after a sell.
+# Entry profiles for ADD / BUYBACK and the RSI take-profit rule (the size / theme / dust rules are the same for all).
+# Philosophy: buy PULLBACKS IN UPTRENDS. RSI(14) says when a pullback is deep enough (oversold); the 200-day trend filter keeps it
+# from buying falling knives (in a 2-year test on 173 stocks, RSI < 35 above the 200-day average beat the average day over the
+# next month, +3.6% vs +3.0%, while RSI < 35 below it did worse, +1.2%). Take-profit above the sell level is discipline, not
+# a forecast: strong stocks often stay overbought for weeks.
+#   rsi_buy / rsi_sell = RSI(14) below / above which a buy / profit-taking idea appears (the three profiles differ by 5 points),
+#   dd = allowed distance from the 52-week high, trend = allowed 50/200-day states, mom = require positive 12-1 month momentum,
+#   wait = days after a sell before a buy-back.
 PROFILES = {
-    'conservative': {'label': 'Conservative', 'dd': (-0.25, -0.10), 'rsi': 60, 'trend': ('up',), 'mom': True, 'above50': True, 'wait': 14,
-                     'about': '10-25% below the high, price already back above its 50-day average, RSI under 60, 2 weeks after a sell'},
-    'balanced': {'label': 'Balanced', 'dd': (-0.25, -0.05), 'rsi': 68, 'trend': ('up',), 'mom': True, 'above50': False, 'wait': 7,
-                 'about': '5-25% below the high, RSI under 68, 1 week after a sell'},
-    'aggressive': {'label': 'Aggressive', 'dd': (-0.40, -0.05), 'rsi': 75, 'trend': ('up', 'mixed', 'down'), 'mom': False, 'above50': False, 'wait': 3,
-                   'about': 'up to 40% below the high, any trend, RSI under 75, 3 days after a sell. Catches falling knives; not recommended'},
+    'conservative': {'label': 'Conservative', 'dd': (-0.25, -0.10), 'rsi_buy': 30, 'rsi_sell': 80, 'trend': ('up',), 'mom': True, 'wait': 14,
+                     'about': 'buy when RSI(14) is below 30 in an uptrend (above the 200-day average), 10-25% below the high, positive 12-month momentum, 2 weeks after a sell; take profit above RSI 80'},
+    'balanced': {'label': 'Balanced', 'dd': (-0.40, -0.05), 'rsi_buy': 35, 'rsi_sell': 75, 'trend': ('up',), 'mom': False, 'wait': 7,
+                 'about': 'buy when RSI(14) is below 35 in an uptrend (above the 200-day average), 5-40% below the high, 1 week after a sell; take profit above RSI 75. WATCH = RSI 35-45 in an uptrend'},
+    'aggressive': {'label': 'Aggressive', 'dd': (-0.60, -0.05), 'rsi_buy': 40, 'rsi_sell': 70, 'trend': ('up', 'mixed'), 'mom': False, 'wait': 3,
+                   'about': 'buy when RSI(14) is below 40 in an up or mixed trend, up to 60% below the high, 3 days after a sell; take profit above RSI 70. Acts earlier and more often, so more of it fails'},
 }
+TAKE_PROFIT_FRACTION = 1 / 3       # share of a holding in profit that the RSI take-profit idea sells
+WATCH_MARGIN = 10                  # RSI points above the buy level that still count as 'close to a buy signal' (WATCH)
+WATCH_MAX_CLOSED = 8               # at most this many WATCH ideas among positions you already sold
 DEFAULT_PROFILE = 'balanced'
 
 _LOCK = threading.Lock()
@@ -174,15 +182,18 @@ def _round500(x):
 
 
 # ───────── main ─────────
-def _entry_ok(f, P):
-    """Does this price history pass the entry test of profile P (used for ADD and BUYBACK)?"""
-    if not f or f['trend'] not in P['trend']:
+def _entry_ok(f, P, watch=False):
+    """Does this price history pass the entry test of profile P (used for ADD and BUYBACK)?
+    RSI(14) must be below the profile's buy level while the trend filter holds (no falling knives).
+    watch=True: the same test but RSI is within WATCH_MARGIN ABOVE the buy level, i.e. close to a signal."""
+    if not f or f['trend'] not in P['trend'] or f['rsi'] is None:
+        return False
+    lo, hi = (P['rsi_buy'], P['rsi_buy'] + WATCH_MARGIN) if watch else (-1, P['rsi_buy'])
+    if not (lo <= f['rsi'] < hi):
         return False
     if P['mom'] and (f['mom12_1'] or 0) <= 0:
         return False
-    if P['above50'] and (f['ext50'] is None or f['ext50'] < 0):
-        return False
-    return P['dd'][0] <= f['dd52'] <= P['dd'][1] and (f['rsi'] or 50) < P['rsi']
+    return P['dd'][0] <= f['dd52'] <= P['dd'][1]
 
 
 def _trend_phrase(f):
@@ -254,6 +265,22 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
             res.update(action='TRIM', amount=_round500(max(cut, MIN_ORDER)), target_weight=round(w * 0.8, 2), score=min(100, int(theme[r['sector']])))
             why.append(f'{r["sector"]} is {theme[r["sector"]]:.0f}% of the portfolio (cap {THEME_CAP:.0f}%); trimming a fifth of a large {r["sector"].lower()} holding lowers the shared risk without selling the idea.')
             done = True
+        # 3b) RSI take-profit: overbought holding that is in profit -> take a third off the table (discipline, not a forecast)
+        if not done and f and f['rsi'] is not None and f['rsi'] > P['rsi_sell'] and (up or 0) > 0 and a['value'] >= DUST:
+            amt = min(_round500(max(a['value'] * TAKE_PROFIT_FRACTION, MIN_ORDER)), int(a['value']))
+            res.update(action='TRIM', amount=amt, target_weight=None, score=min(100, int(f['rsi'])))
+            why.append(f'RSI(14) is {f["rsi"]:.0f}, above {P["rsi_sell"]}: overbought, and the position is {up:.0f}% in profit. Rule: take about a third off the table. Strong stocks often stay overbought for weeks, so this is profit-taking discipline, not a forecast.')
+            done = True
+        # ADD: small weight, oversold (RSI below the buy level) in an uptrend, theme not over its cap. A tiny position qualifies too:
+        # topping it up to a real position beats the 'consolidate' advice
+        if not done and f and w < ADD_BELOW_W and _entry_ok(f, P) and r['sector'] not in over_theme:
+            need = (TARGET_W - w) / 100 * total
+            mp, vp = _pct_rank(moms, f['mom12_1']), _pct_rank(vols, f['vol'])
+            pull = min(1.0, (-f['dd52'] - .05) / .15)
+            res.update(action='ADD', amount=_round500(max(need, MIN_ORDER)), target_weight=TARGET_W,
+                       score=int(100 * (.5 * mp + .25 * pull + .25 * (1 - vp))))
+            why.append(f'{_trend_phrase(f)} and RSI(14) {f["rsi"]:.0f} (oversold below {P["rsi_buy"]}), pulled back {f["dd52"] * 100:.0f}% from its 52-week high, and only {w:.1f}% of the portfolio. Fill up to about {TARGET_W:.0f}%.' + (f' It is only {a["value"]:.0f} kr today, so this tops it up to a real position.' if a['value'] < DUST else ''))
+            done = True
         # 3) tiny position
         if not done and a['value'] < DUST:
             res.update(action='CONSOLIDATE', amount=int(a['value']), score=40)
@@ -264,18 +291,14 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
             res.update(action='REVIEW', score=55)
             why.append(f'Below its 200-day average, negative 12-month momentum and {up:.0f}% under your cost. Decide if the original reason still holds; if not, selling frees capital for better uses.')
             done = True
-        # 5) ADD candidates: small weight, uptrend, pulled back, not stretched, theme not already over the cap
-        if not done and f and w < ADD_BELOW_W and _entry_ok(f, P) and r['sector'] not in over_theme:
-            need = (TARGET_W - w) / 100 * total
-            mp, vp = _pct_rank(moms, f['mom12_1']), _pct_rank(vols, f['vol'])
-            pull = min(1.0, (-f['dd52'] - .05) / .15)
-            res.update(action='ADD', amount=_round500(max(need, MIN_ORDER)), target_weight=TARGET_W,
-                       score=int(100 * (.5 * mp + .25 * pull + .25 * (1 - vp))))
-            why.append(f'{_trend_phrase(f)}, 12-month momentum {(f["mom12_1"] or 0) * 100:+.0f}%, pulled back {f["dd52"] * 100:.0f}% from its 52-week high, and only {w:.1f}% of the portfolio. Fill up to about {TARGET_W:.0f}%.')
+        # WATCH: close to a buy signal (RSI within WATCH_MARGIN above the buy level), the other conditions already met
+        if not done and f and w < ADD_BELOW_W and r['sector'] not in over_theme and _entry_ok(f, P, watch=True):
+            res.update(action='WATCH', score=int(max(1, 100 - (f['rsi'] - P['rsi_buy']) * 8)))
+            why.append(f'Close to a buy signal: RSI(14) is {f["rsi"]:.0f} (buy below {P["rsi_buy"]}), {_trend_phrase(f).lower()}, {f["dd52"] * 100:.0f}% below its 52-week high. Wait for the RSI to dip below {P["rsi_buy"]}.')
             done = True
         if not done:
             if f and f['trend'] == 'up':
-                why.append('Healthy trend, no action needed.' if w >= ADD_BELOW_W else 'Uptrend but not pulled back enough to add now.')
+                why.append('Healthy trend, no action needed.' if w >= ADD_BELOW_W else f'Uptrend, RSI(14) {f["rsi"] or 0:.0f}: not oversold yet (adds start below {P["rsi_buy"]}).')
             elif f and f['trend'] == 'down':
                 why.append('Below its long-term trend; held at its small size.')
             elif not f:
@@ -290,7 +313,8 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
     for a in closed:
         h = hist.get(sym_of.get(a['isin']))
         f = _features(h['c']) if h else None
-        if not _entry_ok(f, P):
+        sig = _entry_ok(f, P)
+        if not sig and not _entry_ok(f, P, watch=True):
             continue
         s = sec.get(a['isin']) or {}
         sector = s.get('sector') or s.get('category') or 'Unclassified'
@@ -311,10 +335,14 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
                 when += f' at {ls["price"]:g} {sccy}, now {f["last"]:.4g} ({chg:+.0f}%)'
             when += '. '
         out[a['isin']] = {
-            'name': a['name'], 'action': 'BUYBACK', 'closed': True, 'amount': _round500(max(BUYBACK_W / 100 * total, MIN_ORDER)),
-            'weight': 0.0, 'target_weight': BUYBACK_W, 'sector': sector, 'score': int(100 * (.5 * mp + .25 * pull + .25 * (1 - vp))),
+            'name': a['name'], 'action': 'BUYBACK' if sig else 'WATCH', 'closed': True, 'amount': _round500(max(BUYBACK_W / 100 * total, MIN_ORDER)) if sig else 0,
+            'weight': 0.0, 'target_weight': BUYBACK_W, 'sector': sector, 'score': int(100 * (.5 * mp + .25 * pull + .25 * (1 - vp))) if sig else int(max(1, 100 - (f['rsi'] - P['rsi_buy']) * 8)),
             'metrics': {k: (round(v, 4) if isinstance(v, float) else v) for k, v in f.items() if k in ('trend', 'vs200', 'mom12_1', 'rsi', 'dd52', 'vol', 'ret21')},
-            'reasons': [f'{when}Not held today. {_trend_phrase(f)}, 12-month momentum {(f["mom12_1"] or 0) * 100:+.0f}%, pulled back {f["dd52"] * 100:.0f}% from its 52-week high. A buy-back of about {BUYBACK_W:.1f}% of the portfolio (once, in one order).']}
+            'reasons': [(f'{when}Not held today. {_trend_phrase(f)} and RSI(14) {f["rsi"]:.0f} (oversold below {P["rsi_buy"]}), pulled back {f["dd52"] * 100:.0f}% from its 52-week high. A buy-back of about {BUYBACK_W:.1f}% of the portfolio (once, in one order).') if sig else
+                        (f'{when}Not held today. Close to a buy-back signal: RSI(14) is {f["rsi"]:.0f} (buy below {P["rsi_buy"]}), {_trend_phrase(f).lower()}, {f["dd52"] * 100:.0f}% below its 52-week high.')]}
+    watch_closed = sorted((k for k, v in out.items() if v['action'] == 'WATCH' and v.get('closed')), key=lambda k: -out[k]['score'])
+    for k in watch_closed[WATCH_MAX_CLOSED:]:
+        del out[k]
 
     # ───── portfolio level: volatility, drawdown, correlation from the last year of daily returns ─────
     port = _portfolio_stats(rows, total)
@@ -346,7 +374,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
          f'{len(adds)} ADD ideas (plus {sum(1 for v in out.values() if v["action"] == "BUYBACK")} buy-backs of closed positions) and {len(trims)} TRIM ideas. Execute with few, larger orders (at least {MIN_ORDER} kr) and let sells fund the buys so no new deposit is needed.')
 
     summary = {'positions': len(rows), 'total': round(total), 'theme': {k: round(v, 1) for k, v in sorted(theme.items(), key=lambda x: -x[1])},
-               'counts': {k: sum(1 for v in out.values() if v['action'] == k) for k in ('ADD', 'BUYBACK', 'TRIM', 'CONSOLIDATE', 'REVIEW', 'HOLD')},
+               'counts': {k: sum(1 for v in out.values() if v['action'] == k) for k in ('ADD', 'BUYBACK', 'WATCH', 'TRIM', 'CONSOLIDATE', 'REVIEW', 'HOLD')},
                'profile': profile, 'profile_about': P['about'], 'portfolio': port, 'covered': sum(1 for r in rows if r['f']) , 'asof': date.today().isoformat()}
     return {'ok': True, 'partial': partial, 'asof': time.strftime('%Y-%m-%dT%H:%M:%S'), 'assets': out, 'cards': cards, 'summary': summary}
 

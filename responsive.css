@@ -3,7 +3,7 @@
    charts and tables scale; lower-priority columns hide before text gets small. */
 
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-canvas:not(.sparkline-canvas) { max-width: 100%; }
+canvas { max-width: 100%; }
 .panel, .hm-panel, .card, .kpi, .vcard, .finding, .table-section, .pred-panel, main, #main-content { min-width: 0; }
 .card-value, .kpi .v, .vcard .big, .finding .num, .vcard p, .finding p, .hint, .card-sub, .kpi .s, .hm-notes li { overflow-wrap: anywhere; }
 
@@ -65,13 +65,13 @@ canvas:not(.sparkline-canvas) { max-width: 100%; }
 .col-name { min-width: 130px; max-width: min(220px, 40vw); }
 .name-cell { max-width: min(210px, 38vw); }
 @media (max-width: 900px) {
-  #stocks-table th:nth-child(5), #stocks-table td:nth-child(5), #funds-table th:nth-child(5), #funds-table td:nth-child(5),     /* GAV */
-  #stocks-table th:nth-child(11), #stocks-table td:nth-child(11), #funds-table th:nth-child(11), #funds-table td:nth-child(11) { display: none; }   /* 7D chart */
+  #stocks-table th:nth-child(5), #stocks-table td:nth-child(5), #funds-table th:nth-child(5), #funds-table td:nth-child(5) { display: none; }     /* GAV */
 }
 @media (max-width: 700px) {
   #stocks-table th:nth-child(3), #stocks-table td:nth-child(3), #funds-table th:nth-child(3), #funds-table td:nth-child(3),     /* currency */
   #stocks-table th:nth-child(4), #stocks-table td:nth-child(4), #funds-table th:nth-child(4), #funds-table td:nth-child(4),     /* quantity */
-  #stocks-table th:nth-child(10), #stocks-table td:nth-child(10), #funds-table th:nth-child(10), #funds-table td:nth-child(10) { display: none; }   /* return kr */
+  #stocks-table th:nth-child(7), #stocks-table td:nth-child(7), #funds-table th:nth-child(7), #funds-table td:nth-child(7),     /* volatility */
+  #stocks-table th:nth-child(11), #stocks-table td:nth-child(11), #funds-table th:nth-child(11), #funds-table td:nth-child(11) { display: none; }   /* return kr: name, day %, value and return % stay on a phone */
   .data-table th, .data-table td { padding-inline: 7px; }
   .table-header-row { padding: 10px; }
 }

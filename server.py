@@ -18,6 +18,7 @@ import argparse
 import hashlib
 import http.server
 import socket
+import ssl
 import inspect
 import json
 import os
@@ -43,6 +44,7 @@ import advisor               # rule-based add / trim review (history cache, no f
 import reports               # upcoming earnings / ex-dividend dates of the holdings (Yahoo calendarEvents)
 import nav                   # net asset value history (total + per category) from the ledger and Yahoo daily closes
 import valuation             # the ONE valuation every page reads (holdings, account value, unrealised, all-time, today's P&L)
+import volatility            # 3-month daily volatility per holding (Yahoo daily closes)
 
 PORT = 8000
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -258,7 +260,7 @@ def _held(p):
 def _valued(uid):
     """(payload with live values, snapshot): the single valuation. Everything a user sees that depends on prices is built from this."""
     p = _payload(uid)
-    snap = valuation.snapshot(p, _live_quotes(_held(p)))
+    snap = valuation.snapshot(p, _live_quotes(_held(p)), vol=volatility.for_assets(_held(p)))
     return valuation.apply(p, snap), snap
 
 
@@ -293,6 +295,42 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
     timeout = 30                  # a stalled client can hold its own thread for at most 30 s
     server_version = 'TradeView'
     sys_version = ''
+
+    # ---- optional HTTPS (see README: "Not secure" in the browser) ----
+    def setup(self):
+        ctx = getattr(self.server, 'ssl_ctx', None)
+        if ctx:
+            self.request.settimeout(10)
+            first = self.request.recv(1, socket.MSG_PEEK)              # a TLS handshake starts with byte 0x16
+            if not first:
+                raise ConnectionAbortedError()
+            if first[0] != 0x16:                                       # plain http:// typed on the https port: send the browser to https://
+                self._redirect_to_https()
+                raise ConnectionAbortedError()
+            self.request = ctx.wrap_socket(self.request, server_side=True)
+        super().setup()
+
+    def finish(self):
+        try:
+            super().finish()
+        finally:
+            if isinstance(self.request, ssl.SSLSocket):
+                try:
+                    self.request.close()
+                except OSError:
+                    pass
+
+    def _redirect_to_https(self):
+        try:
+            head = self.request.recv(4096).decode('latin-1', 'replace')
+            line = head.split('\r\n', 1)[0].split(' ')
+            path = line[1] if len(line) > 1 and line[1].startswith('/') else '/'
+            host = next((l.split(':', 1)[1].strip() for l in head.split('\r\n')[1:] if l.lower().startswith('host:')), '')
+            body = b'This server uses HTTPS. Opening the https:// address.\n'
+            self.request.sendall(('HTTP/1.1 301 Moved Permanently\r\nLocation: https://%s%s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n'
+                                  % (host, path, len(body))).encode('latin-1') + body)
+        except OSError:
+            pass
 
     # ---- plumbing ----
     def end_headers(self):
@@ -333,7 +371,8 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         return None
 
     def _set_cookie(self, token, max_age=COOKIE_MAX_AGE):
-        return {'Set-Cookie': f'{COOKIE}={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age={max_age}'}
+        secure = '; Secure' if getattr(self.server, 'ssl_ctx', None) else ''          # browsers only send it back over https
+        return {'Set-Cookie': f'{COOKIE}={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age={max_age}{secure}'}
 
     def _json_body(self):
         try:
@@ -705,7 +744,8 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         try:
             try:
                 c = _curve(user['uid'], p, snap, fetch=False)          # cached only: asking never waits for Yahoo
-                p = dict(p, reports=reports.upcoming(p, fetch=False), nav=(c or {}).get('summary'))
+                p = dict(p, reports=reports.upcoming(p, fetch=False), nav=(c or {}).get('summary'),
+                         vol={k: a['vol_3m'] for k, a in snap['assets'].items() if a.get('vol_3m')})
             except Exception:
                 pass
             self._json(200, {'ok': True, **assistant.answer(q, p, adv)})
@@ -770,6 +810,12 @@ class DashboardServer(http.server.ThreadingHTTPServer):
     daemon_threads = True                      # threads never keep the process alive
     request_queue_size = 64
     allow_reuse_address = os.name != 'nt'      # on Windows SO_REUSEADDR lets a SECOND server share the port silently (the old one then answers)
+    ssl_ctx = None                             # set in main() when a certificate is available
+
+    def handle_error(self, request, client_address):
+        if isinstance(sys.exc_info()[1], (ssl.SSLError, ConnectionError, TimeoutError, OSError)):
+            return                             # scanners, aborted handshakes, closed tabs: not worth a traceback
+        super().handle_error(request, client_address)
 
     def server_bind(self):
         if os.name == 'nt':
@@ -780,6 +826,10 @@ class DashboardServer(http.server.ThreadingHTTPServer):
 def main():
     parser = argparse.ArgumentParser(description='Trading Dashboard server')
     parser.add_argument('--port', type=int, default=PORT)
+    parser.add_argument('--cert', help='TLS certificate file (PEM) to serve https; default: <data folder>/tls/cert.pem if it exists')
+    parser.add_argument('--key', help='TLS private key file (PEM); default: <data folder>/tls/key.pem')
+    parser.add_argument('--https-port', type=int, default=8443, help='port for https when a certificate is found; plain http stays on --port (default 8443)')
+    parser.add_argument('--https-only', action='store_true', help='with a certificate: serve https on --port and NO plain http (a plain http:// visit is redirected)')
     args = parser.parse_args()
 
     os.chdir(Path(__file__).parent)
@@ -792,20 +842,52 @@ def main():
         httpd_cm = DashboardServer(('', args.port), DashboardHandler)
     except OSError as e:
         sys.exit(f'\n  Port {args.port} is already in use (another dashboard server running?). Run stop-dashboard.bat first.\n  ({e})\n')
+    tls_dir = os.path.join(auth.data_dir(), 'tls')
+    cert = args.cert or (os.path.join(tls_dir, 'cert.pem') if os.path.isfile(os.path.join(tls_dir, 'cert.pem')) else None)
+    key = args.key or (os.path.join(tls_dir, 'key.pem') if os.path.isfile(os.path.join(tls_dir, 'key.pem')) else None)
+    ctx = secure = None
+    if cert and key:
+        try:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+            ctx.load_cert_chain(cert, key)
+        except (OSError, ssl.SSLError) as e:
+            sys.exit(f'\n  Could not load the TLS certificate ({e}).\n  Check {cert} and {key}, or remove them to run over plain http.\n')
+    if ctx and args.https_only:
+        httpd_cm.ssl_ctx = ctx                                   # https on the main port, plain http is only redirected
+    elif ctx:
+        try:                                                     # plain http on --port (LAN address) AND https on its own port (Tailscale name)
+            secure = DashboardServer(('', args.https_port), DashboardHandler)
+        except OSError as e:
+            sys.exit(f'\n  HTTPS port {args.https_port} is already in use ({e}). Use --https-port to choose another one.\n')
+        secure.ssl_ctx = ctx
     with httpd_cm as httpd:
-        print(f'\n  Dashboard  ->  http://localhost:{args.port}')
-        print(f'  Analytics   ->  http://localhost:{args.port}/analytics.html')
+        main_scheme = 'https' if (ctx and args.https_only) else 'http'
+        if main_scheme == 'https':
+            print(f"\n  Dashboard  ->  https://localhost:{args.port}   (HTTPS only: open it by the certificate's own name, see README)")
+        elif secure:
+            print(f'\n  Dashboard  ->  http://localhost:{args.port}   (plain http: fine on your own network, browsers show "Not secure")')
+            print(f"  Secure     ->  https://<certificate name>:{args.https_port}   (HTTPS: open it by the certificate's own name, e.g. your Tailscale name)")
+        else:
+            print(f'\n  Dashboard  ->  http://localhost:{args.port}   (plain http: browsers show "Not secure"; see README to enable https)')
+        print(f'  Analytics   ->  {main_scheme}://localhost:{args.port}/analytics.html')
         print(f'  Data folder ->  {auth.data_dir()}')
         code = auth.setup_code()
         if code:
             print('\n  FIRST START: there are no users yet.')
-            print(f'  Open http://localhost:{args.port}/login.html and create the admin account.')
+            print(f'  Open {main_scheme}://localhost:{args.port}/login.html and create the admin account.')
             print(f'  Setup code (needed once): {code}')
         print('\n  Press Ctrl+C to stop\n')
+        if secure:
+            threading.Thread(target=secure.serve_forever, daemon=True).start()
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print('\nStopped.')
+        finally:
+            if secure:
+                secure.shutdown()
+                secure.server_close()
 
 
 if __name__ == '__main__':

@@ -506,7 +506,10 @@ html, body {
 .col-name  { min-width: 160px; max-width: 220px; }
 .col-cur   { width: 46px; text-align: center !important; }
 .col-num   { min-width: 70px; }
-.col-spark { width: 86px; text-align: center !important; }
+.col-vol { white-space: nowrap; }
+.data-table td.big-move { font-weight: 700; }
+.data-table td.vol-mid { color: var(--gold, #F7C948); }
+.data-table td.vol-high { color: var(--red, #EF5350); }
 
 /* Name cell */
 .name-cell {
@@ -575,8 +578,6 @@ html, body {
 .neg  { color: var(--red) !important; }
 .flat { color: var(--text-dim) !important; }
 
-/* Sparkline canvas */
-.sparkline-canvas { display: block; }
 
 /* Loading / empty state */
 .loading-row {
@@ -756,6 +757,7 @@ html, body {
 }
 .signal-bull { background: rgba(38,166,154,0.18); color: var(--green); }
 .signal-bear { background: rgba(239,83,80,0.18);  color: var(--red); }
+.signal-watch { background: transparent; color: #9aa4b2; border: 1px dashed #5d6170; }
 
 /* ============================================================
    SCROLLBAR

@@ -46,8 +46,8 @@ Funds section below stocks section.
 - Add/remove stocks manually
 - Shows current price and daily change %
 
-### 6. Mini Sparkline Charts
-- Small 7-day price trend chart for each holding in the table
+### 6. Volatility instead of sparklines *(replaced in 2026-11)*
+- The 7-day sparkline column did not add information; the table now has a **Vol 3M** column (daily volatility over the last 3 months)
 
 ### 7. Currency Toggle
 - Switch entire dashboard view between SEK and USD equivalent values

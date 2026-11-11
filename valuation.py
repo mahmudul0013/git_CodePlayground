@@ -41,7 +41,7 @@ def _export_date(payload):
     return m.group(0) if m else None
 
 
-def snapshot(payload, quotes=None, now=None):
+def snapshot(payload, quotes=None, now=None, vol=None):
     """Value the holdings of `payload` (one user's analytics payload) with the live `quotes` {isin: {price, currency, change_pct, symbol}}.
     -> {ok, asof, export_date, assets: {isin: {...}}, totals: {...}}"""
     quotes = quotes or {}
@@ -71,6 +71,7 @@ def snapshot(payload, quotes=None, now=None):
             'value': round(v, 2), 'value_export': round(v_exp, 2), 'cost': round(cost, 2),
             'unrealized': round(unreal, 2), 'unrealized_pct': round(unreal / cost * 100, 2) if cost > 0 else a.get('unrealized_pct'),
             'day_pct': day, 'day_pnl': round(day_pnl, 2),
+            'vol_3m': (vol or {}).get(a['isin']),          # daily volatility over 3 months (volatility.py), None without Yahoo history
         }
     holdings = sum(x['value'] for x in assets.values())
     holdings_exp = sum(x['value_export'] for x in assets.values())

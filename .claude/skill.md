@@ -13,7 +13,7 @@ No frameworks — plain HTML + CSS + Vanilla JS, served locally via Python.
 | Layer | Choice | Reason |
 |---|---|---|
 | UI | Plain HTML + CSS + Vanilla JS | No build step, fast |
-| Charts | Chart.js (CDN) | Sparklines + pie chart |
+| Charts | Chart.js (CDN) | Pie / bar / line charts |
 | Data (holdings) | CSV files from Nordnet | Auto-synced via `nordnet_sync.py` |
 | Live Prices | Yahoo Finance v8 chart API | Free, no API key |
 | Server | `server.py` (Python) | File server + Yahoo Finance proxy |
@@ -112,10 +112,8 @@ No frameworks — plain HTML + CSS + Vanilla JS, served locally via Python.
 - Source: Clearbit API `logo.clearbit.com/{domain}`
 - Fallback: colored initials avatar
 
-### Sparklines
-- Library: Chart.js (mini, inline per table row)
-- Green line = positive return, Red = negative
-- Limited to 25 per load (`CFG.sparkLimit`)
+### Sparklines (removed)
+The 7D sparkline column and its code (`fetchSparkline`, `loadSparklines`, `drawSparkline`, `CFG.sparkLimit`) were removed; the Portfolio tables have a **Vol 3M** column instead (see below).
 
 ---
 

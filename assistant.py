@@ -471,8 +471,15 @@ def i_mom(c):
 def i_rsi(c):
     a = [(v.get('metrics') or {}).get('rsi') for v in _adv_held(c)]
     a = [x for x in a if x is not None]
-    return two('RSI (14 days) measures the speed of recent moves, 0-100: above 70 stretched, below 30 oversold.',
-               f"Yours: {sum(1 for x in a if x > 70)} above 70, {sum(1 for x in a if x < 30)} below 30." if a else None)
+    return two('RSI (14 days) measures the speed of recent moves, 0-100. Add ideas start below 35 (in an uptrend), profit-taking above 75 (Balanced).',
+               f"Yours: {sum(1 for x in a if x > 75)} above 75, {sum(1 for x in a if x < 35)} below 35, {sum(1 for x in a if x < 40)} below 40." if a else None)
+
+
+@intent('watch_idea', 'glossary', 'gloss', ['watch idea', 'watch', 'what does watch mean', 'close to a buy signal', 'watch list', 'watchlist idea'], 'What does WATCH mean?', 'advice')
+def i_watch(c):
+    n = sum(1 for v in c.advice().get('assets', {}).values() if v.get('action') == 'WATCH') if c.adv else None
+    return two('WATCH means close to a buy signal: the stock is in an uptrend and pulled back, and its RSI(14) is within 10 points above the buy level (Balanced 35). No order yet.',
+               f'Right now {n} on watch.' if n is not None else None)
 
 
 @intent('pullback', 'glossary', 'gloss', ['pullback', 'pulled back', 'below 52 week high', '52 week high', 'dip', 'from the high'], 'What is a pullback?', 'advice')

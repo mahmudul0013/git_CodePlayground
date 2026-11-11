@@ -82,9 +82,8 @@ TradingView.com — professional dark-themed trading interface.
 - Active tab: Blue `#2962FF` underline or pill
 - Inactive: `#787B86`
 
-### Sparklines
-- Library: Lightweight Charts or Chart.js mini
-- Color: green line if return positive, red if negative
+### Volatility column
+The 7-day sparkline column was replaced by **Vol 3M** (daily volatility over 3 months, `col-vol`): right-aligned `%` with two decimals, plain below 3%, gold from 3%, red from 5%; the tooltip gives the number of days, the yearly figure and the average absolute daily move. It sits directly in front of **Day %** (the usual daily move next to today's move); a Day % that is at least twice the volatility is bold with a tooltip ("2.3x its usual daily move"). It is sortable and hidden on phones (below 700 px), like the return-in-kr column. Idea badges: ADD green, BUY BACK blue, WATCH dashed grey (close to a signal), TRIM gold, CONSOLIDATE purple, REVIEW red.
 
 ---
 
@@ -219,7 +218,7 @@ Columns that show last-buy data (gold `.lb-tag` text below main value):
 | Layer | Choice | Reason |
 |---|---|---|
 | UI | Plain HTML + CSS + vanilla JS | No build step |
-| Charts | Chart.js 4.4.0 (CDN) | Sparklines, doughnuts, bars, lines |
+| Charts | Chart.js 4.4.0 (CDN) | Doughnuts, bars, lines |
 | Data | Nordnet CSV exports (ledger + holdings) | Ground truth for positions, cost and trades |
 | Live data | Yahoo Finance via the local `/yahoo/*` proxy and `server.py` endpoints | Free, no API key |
 | Server | Python standard library (`ThreadingHTTPServer`), started by `start-dashboard.bat` or `python server.py` | No dependencies |
