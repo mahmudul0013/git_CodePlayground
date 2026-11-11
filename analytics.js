@@ -56,37 +56,75 @@ async function getJSON(url) {
 }
 
 // ───────── data load + auto-sync ─────────
-// Holdings value today = export value rescaled by live Yahoo price (same rules as the heat map: skip Nordnet funds,
-// other-currency quotes and quotes that are >2x off the export price). Returns the change vs the export in kr.
-async function refreshLive() {
-  try {
-    S.live = await getJSON('/api/live');
-    const q = S.live.quotes || {}; let delta = 0, n = 0;
-    for (const a of S.data.assets) {
-      const l = q[a.isin];
-      if (!l || !a.value || !a.price || /^0P/.test(l.symbol || '')) continue;
-      if (String(l.currency || '').toUpperCase() !== String(a.ccy || '').toUpperCase()) continue;
-      const ratio = l.price / a.price;
-      if (!(ratio > .5 && ratio < 2)) continue;
-      delta += a.value * (ratio - 1); n++;
+// The server values everything once (valuation.py): /api/trades is already live-valued, and /api/snapshot (small) carries the
+// same valuation for the 30 s refresh. The browser does no pricing of its own, it only copies those numbers into S.data.
+const SNAP_MS = 30_000, HISTORY_RETRY_MS = 20_000;
+const tolerance = x => Math.max(5, 0.0005 * Math.abs(x));      // same rule as valuation.allowed(): rounding / FX differences up to 5 kr or 0.05%
+const SCORE = (v, good, poor, lower) => { if (v == null) return null; const t = lower ? (poor - v) / (poor - good || 1) : (v - poor) / (good - poor || 1); return Math.round(Math.max(0, Math.min(1, t)) * 100); };
+const GRADE = s => s >= 85 ? 'A' : s >= 70 ? 'B' : s >= 55 ? 'C' : s >= 40 ? 'D' : s >= 25 ? 'E' : 'F';
+
+function mergeSnapshot(snap) {
+  const D = S.data;
+  if (!D || !snap || !snap.ok) return false;
+  const t = snap.totals, o = D.insights.overview;
+  for (const a of D.assets) {
+    const s = snap.assets[a.isin];
+    if (!s) continue;
+    a.value = s.value; a.price = s.price; a.unrealized = s.unrealized; a.unrealized_pct = s.unrealized_pct; a.day_pct = s.day_pct; a.live = s.live;
+    a.total_pnl = Math.round(((a.realized || 0) + s.unrealized) * 100) / 100;
+  }
+  Object.assign(o, { holdings_value: t.holdings, total_value: t.account, unrealized: t.unrealized, all_time_pnl: t.all_time, all_time_pnl_pct: t.all_time_pct });
+  D.valuation = Object.assign(D.valuation || {}, { asof: snap.asof, export_date: snap.export_date, live_positions: t.live_positions, positions: t.positions });
+  // the two habit scores that depend on position sizes follow the live values (same formulas as trade_analytics.build_scorecard)
+  const sc = D.insights.scorecard, held = D.assets.filter(a => a.held && a.value);
+  if (sc && held.length) {
+    const tot = held.reduce((x, a) => x + a.value, 0);
+    const vals = { top_weight: Math.max(...held.map(a => a.value)) / tot * 100, fragmentation: held.filter(a => a.value < 2000).length / held.length * 100 };
+    let ws = 0, ss = 0;
+    for (const i of sc.items) {
+      if (i.key in vals) { i.value = Math.round(vals[i.key] * 100) / 100; i.score = SCORE(vals[i.key], i.good, i.poor, i.lower_is_better); }
+      if (i.score != null) { ws += i.weight; ss += i.score * i.weight; }
     }
-    S.liveDelta = delta; S.liveN = n; S.liveAt = S.live.asof;
+    if (ws) { sc.overall = Math.round(ss / ws); sc.grade = GRADE(sc.overall); }
+  }
+  return true;
+}
+
+let snapBusy = false;
+async function refreshSnapshot() {
+  if (snapBusy || !S.data) return;
+  snapBusy = true;
+  try {
+    if (!mergeSnapshot(await getJSON('/api/snapshot'))) return;
     renderKpis();
-  } catch (e) { /* keep export values */ }
+    if (S.tab === 'assets') renderAssetsLight();
+    // tabs with charts are redrawn only when the account value moved by more than the accepted rounding tolerance
+    const tv = S.data.insights.overview.total_value;
+    if (S.tabValue != null && Math.abs(tv - S.tabValue) > tolerance(tv) && ['assets', 'habits', 'deposits', 'dividends'].includes(S.tab)) renderTab();
+    setSync(true);
+  } catch (e) { /* keep the numbers on screen */ } finally { snapBusy = false; }
+}
+
+let historyTimer = 0;
+function watchHistory() {
+  clearTimeout(historyTimer);
+  const pending = !!(S.data && S.data.valuation && S.data.valuation.history_pending);
+  const hint = $('dep-pending'); if (hint) hint.hidden = !pending;
+  if (pending) historyTimer = setTimeout(() => load(true), HISTORY_RETRY_MS);      // the deposit analysis is still being built from Yahoo daily prices
 }
 
 async function load(force) {
   try {
     const sig = await getJSON('/api/trades/status');
     const sigStr = JSON.stringify(sig);
-    if (!force && sigStr === S.sig && S.data) { setSync(true); refreshLive(); loadAdvice(); return; }
+    if (!force && sigStr === S.sig && S.data) { setSync(true); loadAdvice(); return; }
     const data = await getJSON('/api/trades');
     S.sig = sigStr;
     S.data = data;
     index();
     setSync(true);
     renderAll();
-    refreshLive();
+    watchHistory();
     loadAdvice();
   } catch (e) {
     setSync(false, e.message);
@@ -202,13 +240,10 @@ function kpi(l, v, s, c) {
 }
 
 function renderKpis() {
-  const o0 = S.data.insights.overview, c = S.data.insights.costs;
-  const d = S.liveDelta || 0;                       // live price change since the export (0 until quotes arrive)
-  const o = { ...o0, total_value: o0.total_value + d, holdings_value: o0.holdings_value + d, unrealized: o0.unrealized + d, all_time_pnl: o0.all_time_pnl + d,
-              all_time_pnl_pct: o0.all_time_pnl_pct == null || !o0.net_deposits ? o0.all_time_pnl_pct : (o0.all_time_pnl + d) / o0.net_deposits * 100 };
-  const live = S.liveN ? ` · live prices (${S.liveN} holdings)` : ' · export value';
+  const o = S.data.insights.overview, c = S.data.insights.costs, v = S.data.valuation || {};
+  const valued = v.asof ? `valued ${v.asof.slice(11, 16)} · live prices for ${v.live_positions} of ${v.positions} holdings` : '';
   $('kpis').innerHTML =
-    kpi('Account value', fmt(o.total_value) + ' kr', `holdings ${fmt(o.holdings_value)} + cash ${fmt(o.cash_balance)}${live}`) +
+    kpi('Account value', fmt(o.total_value) + ' kr', `holdings ${fmt(o.holdings_value)} + cash ${fmt(o.cash_balance)}${valued ? ' · ' + valued : ''}`) +
     kpi('Deposited (net)', fmt(o.net_deposits) + ' kr', `${o.deposit_count} deposits`) +
     kpi('All-time result', sgn(o.all_time_pnl) + ' kr', o.all_time_pnl_pct == null ? '' : `${pct(o.all_time_pnl_pct, 2)} on deposits`, cls(o.all_time_pnl)) +
     kpi('Broker costs paid', fmt(c.broker_total) + ' kr', `${pct(c.pct_of_net_deposits)} of deposits · ${pct(c.pct_of_turnover, 2)} of turnover`, 'neg') +
@@ -218,6 +253,21 @@ function renderKpis() {
 }
 
 // ───────── render: assets tab ─────────
+function renderAssetKpis(d) {
+  const { v, list } = d;
+  const sum = f => list.reduce((s, r) => s + (f(r) || 0), 0);
+  const mt = sum(r => r.metric);
+  $('asset-kpis').innerHTML =
+    kpi('Assets', list.length, `${list.filter(r => r.a.held).length} held now`) +
+    kpi(metricName(v), fmt(mt), v.id === 'current' ? 'sum of current holdings' : '') +
+    kpi('Realised (all-time)', sgn(sum(r => r.a.realized)), 'closed trades, after fees', cls(sum(r => r.a.realized))) +
+    kpi('Unrealised', sgn(sum(r => r.a.unrealized)), 'open positions', cls(sum(r => r.a.unrealized))) +
+    kpi('Fees paid (all-time)', fmt(sum(r => r.a.fees)), `${sum(r => r.a.trades.length)} trades`);
+}
+
+// 30 s refresh of the Assets tab: only the KPI row and the table (the three charts follow when the value moved beyond the tolerance)
+function renderAssetsLight() { const d = derive(); renderAssetKpis(d); renderTable(d); }
+
 function renderAssets() {
   const d = derive();
   const { v, list } = d;
@@ -234,15 +284,7 @@ function renderAssets() {
   fillSelect('f-ccy', 'All currencies', uniq(S.data.assets.map(a => a.ccy)), S.ccy);
   fillSelect('f-dom', 'All countries', uniq(S.data.assets.map(a => a.domicile)), S.dom, k => `${k} · ${COUNTRY[k] || k}`);
 
-  // kpis for the filtered set
-  const sum = f => list.reduce((s, r) => s + (f(r) || 0), 0);
-  const mt = sum(r => r.metric);
-  $('asset-kpis').innerHTML =
-    kpi('Assets', list.length, `${list.filter(r => r.a.held).length} held now`) +
-    kpi(metricName(v), fmt(mt), v.id === 'current' ? 'sum of current holdings' : '') +
-    kpi('Realised (all-time)', sgn(sum(r => r.a.realized)), 'closed trades, after fees', cls(sum(r => r.a.realized))) +
-    kpi('Unrealised', sgn(sum(r => r.a.unrealized)), 'open positions', cls(sum(r => r.a.unrealized))) +
-    kpi('Fees paid (all-time)', fmt(sum(r => r.a.fees)), `${sum(r => r.a.trades.length)} trades`);
+  renderAssetKpis(d);
 
   // charts
   const group = key => {
@@ -679,6 +721,7 @@ const sgn2 = v => (v > 0 ? '+' : '') + v.toFixed(2).replace('.', ',');
 function renderDeposits() {
   const D = S.data.insights.deposit_behavior;
   if (!D || !D.series.length) { $('dep-verdict').innerHTML = '<p class="hint">No deposits found in the ledger.</p>'; return; }
+  const dp = $('dep-pending'); if (dp) dp.hidden = !(S.data.valuation && S.data.valuation.history_pending);
   document.querySelectorAll('#dep-gran .chip').forEach(b => b.classList.toggle('active', b.dataset.g === S.gran));
   document.querySelectorAll('#dep-metric .chip').forEach(b => b.classList.toggle('active', b.dataset.m === S.metric));
   const Y = D.summary, g = Y.groups;
@@ -709,7 +752,7 @@ function renderDeposits() {
   const unit = { day: 'day', week: 'week (Mon)', month: 'month' }[S.gran];
   $('d-port-title').textContent = perf ? 'Portfolio return, deposits excluded (% since first deposit)' : 'Portfolio value (kr) vs. money put in';
   $('dep-hint').textContent = `${S.idx.size ? (perf ? 'Index lines show the price return of each index since the first deposit, in SEK. ' : 'Index lines show what your deposits would be worth had each one bought the index that day. ') : ''}One column per ${unit}. The portfolio and positions lines show the level at the end of each ${unit}. Hover any chart: the other two follow.`;
-  $('dep-legend').innerHTML = `<span class="swatch" style="background:${DEP.dep}"></span>Deposits <span class="swatch" style="background:${DEP.port}"></span>${perf ? 'Return excl. deposits' : 'Estimated portfolio value'} ${perf ? '' : `<span class="swatch" style="background:${DEP.net}"></span>Net deposited so far`} <span class="swatch" style="background:${DEP.held}"></span>Positions held. Value is estimated from your own trade prices (see below), not from a price feed.`;
+  $('dep-legend').innerHTML = `<span class="swatch" style="background:${DEP.dep}"></span>Deposits <span class="swatch" style="background:${DEP.port}"></span>${perf ? 'Return excl. deposits' : 'Portfolio value'} ${perf ? '' : `<span class="swatch" style="background:${DEP.net}"></span>Net deposited so far`} <span class="swatch" style="background:${DEP.held}"></span>Positions held. Value = holdings × Yahoo daily closes + cash (see below).`;
   const xs = { grid: { display: false }, offset: true, ticks: { maxTicksLimit: 8, maxRotation: 0 } };
   const ys = { afterFit: sc => { sc.width = 64; }, grid: { color: C.grid } };
   const noX = { ...xs, ticks: { ...xs.ticks, display: false } };
@@ -752,7 +795,7 @@ function renderDeposits() {
   renderDepInsights(D, OV);
 
   $('dep-method').innerHTML = [
-    `<b>Portfolio value</b> = cash + every open position × its SEK price. Prices come from your own trades (each asset is drawn in a straight line from trade to trade and, if still held, to today's price in the holdings export), so moves between your trades are missed. The last day shows ${fmt(D.est_end_value)} kr against ${fmt(D.true_end_value)} kr from the exports; the gap is mostly trades not yet in the ledger.`,
+    '<b>Portfolio value</b> is the account value of each day: the shares you held that day × Yahoo\'s closing price of that day (in kr with that day\'s exchange rate) + the cash balance. It is the same curve as Net Asset Value on the Portfolio page, and its last day is today\'s live valuation, so every page shows the same number. Funds and holdings Yahoo cannot price use your own trade prices, drawn in a straight line between trades.',
     '<b>Return excl. deposits</b> chains the daily change of the portfolio after removing that day\'s deposits and withdrawals (time-weighted), so adding money never looks like a gain. Deposits count on their booking date.',
         'Index overlay (tick the boxes): Yahoo daily closes for ^OMX, ^GSPC and NQ=F, US indexes converted to SEK with USD/SEK, price indices only (no dividends, no fees). Return view = index price return since the first deposit; value view = every deposit/withdrawal invested in the index on its day.',
     'Not investment advice — this describes your past activity only.',
@@ -888,12 +931,6 @@ function renderAdvice() {
   document.querySelectorAll('#adv-profile .chip').forEach(b => b.classList.toggle('active', b.dataset.p === Y.profile));
   $('adv-profile-about').textContent = 'Add / buy back when: ' + Y.profile_about + '. Size, sector and tiny-position rules are the same for all three.';
   $('adv-status').textContent = `Based on ${Y.positions} holdings (${Y.covered} with Yahoo price history), valued ${A.asof.replace('T', ' ')}. Weights are % of holdings.`;
-  $('adv-bt').innerHTML = `<thead><tr><th>Back-test on your holdings, 2021-2026</th><th>Result</th><th>Verdict</th></tr></thead><tbody>
-    <tr><td>Old "Strong Buy" score, next day</td><td>avg −0.25%, up only 43% of days (all days: +0.14%, 53%)</td><td class="neg">No edge, removed</td></tr>
-    <tr><td>Old score vs next 21 / 63 days (rank correlation)</td><td>−0.03 / −0.05</td><td class="neg">Slightly wrong way round</td></tr>
-    <tr><td>"Trim when overbought" (RSI>75 or far above 50-day)</td><td>next 63 days +15.3% vs +9.6% for the rest</td><td class="neg">Would have sold winners, not used</td></tr>
-    <tr><td>Add: uptrend + pulled back 5-25% + RSI&lt;68</td><td>next 63 days +12.8% vs +10.5% for all</td><td>Small tilt, used lightly</td></tr>
-    <tr><td>Broken trend (below 200-day, negative momentum)</td><td>next 63 days +12.9% vs +10.5%</td><td>No sell edge: flag for review only</td></tr></tbody>`;
   const sev = { high: 'ACT', med: 'WATCH', info: 'NOTE' };
   $('adv-cards').innerHTML = A.cards.map(c => `<div class="finding"><h4><span class="sev ${c.sev}">${sev[c.sev] || 'NOTE'}</span>${esc(c.title)}</h4><div class="num">${esc(c.num)}</div><p>${esc(c.text)}</p></div>`).join('');
 
@@ -915,7 +952,7 @@ function renderAdvice() {
   table('tb-trim', head, by(['TRIM']), 'No position breaks the size or theme limits.');
   table('tb-cons', head, by(['CONSOLIDATE', 'REVIEW'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.amount - x.amount), 'Nothing to consolidate.');
   $('adv-method').innerHTML = [
-    '<b>TRIM</b>: a position above 4% of holdings is cut back to 4%; in a theme above 40% the holdings of 2.5% or more give back a fifth. Risk rules only; overbought or "extended" is NOT a trim reason (the back-test says it would have hurt).',
+    '<b>TRIM</b>: a position above 4% of holdings is cut back to 4%; in a theme above 40% the holdings of 2.5% or more give back a fifth. Risk rules only: a stock that is overbought or "extended" is not trimmed for that reason, because strong stocks often keep rising.',
     '<b>ADD</b>: weight under 1.5%, price above its 200-day with the 50-day above it, positive 12-1 month momentum, 5-25% below the 52-week high, RSI under 68, and the theme not over its cap. Fill to about 2% in orders of at least 1 500 kr. Score = momentum rank, pullback depth and low volatility.',
     '<b>BUY BACK</b>: same trend and pullback test applied to positions you have closed (so a good exit is not a lost opportunity), at least 7 days after your last sell, in one order of about 1.5% of the portfolio. The sell price and today\'s price are shown when both are in the same currency.',
     '<b>CONSOLIDATE</b>: under 1 500 kr. A round trip costs about 16 kr courtage and the position cannot change the result; sell it or top it up.',
@@ -1033,7 +1070,10 @@ function setTab(tab) {
   if (S.data) renderTab();
 }
 function tabFromHash() { const h = location.hash.slice(1); return ['habits', 'deposits', 'dividends', 'advice'].includes(h) ? h : 'assets'; }
-function renderTab() { ({ assets: renderAssets, habits: renderHabits, deposits: renderDeposits, dividends: renderDividends, advice: renderAdvice })[S.tab](); }
+function renderTab() {
+  S.tabValue = S.data.insights.overview.total_value;
+  ({ assets: renderAssets, habits: renderHabits, deposits: renderDeposits, dividends: renderDividends, advice: renderAdvice })[S.tab]();
+}
 
 // nothing is fetched or read from per-user storage before auth.js knows who is signed in
 (window.TV ? TV.ready : Promise.resolve()).then(() => {
@@ -1041,4 +1081,5 @@ function renderTab() { ({ assets: renderAssets, habits: renderHabits, deposits: 
   setTab(tabFromHash());
   load(true);
   setInterval(() => load(false), POLL_MS);
+  setInterval(refreshSnapshot, SNAP_MS);
 });

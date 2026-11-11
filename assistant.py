@@ -1022,6 +1022,17 @@ def a_exdiv(c):
     return f"{a['name']}: no upcoming ex-dividend date in Yahoo yet" + (f" (last was {_dshort(ex)})." if ex else '.')
 
 
+@intent('nav_growth', 'portfolio', 'fact', ['net asset value', 'nav', 'growth curve', 'portfolio growth', 'how much has my portfolio grown', 'ytd', 'year to date', 'return this year', 'growth this year', 'performance this year', 'return last month', 'time weighted return', 'twr', 'how has my portfolio performed', 'portfolio performance'],
+        'How much has my portfolio grown this year?', 'portfolio')
+def f_nav(c):
+    s = c.p.get('nav')
+    if not isinstance(s, dict) or not s.get('ranges'):
+        raise Missing('the growth curve (open the Portfolio page once so it can load)')
+    r = s['ranges']
+    return two(f"Net asset value {kr(s['nav'])}. This year {pc(r['ytd']['twr_pct'], 1, True)}, last month {pc(r['1m']['twr_pct'], 1, True)} (time-weighted: deposits are not growth).",
+               f"Since {s['first_date']}: {pc(r['max']['twr_pct'], 1, True)}, worst drop {pc(r['max']['max_drop_pct'])}; {kr(s['net_deposits'])} deposited.")
+
+
 @intent('asset_summary', 'asset', 'fact', ['how is', 'tell me about', 'about', 'info', 'status'], 'How is Micron doing?', 'assets', asset=True)
 def a_summary(c):
     a = c.asset

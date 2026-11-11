@@ -97,6 +97,7 @@
           <label class="chip"><input type="checkbox" value="spx"> S&amp;P 500</label>
           <label class="chip"><input type="checkbox" value="nq"> Nasdaq 100 futures (NQ=F)</label></div></div>
       </div>
+      <p class="hint" id="dep-pending" hidden>Building the history from Yahoo daily prices… the value and return lines refresh by themselves when it is ready.</p>
       <p class="hint" id="dep-hint"></p>
       <section class="panel dep-stack">
         <h3>Deposits (kr)</h3><div class="cv dep-a"><canvas id="d-dep"></canvas></div>
@@ -139,11 +140,7 @@
     </div>
 
     <div id="tab-advice" hidden>
-      <section class="panel honest">
-        <h3>What this is (and is not)</h3>
-        <p>Rule-based <b>position management</b>, not a price forecast. The old "Tomorrow's Signals" score was back-tested on your 77 holdings (5 years of Yahoo daily data) and had <b>no predictive power</b>, so it was replaced. What is left is what can be measured and controlled: position size, theme concentration, tiny positions and fees, volatility, and trend health as a light tilt. Not investment advice.</p>
-        <table class="bt" id="adv-bt"></table>
-      </section>
+      <p class="hint" id="adv-intro">Rule-based position management from size, sector concentration, tiny positions and trend health. It is not a price forecast and not investment advice.</p>
       <div class="dep-controls">
         <div><span class="lbl">Entry rules for Add and Buy back</span><div class="chips" id="adv-profile">
           <button class="chip" data-p="conservative">Conservative</button><button class="chip active" data-p="balanced">Balanced</button><button class="chip" data-p="aggressive">Aggressive</button></div></div>

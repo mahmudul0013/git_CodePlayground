@@ -40,7 +40,7 @@ TradingView.com — professional dark-themed trading interface.
 │          │  HEADER: Logo + Nav Tabs + Currency Toggle   │
 │ SIDE     ├──────────────────────────────────────────────┤
 │ WATCH-   │  SUMMARY CARDS ROW                           │
-│ LIST     │  [Total Value] [Day P&L] [Total Return] [FX] │
+│ LIST     │  [Account value] [Today's P&L] [All-time result] [FX] │
 │          ├──────────────────────────────────────────────┤
 │          │  STOCKS TABLE (SEK | USD tabs)               │
 │          │  ─────────────────────────────               │
@@ -104,7 +104,7 @@ KPI row (privacy-masked), a Day / Week / Month chip row, a stacked column chart 
 
 ### Advice tab and the Add / trim column
 - Action badges (`.adv`): ADD green, BUY BACK blue, TRIM gold, CONSOLIDATE purple, REVIEW red, HOLD grey. The kr amount sits under the badge (`.adv-amt`, masked by privacy). The tooltip holds the reasons.
-- A gold-edged "What this is (and is not)" panel with the back-test table sits at the top; the entry-profile chips (Conservative / Balanced / Aggressive) follow, then risk cards, a theme bar (red above the 40% cap) and the action tables.
+- A one-line note (rule-based, not a forecast, not advice) sits at the top; the entry-profile chips (Conservative / Balanced / Aggressive) follow, then risk cards, a theme bar (red above the 40% cap) and the action tables.
 - Assets table: no horizontal scrolling at 1100-1440 px with 13 px text. Type and Ccy share one column, Last buy / Last sell are gone, and below 1360 px the Bought / Sold columns hide (CSS `nth-child` 7 and 8; keep those positions if columns change).
 
 ### Cards
@@ -131,6 +131,14 @@ Summary cards, Add / Trim Ideas (two panels: add or buy back, trim / consolidate
 - Diverging colour: red `rgb(192,64,62)` to neutral `rgb(58,63,80)` to green `rgb(27,138,127)`; saturates at +-3 % (today) or +-25 % (unrealised). Missing data is neutral grey. Tile text is white; names truncate, and the % is shown only when the tile is large enough.
 - Hover tooltip: name, value, weight, today, unrealised, sector / industry / type / country.
 - Status line with a live dot (green = live Yahoo prices, grey = export values only).
+
+## Net Asset Value Curve (Portfolio page)
+
+One chart space above Add / Trim Ideas. Controls: single-choice **range** chips (1W 1M 3M YTD 1Y 3Y Max) and a **view** switch (Value kr / Growth %) in `.nav-seg` radio groups; **category** checkboxes (`.nav-cat` pills, a colour dot doubles as the legend, share of holdings in grey) with a fixed Total NAV pill; four KPI tiles above the chart.
+- Data-visualisation rules: line chart, no smoothing; value axis starts at 0 or just under the lowest point, growth axis has a 0 % reference line; the whole account is a thick near-white line, categories use the fixed categorical palette in selection order so no two selected curves share a colour (max 8 at once); net deposits are a thin dashed grey step line; shared tooltip with the date and every selected curve, sorted high to low; crosshair; compact axis labels (`330k kr`); `aria-label` on the canvas summarises the range.
+- Colours: whole account = white (3 px), money deposited = gold dashed step line, area between them green (gain) / red (loss); categories use 8 bright, well separated hues on the dark background in selection order (blue, orange, green, violet, pink, cyan, lime, red; the 6th to 8th also get dashed styles); white and gold are never used for categories. Every line is labelled at its right end (skipped below 520 px wide, where the pills are the legend).
+- Smoothing: Off / Light (radius 2) / Strong (radius 5) triangular moving average, drawing only, end points exact, monotone curve, tooltip shows the exact value and the gain versus deposited.
+- Fluid: chart height `clamp(240px, 34vw, 420px)` (`clamp(220px, 62vw, 300px)` on phones), KPI tiles 4 / 2 columns, chips wrap, tap targets 40 px on small or touch screens, privacy mode hides the kr axis, tooltip and kr tiles.
 
 ## Accounts, Help and Responsive Rules
 

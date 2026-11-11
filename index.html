@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="auth.css">
   <link rel="stylesheet" href="assistant.css">
   <link rel="stylesheet" href="help.css">
+  <link rel="stylesheet" href="nav.css">
   <link rel="stylesheet" href="responsive.css">
   <script src="auth.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -84,7 +85,7 @@
         <!-- Summary Cards -->
         <section id="summary-cards">
           <div class="card">
-            <div class="card-label">Total Portfolio Value</div>
+            <div class="card-label">Account value</div>
             <div class="card-value" id="cv-total">—</div>
             <div class="card-sub" id="cv-total-alt">—</div>
           </div>
@@ -94,7 +95,7 @@
             <div class="card-sub" id="cv-day-pct">—</div>
           </div>
           <div class="card">
-            <div class="card-label">Total Return</div>
+            <div class="card-label">All-time result</div>
             <div class="card-value" id="cv-return">—</div>
             <div class="card-sub" id="cv-return-pct">—</div>
           </div>
@@ -102,6 +103,33 @@
             <div class="card-label">USD/SEK Rate</div>
             <div class="card-value" id="cv-usdsek">—</div>
             <div class="card-sub" id="cv-allocation">EU: —% / US: —%</div>
+          </div>
+        </section>
+        <p class="valuation-status" id="valuation-status">Valuing the portfolio with live prices…</p>
+
+        <!-- Net asset value growth curve: time range x view x categories (nav.js, data from /api/nav) -->
+        <section id="nav-section" aria-label="Net asset value growth">
+          <div class="pred-header">
+            <h2 class="section-title">Net Asset Value
+              <span class="pred-badge" id="nav-badge">Loading…</span>
+            </h2>
+            <span class="pred-meta">Your account over time · pick a range, a view and any categories to compare</span>
+          </div>
+          <div class="nav-card">
+            <div class="nav-bar">
+              <div class="nav-seg" id="nav-range" role="radiogroup" aria-label="Time range"></div>
+              <div class="nav-right">
+                <div class="nav-seg" id="nav-mode" role="radiogroup" aria-label="Show value or growth"></div>
+                <div class="nav-smooth"><span class="nav-lab" id="nav-smooth-lab">Smooth</span><div class="nav-seg" id="nav-smooth" role="radiogroup" aria-labelledby="nav-smooth-lab"></div></div>
+              </div>
+            </div>
+            <div class="nav-kpis" id="nav-kpis"></div>
+            <div class="nav-cv">
+              <canvas id="nav-chart" role="img" aria-label="Net asset value over time"></canvas>
+              <div class="nav-empty" id="nav-empty" hidden>Building your history from Yahoo daily prices…</div>
+            </div>
+            <div class="nav-cats" id="nav-cats" role="group" aria-label="Categories to show"></div>
+            <p class="nav-note" id="nav-note"></p>
           </div>
         </section>
 
@@ -232,6 +260,7 @@
 
   <script src="app.js"></script>
   <script src="heatmap.js"></script>
+  <script src="nav.js"></script>
   <script src="assistant.js"></script>
   <script src="help.js"></script>
 </body>

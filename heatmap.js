@@ -1,11 +1,12 @@
 /* ============================================================
    PORTFOLIO HEAT MAP - heatmap.js (Portfolio page, "Heat map" tab)
-   Tiles = current holdings from /api/assets (Nordnet holdings export + ledger),
-   sector / fund category from /api/sectors (Yahoo Finance via sectors.py).
+   Values, day change and unrealised result come from /api/snapshot (valuation.py: the one valuation of the whole app, the
+   browser prices nothing itself); /api/assets only adds metadata (type, country); sector / fund category from /api/sectors
+   (Yahoo Finance via sectors.py).
    ============================================================ */
 'use strict';
 const Heat = (() => {
-const S = { live: null, sig: null, timers: [], data: null, heat: { group: 'cat', color: 'day' }, sectors: null, charts: {}, tab: '' };
+const S = { snap: null, sig: null, timers: [], data: null, heat: { group: 'cat', color: 'day' }, sectors: null, charts: {}, tab: '' };
 const C = { s: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'], other: '#5d6170', grid: '#2A2E39' };
 const COUNTRY = { US: 'United States', SE: 'Sweden', NO: 'Norway', DE: 'Germany', GB: 'United Kingdom',
   IE: 'Ireland', LU: 'Luxembourg', NL: 'Netherlands', FI: 'Finland', DK: 'Denmark', CA: 'Canada',
@@ -111,8 +112,8 @@ function squarify(items, x, y, w, h) {
 function heatGroups() {
   const keyFn = { cat: heatCategory, type: a => a.type, country: a => COUNTRY[a.domicile] || a.domicile }[S.heat.group];
   const mk = S.heat.color === 'day' ? 'day_pct' : 'unrealized_pct';
-  const held = liveAssets().filter(a => a.value > 0);   // also today's buys the ledger does not show yet
-  const total = held.reduce((s, a) => s + a.value, 0);
+  const held = holdings();
+  const total = S.snap ? S.snap.totals.holdings : held.reduce((s, a) => s + a.value, 0);
   const m = new Map();
   for (const a of held) {
     const k = keyFn(a) || 'Unclassified';
@@ -120,7 +121,7 @@ function heatGroups() {
     const g = m.get(k);
     g.v += a.value; g.items.push({ a, v: a.value, m: a[mk] });
     g.pnl += a.unrealized || 0;
-    g.day += a.day_pct != null ? a.value * a.day_pct / 100 / (1 + a.day_pct / 100) : 0;   // today's change in kr
+    g.day += a.day_pnl || 0;                                                        // today's change in kr (snapshot)
   }
   const groups = [...m.values()].sort((x, y) => y.v - x.v);
   for (const g of groups) {
@@ -128,7 +129,7 @@ function heatGroups() {
     g.weight = g.v / total * 100;
     g.metric = g.items.reduce((s, i) => s + (i.m ?? 0) * i.v, 0) / g.v;       // value-weighted average of the colour metric
   }
-  return { groups, total, held: held.length };
+  return { groups, total, held: S.snap ? S.snap.totals.positions : held.length };
 }
 
 function renderHeat() {
@@ -195,44 +196,28 @@ function renderHeat() {
     `Biggest ${plural}: ${top3.map(g => `<b>${esc(g.name)}</b> ${g.weight.toFixed(0)}%`).join(', ')} — together ${top3.reduce((s, g) => s + g.weight, 0).toFixed(0)}% of the portfolio.`,
     `Biggest holdings: ${topAsset.map(i => `${esc(i.a.name)} ${(i.v / total * 100).toFixed(1).replace('.', ',')}%`).join(', ')}.`,
     `Spread across ${groups.length} ${plural} (concentration index ${hhi.toFixed(2).replace('.', ',')}; 1 = everything in one, ${(1 / groups.length).toFixed(2).replace('.', ',')} = perfectly even).`,
-    S.heat.color === 'day' ? `Today the portfolio moved about <span class="pv">${sgn(dayKr)} kr</span> (from the holdings export's day change).` : `Open positions are <span class="pv">${sgn(groups.reduce((s, g) => s + g.pnl, 0))} kr</span> vs. your average cost.`,
+    S.heat.color === 'day' ? `Today the portfolio moved about <span class="pv">${sgn(dayKr)} kr</span> (live day changes where available).` : `Open positions are <span class="pv">${sgn(groups.reduce((s, g) => s + g.pnl, 0))} kr</span> vs. your average cost.`,
   ].map(x => `<li>${x}</li>`).join('');
 }
 
 
-// ───────── live prices (Yahoo) on top of the CSV holdings ─────────
-// Holdings export gives quantity, cost and the price at export time. A live Yahoo quote replaces the day change, and
-// (same currency only) rescales the market value and unrealised P&L by live price / export price.
-function liveAssets() {
-  const q = S.live && S.live.quotes || {};
-  return S.data.assets.map(a => {
-    const l = q[a.isin];
-    if (!l || !a.value) return a;
-    // Yahoo fund pages (0P...) carry a NAV from another day than Nordnet's: keep the export for those
-    if (/^0P/.test(l.symbol || '')) return a;
-    const sameCcy = String(l.currency || '').toUpperCase() === String(a.ccy || '').toUpperCase();
-    const ratio = a.price ? l.price / a.price : null;
-    // same currency but a very different price = Yahoo symbol is another instrument: do not trust it at all
-    if (sameCcy && !(ratio > .5 && ratio < 2)) return a;
-    const out = { ...a, live: true, day_pct: l.change_pct ?? a.day_pct, live_price: l.price, live_ccy: l.currency };
-    if (sameCcy) {                                   // rescale value and unrealised P&L by live / export price
-      const cost = a.value - a.unrealized;
-      out.value = a.value * ratio;
-      out.unrealized = out.value - cost;
-      out.unrealized_pct = cost > 0 ? out.unrealized / cost * 100 : a.unrealized_pct;
-    }
-    return out;
-  });
+// ───────── the holdings to draw: snapshot values joined with the /api/assets metadata ─────────
+function holdings() {
+  const meta = new Map((S.data.assets || []).map(a => [a.isin, a]));
+  if (!S.snap) return (S.data.assets || []).filter(a => a.value > 0);            // snapshot not loaded: /api/assets is already valued by the server
+  return Object.entries(S.snap.assets).filter(([, x]) => x.value > 0).map(([isin, x]) => ({ ...(meta.get(isin) || {}), isin, name: x.name, type: x.type || (meta.get(isin) || {}).type,
+    value: x.value, unrealized: x.unrealized, unrealized_pct: x.unrealized_pct, day_pct: x.day_pct, day_pnl: x.day_pnl, live: x.live }));
 }
 
 function status() {
   const el = $('heat-status');
   if (!S.data) return;
-  const la = liveAssets(), n = la.filter(a => a.value > 0).length, k = la.filter(a => a.live).length;
-  const t = S.live && S.live.asof ? S.live.asof.slice(11, 19) : null;
-  const f = S.data.sources && S.data.sources.holdings;
-  el.innerHTML = `<span class="dot ${k ? 'live' : ''}"></span>${k ? `Live Yahoo prices for ${k} of ${n} holdings · updated ${t}` : 'Live prices unavailable — showing the holdings export'}`
-    + ` · holdings file: ${esc(f ? f.file : 'none')}. Nordnet funds and holdings Yahoo can't match keep the export values.`;
+  const t = S.snap && S.snap.totals;
+  if (!t) { el.innerHTML = '<span class="dot"></span>Valuation not loaded yet.'; return; }
+  const when = S.snap.asof ? S.snap.asof.slice(11, 16) : '';
+  el.innerHTML = t.live_positions
+    ? `<span class="dot live"></span>Valued ${when} with live prices for ${t.live_positions} of ${t.positions} holdings; the others at the Nordnet export of ${esc(S.snap.export_date || '?')}.`
+    : `<span class="dot"></span>Live prices unavailable; all ${t.positions} holdings at the Nordnet export of ${esc(S.snap.export_date || '?')}.`;
 }
 
 // ───────── load + public API ─────────
@@ -245,32 +230,31 @@ async function getJSON(url) {
 
 async function load() {
   try {
-    S.data = await getJSON('/api/assets');
+    [S.data, S.snap] = await Promise.all([getJSON('/api/assets'), getJSON('/api/snapshot').catch(() => null)]);
     $('heat-error').hidden = true;
     renderHeat();
     status();
-    refreshLive();
   } catch (e) {
     $('heat-error').hidden = false;
     $('heat-error').textContent = 'Could not load holdings: ' + e.message + '. Start the app with python server.py.';
   }
 }
 
-async function refreshLive() {
+async function refreshValuation() {
   if (S.tab !== 'heatmap' || !S.data) return;
   try {
-    S.live = await getJSON('/api/live');
+    S.snap = await getJSON('/api/snapshot');
     renderHeat();
     status();
-  } catch (e) { /* keep the last prices; the status line shows what is current */ }
+  } catch (e) { /* keep the last valuation; the status line shows when it was made */ }
 }
 
-// while the tab is open: new CSV on disk -> reload holdings; every 30 s -> fresh Yahoo prices
+// while the tab is open: new CSV on disk -> reload holdings; every 30 s -> fresh valuation
 async function checkCsv() {
   if (S.tab !== 'heatmap') return;
   try {
     const sig = JSON.stringify(await getJSON('/api/trades/status'));
-    if (S.sig && sig !== S.sig) { S.sig = sig; S.sectors = null; S.live = null; await load(); return; }
+    if (S.sig && sig !== S.sig) { S.sig = sig; S.sectors = null; S.snap = null; await load(); return; }
     S.sig = sig;
   } catch (e) { /* server briefly busy */ }
 }
@@ -281,7 +265,7 @@ function show() {
   checkCsv();                       // baseline signature of the CSV files
   load();
   S.timers.forEach(clearInterval);
-  S.timers = [setInterval(checkCsv, 10000), setInterval(refreshLive, 30000)];
+  S.timers = [setInterval(checkCsv, 10000), setInterval(refreshValuation, 30000)];
 }
 function hide() { S.tab = ''; S.timers.forEach(clearInterval); S.timers = []; }
 
@@ -289,7 +273,7 @@ function bind() {
   $('heat-group').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.heat.group = b.dataset.g; renderHeat(); } });
   $('heat-color').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.heat.color = b.dataset.c; renderHeat(); } });
   window.addEventListener('resize', () => { if (S.tab === 'heatmap') renderHeat(); });
-  $('heat-refresh').addEventListener('click', () => { S.sectors = null; S.live = null; load(); });
+  $('heat-refresh').addEventListener('click', () => { S.sectors = null; S.snap = null; load(); });
 }
 bind();
 return { show, hide };

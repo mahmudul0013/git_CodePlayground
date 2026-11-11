@@ -991,13 +991,14 @@ def dividend_analysis(ledger, assets, net_deposits, all_time_pnl, today=None):
     }
 
 
-def deposit_behavior(trades, cash_events, assets, holdings_value, cash_balance):
-    """Daily series of deposits, positions held, estimated portfolio value and a return index that
+def deposit_behavior(trades, cash_events, assets, holdings_value, cash_balance, nav_by_day=None):
+    """Daily series of deposits, positions held, portfolio value and a return index that
     ignores deposits (so a deposit never looks like a gain), plus one row per deposit day.
 
-    No historical price feed is used: each position is priced from your own trades (SEK per share) and,
-    for assets still held, drawn in a straight line to today's price from the holdings export. The
-    curve is an estimate - it misses moves between your trades."""
+    Without `nav_by_day` no price feed is used: each position is priced from your own trades (SEK per share) and,
+    for assets still held, drawn in a straight line to today's price from the holdings export (an estimate - it misses
+    moves between your trades). With `nav_by_day` {iso date: net asset value} (nav.py, real daily closes anchored to the live
+    valuation) the value and the return index are those real numbers, so this tab agrees with the Portfolio page."""
     if not cash_events and not trades:
         return None
     flow = defaultdict(float)            # deposits + withdrawals (book date)
@@ -1017,6 +1018,8 @@ def deposit_behavior(trades, cash_events, assets, holdings_value, cash_balance):
     first = min([d for d, _, _ in cash_events] + [t['date'] for t in trades])
     last = max([d for d, _, _ in cash_events] + [t['date'] for t in trades])
     day, end = date.fromisoformat(first), date.fromisoformat(last)
+    if nav_by_day:
+        end = max(end, date.fromisoformat(max(nav_by_day)))        # run to today, where the live valuation sits
 
     pts = defaultdict(list)              # isin -> [(ordinal day, SEK price)]
     for t in trades:
@@ -1049,6 +1052,8 @@ def deposit_behavior(trades, cash_events, assets, holdings_value, cash_balance):
         cash_now += flow[d] + other[d]
         cum_dep += flow[d]
         value = cash_now + sum(q * price_at(i, day.toordinal()) for i, q in qty.items() if q > 1e-6 and pts[i])
+        if nav_by_day:
+            value = nav_by_day[d] if d in nav_by_day else prev_v + flow[d]       # weekend / holiday: no market move, only the flow
         if prev_v > 500:
             idx *= (value - flow[d]) / prev_v
         prev_v = value
@@ -1239,7 +1244,14 @@ def _compute_payload(src, base):
         'assets': assets,
         'insights': insights,
         'cashflows': [{'date': d, 'kind': k, 'amount': round(a, 2)} for d, k, a in cash_events if k in ('deposit', 'withdrawal')],
+        '_cash_events': cash_events,          # private: lets the server rebuild the deposit analysis on real daily values; never sent to a browser
     }
+
+
+def rebuild_deposit_behavior(payload, nav_by_day=None):
+    """deposit_behavior() of an (already live-valued) payload, optionally on the real daily net asset values {iso date: kr}."""
+    ov = payload['insights']['overview']
+    return deposit_behavior(payload['trades'], payload['_cash_events'], payload['assets'], ov['holdings_value'], ov['cash_balance'], nav_by_day=nav_by_day)
 
 
 def get_payload(base_dir=None):

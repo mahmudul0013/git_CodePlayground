@@ -9,9 +9,9 @@ Shows all holdings (stocks & funds) categorized by currency domain: SEK (EU) and
 ## Core Features
 
 ### 1. Portfolio Overview Panel
-- Total portfolio value in SEK and USD
+- Account value (holdings + cash) in SEK and USD
 - Daily P&L (today's return in % and absolute value)
-- Total return (all-time) in % and SEK
+- All-time result (account value minus deposits) in % and SEK, with the unrealised part
 - Currency breakdown widget: EU (SEK) vs US (USD) allocation pie chart
 
 ### 2. Holdings Table — Stocks
@@ -125,7 +125,10 @@ Three entry profiles (Conservative / Balanced / Aggressive). Shown on the Portfo
 - Accounts with login (username + password), single-use invite codes from the admin, one private profile per user (own two Nordnet CSVs uploaded in the browser, account number checked inside the files), all on port 8000.
 - Local rule-based chat and search, tile help icons, fluid layout for phones, tablets and desktops.
 
+- **Net asset value growth curve** (Portfolio page): ranges 1W-Max, value or time-weighted growth, per Yahoo-sector curves in one chart.
+
 ## Ideas not done yet
+- Benchmark line (OMXS30 / S&P 500) on the growth curve; ISK / currency-split views of the curve.
 - Optional HTTPS mode; several Nordnet accounts per profile; encryption at rest; Swedish answers in the assistant; follow-up context in the chat.
 - Exact portfolio value history from Yahoo closes per holding (the current history is an estimate).
 - Assets table "Value kr" column rescaled by live prices.

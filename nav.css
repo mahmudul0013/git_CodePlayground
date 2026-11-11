@@ -1,0 +1,56 @@
+/* Net asset value growth curve (Portfolio page, above Add / Trim Ideas). Fluid: everything scales with the screen. */
+#nav-section { margin: 0 16px 16px; }
+.nav-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 10px; }
+
+.nav-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.nav-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.nav-seg button { font: inherit; font-size: 12px; font-weight: 600; min-width: 40px; padding: 5px 10px; line-height: 1.2; color: var(--text-dim); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.nav-seg button:hover { color: var(--text); border-color: var(--accent, #2962FF); }
+.nav-seg button[aria-checked="true"] { color: #fff; background: var(--accent, #2962FF); border-color: var(--accent, #2962FF); }
+.nav-seg button:focus-visible, .nav-cat:focus-within { outline: 2px solid var(--accent, #2962FF); outline-offset: 1px; }
+
+.nav-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.nav-kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; min-width: 0; }
+.nav-kpi .l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); }
+.nav-kpi .v { font-size: clamp(15px, 1.6vw, 19px); font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 1px; overflow-wrap: anywhere; }
+.nav-kpi .s { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.nav-kpi .up { color: var(--green, #26A69A); }
+.nav-kpi .down { color: var(--red, #EF5350); }
+
+.nav-cv { position: relative; height: clamp(240px, 34vw, 420px); }
+.nav-cv canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+.nav-empty[hidden] { display: none; }
+.nav-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; color: var(--text-dim); font-size: 13px; }
+
+.nav-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.nav-cat { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; min-height: 30px; font-size: 12px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; user-select: none; }
+.nav-cat:hover { border-color: var(--accent, #2962FF); }
+.nav-cat input { position: absolute; opacity: 0; pointer-events: none; }
+.nav-cat i { width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex: none; }
+.nav-cat span { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.nav-cat.on { border-color: currentColor; background: rgba(255, 255, 255, .04); }
+.nav-cat.on i { box-shadow: 0 0 0 2px rgba(255, 255, 255, .12); }
+.nav-cat.off { opacity: .55; }
+
+.nav-note { margin-top: 8px; font-size: 11.5px; color: var(--text-dim); line-height: 1.45; }
+.nav-note b { color: var(--text); font-weight: 600; }
+
+@media (max-width: 900px) { .nav-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  #nav-section { margin: 0 10px 14px; }
+  .nav-card { padding: 10px 10px 8px; }
+  .nav-seg button { min-width: 38px; padding: 6px 8px; }
+  .nav-cat { min-height: 36px; }
+  .nav-cv { height: clamp(220px, 62vw, 300px); }
+}
+
+/* touch screens and small windows: comfortable tap targets (40 px) */
+@media (max-width: 900px), (pointer: coarse) {
+  .nav-seg button { min-height: 40px; }
+  .nav-cat { min-height: 40px; padding: 4px 12px; }
+}
+
+/* right-hand controls: view switch + smoothing */
+.nav-right { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.nav-smooth { display: inline-flex; align-items: center; gap: 6px; }
+.nav-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); }

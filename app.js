@@ -230,7 +230,6 @@ const S = {
   funds:         [],   // parsed fund objects
   quotes:        {},   // symbol → { price, changePercent, change }
   sparkData:     {},   // symbol → number[] (closing prices, 7 days)
-  ohlcv:         {},   // symbol → [{t,open,high,low,close,volume}] 30-day
   predictions:   { up: [], down: [] },
   charts:        {},   // canvasId → Chart instance
   displayCur:    'SEK',
@@ -239,8 +238,9 @@ const S = {
   fundsSearch:   '',
   stockSort:     { col: 'value', dir: 'desc' },
   fundsSort:     { col: 'value', dir: 'desc' },
-  autoTicker:    {},   // holding name → Yahoo symbol resolved by the server (ISIN lookup) for names missing in TICKER_MAP
-  liveLoaded:    false, // true after the first live-price fetch (Today's P&L is not shown before that)
+  snap:          null, // GET /api/snapshot: the server's ONE valuation (totals + every holding). The page does no pricing of its own
+  snapByName:    new Map(),   // holding name → snapshot asset
+  snapState:     'loading',   // 'loading' | 'ok' | 'failed'
   fx:            { USD: 9.35, EUR: 10.81, NOK: 0.965, DKK: 1.446, CAD: 6.77 },
   lastBuy:       {},   // name → { qty, price, date } — most-recent purchase detected
   _snapshot:     {},   // previous-load snapshot used for buy detection
@@ -308,10 +308,8 @@ function buildHolding(raw) {
     price,
     value:      qty * price,
     valueSEK,
-    purchaseValueSEK: valueSEK - returnSEK,
     returnPct:  parseSE(raw['Avkast. %']),
     returnSEK,
-    exportValueSEK: valueSEK, exportReturnSEK: returnSEK, exportReturnPct: parseSE(raw['Avkast. %']),   // snapshot, kept to rescale from live prices
     ticker:     null,
     livePrice:  null,
     liveDayPct: null,
@@ -429,11 +427,12 @@ async function reloadPortfolio() {
     const { stocks, funds } = await loadHoldings();
     S.stocks = stocks;
     S.funds  = funds;
+    applySnapshot();                                  // keep the last valuation on the new rows until a fresh one arrives
     S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
     S.funds.forEach(f  => { f.ticker = resolveTickerFor(f); });
     detectAndSaveBuys();
     renderAll();
-    await refreshPrices();
+    await Promise.all([refreshSnapshot(), refreshPrices()]);
   } catch (err) {
     console.error('[reloadPortfolio]', err);
     setStatus('', 'Refresh failed: ' + err.message);
@@ -444,9 +443,16 @@ async function reloadPortfolio() {
 // TICKER RESOLUTION
 // ────────────────────────────────────────────────────────────
 function resolveTickerFor(item) {
+  // Once the server has valued the portfolio its symbol is the only one used (it is the instrument the price comes from);
+  // a holding whose live price is not trusted gets no symbol and therefore no sparkline of some other instrument.
+  if (S.snap) {
+    const a = S.snapByName.get(item.name.trim());
+    return a && a.live ? a.symbol : null;
+  }
+  // before the snapshot arrives (or when it failed): the static map, for sparklines only
   const name  = item.name.trim();
   const entry = TICKER_MAP[name];
-  if (!entry) return S.autoTicker[name] || null;
+  if (!entry) return null;
   if (typeof entry === 'object') {
     return entry[item.currency] || entry.default || Object.values(entry)[0];
   }
@@ -522,77 +528,53 @@ async function fetchSparkline(symbol) {
 }
 
 // ────────────────────────────────────────────────────────────
-// LIVE PRICE UPDATE CYCLE
+// LIVE VALUATION
+// The server (valuation.py) values the portfolio once: GET /api/snapshot. Rows and tiles only copy those numbers.
+// Yahoo quotes fetched here are for the ticker bar and the USD/SEK display rate, never for a holding's value.
 // ────────────────────────────────────────────────────────────
-// Names missing in TICKER_MAP get their Yahoo symbol from the server (same ISIN lookup the heat map uses).
-// Only same-currency listings are accepted so the price shown matches the holding's currency; Nordnet funds (0P...) are skipped.
-let _autoTickerAt = 0;
-async function loadAutoTickers() {
-  if (Date.now() - _autoTickerAt < 10 * 60_000) return;
+function applySnapshot() {
+  if (!S.snap) return;
+  S.snapByName = new Map(Object.values(S.snap.assets).map(a => [a.name.trim(), a]));
+  [...S.stocks, ...S.funds].forEach(r => {
+    const a = S.snapByName.get(r.name.trim());
+    if (!a) return;                                   // e.g. an export row without a position: keeps its export numbers
+    r.valueSEK   = a.value;
+    r.returnSEK  = a.unrealized;
+    r.returnPct  = a.unrealized_pct;
+    r.dayChange  = a.day_pct;
+    r.liveDayPct = a.day_pct;
+    r.livePrice  = a.live ? a.price : null;
+  });
+}
+
+async function refreshSnapshot() {
   try {
-    const [a, l] = await Promise.all([fetch('/api/assets', { cache: 'no-store' }).then(r => r.json()),
-                                      fetch('/api/live', { cache: 'no-store' }).then(r => r.json())]);
-    for (const x of a.assets || []) {
-      const q = l.quotes && l.quotes[x.isin];
-      if (q && !/^0P/.test(q.symbol) && String(q.currency || '').toUpperCase() === String(x.ccy || '').toUpperCase()) S.autoTicker[x.name.trim()] = q.symbol;
-    }
-    _autoTickerAt = Date.now();
-  } catch (e) { console.warn('[autoTicker]', e.message); }
+    const r = await fetch('/api/snapshot', { cache: 'no-store' });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.message || d.error || ('HTTP ' + r.status));
+    S.snap = d;
+    S.snapState = 'ok';
+    applySnapshot();
+    setStatus('live', 'Live · ' + d.asof.slice(11, 19) + (S.holdingsFile ? ' · ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
+  } catch (e) {
+    console.warn('[snapshot]', e.message);
+    if (!S.snap) S.snapState = 'failed';              // a failed refresh keeps the last good snapshot
+    setStatus('', S.snap ? 'Live prices: refresh failed, showing the last valuation' : 'Live prices unavailable');
+  }
+  S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
+  S.funds.forEach(f  => { f.ticker = resolveTickerFor(f); });
+  renderAll();
 }
 
 async function refreshPrices() {
-  setStatus('loading', 'Fetching prices…');
-  await loadAutoTickers();
-
-  // Assign tickers
-  S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
-  S.funds.forEach(f  => { f.ticker = resolveTickerFor(f); });
-
-  const allSymbols = [
-    ...new Set([
-      ...S.stocks.filter(s => s.ticker).map(s => s.ticker),
-      ...CFG.tickerSymbols,
-    ]),
-  ];
-
-  // Batch fetch (15 per request)
-  const BATCH = 15;
-  for (let i = 0; i < allSymbols.length; i += BATCH) {
-    const results = await fetchQuotesBatch(allSymbols.slice(i, i + BATCH));
-    results.forEach(q => {
-      S.quotes[q.symbol] = {
-        price:         q.regularMarketPrice,
-        changePercent: q.regularMarketChangePercent,
-        change:        q.regularMarketChange,
-      };
-    });
-    if (i + BATCH < allSymbols.length) await sleep(250);
-  }
-
-  // Update live FX rate
+  // ticker bar + the USD/SEK rate used by the SEK/USD display toggle
+  const results = await fetchQuotesBatch(CFG.tickerSymbols);
+  results.forEach(q => {
+    S.quotes[q.symbol] = { price: q.regularMarketPrice, changePercent: q.regularMarketChangePercent, change: q.regularMarketChange };
+  });
   const usdSek = S.quotes['USDSEK=X'];
   if (usdSek?.price) S.fx.USD = usdSek.price;
-
-  // Propagate live prices into stock objects
-  S.stocks.forEach(s => {
-    if (s.ticker && S.quotes[s.ticker]) {
-      s.livePrice  = S.quotes[s.ticker].price;
-      s.liveDayPct = S.quotes[s.ticker].changePercent;
-      // Value and return follow the live price (the export is a snapshot from the day it was made). A quote more than
-      // 2x off the export price is a wrong Yahoo symbol or a different currency, so the export values stay.
-      const ratio = s.price > 0 ? s.livePrice / s.price : null;
-      if (ratio > .5 && ratio < 2) {
-        s.valueSEK  = s.exportValueSEK * ratio;
-        s.returnSEK = s.exportReturnSEK + (s.valueSEK - s.exportValueSEK);
-        const cost  = s.valueSEK - s.returnSEK;
-        s.returnPct = cost > 0 ? s.returnSEK / cost * 100 : s.exportReturnPct;
-      }
-    }
-  });
-
-  S.liveLoaded = true;
   renderAll();
-  setStatus('live', 'Live · ' + new Date().toLocaleTimeString() + (S.holdingsFile ? ' · ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
 }
 
 // Sparklines — fetched lazily in the background after first render
@@ -766,51 +748,53 @@ function renderTickerBar() {
 // RENDER — SUMMARY CARDS
 // ────────────────────────────────────────────────────────────
 function renderSummaryCards() {
-  const totalSEK  = S.stocks.reduce((a, s) => a + s.valueSEK, 0)
-                  + S.funds.reduce((a, f)  => a + f.valueSEK, 0);
-  const returnSEK = S.stocks.reduce((a, s) => a + s.returnSEK, 0)
-                  + S.funds.reduce((a, f)  => a + f.returnSEK, 0);
-  const costSEK   = totalSEK - returnSEK;
-  const retPct    = costSEK > 0 ? (returnSEK / costSEK) * 100 : 0;
-
-  // Day P&L (use live day% when available)
-  let dayPnL = 0;
-  S.stocks.forEach(s => {
-    const pct = (s.liveDayPct ?? s.dayChange) || 0;
-    dayPnL += s.valueSEK * (pct / 100);
-  });
-  S.funds.forEach(f => { dayPnL += f.valueSEK * ((f.dayChange || 0) / 100); });
-  const dayPct = totalSEK > 0 ? (dayPnL / totalSEK) * 100 : 0;
-
-  // Allocation (EU = non-USD stocks + funds; US = USD stocks)
-  const euSEK = S.stocks.filter(s => s.currency !== 'USD').reduce((a, s) => a + s.valueSEK, 0)
-              + S.funds.reduce((a, f) => a + f.valueSEK, 0);
-  const usSEK = S.stocks.filter(s => s.currency === 'USD').reduce((a, s) => a + s.valueSEK, 0);
-  const euPct = totalSEK ? ((euSEK / totalSEK) * 100).toFixed(0) : 0;
-  const usPct = totalSEK ? ((usSEK / totalSEK) * 100).toFixed(0) : 0;
-
-  // Set values
-  setText('cv-total',    displayAmt(totalSEK));
-  setText('cv-total-alt', S.displayCur === 'SEK'
-    ? `≈ $${fmtNum(totalSEK / S.fx.USD)}`
-    : `≈ ${fmtNum(totalSEK)} kr`);
-
-  // Before the first live fetch only the export's "Idag %" exists, and Nordnet writes ~0 there on weekends and
-  // outside trading hours - showing that would look like a flat day. Wait for live prices instead.
-  if (S.liveLoaded) {
-    setCard('cv-day',    displayAmt(dayPnL), pctClass(dayPnL));
-    setCard('cv-day-pct', fmtPct(dayPct),   pctClass(dayPct), true);
+  const t = S.snap && S.snap.totals;
+  const sub = html => { const el = document.getElementById('cv-total-alt'); if (el) el.innerHTML = html; };
+  if (t) {
+    // Account value = holdings + cash; All-time result = account value - net deposits; Today's P&L on yesterday's value.
+    // Every figure is the server's (valuation.py); nothing is summed from the table rows.
+    const alt = S.displayCur === 'SEK' ? `≈ $${fmtNum(t.account / S.fx.USD)}` : `≈ ${fmtNum(t.account)} kr`;
+    setCard('cv-total', displayAmt(t.account), '');
+    sub(`<span class="pv">holdings ${displayAmt(t.holdings)} · cash ${displayAmt(t.cash)}</span><br>${alt}`);
+    setCard('cv-day', displayAmt(t.day_pnl), pctClass(t.day_pnl));
+    setCard('cv-day-pct', fmtPct(t.day_pct), pctClass(t.day_pct), true);
+    setCard('cv-return', displayAmt(t.all_time), pctClass(t.all_time));
+    setCard('cv-return-pct', `${fmtPct(t.all_time_pct)} on deposits · unrealised ${displayAmt(t.unrealized)}`, pctClass(t.all_time), true);
   } else {
+    // no valuation yet, or the server could not make one: no number derived from rows is shown as a total
+    const failed = S.snapState === 'failed';
+    const rows = [...S.stocks, ...S.funds];
+    setCard('cv-total', failed ? displayAmt(rows.reduce((a, r) => a + r.valueSEK, 0)) : '—', '');
+    sub(failed ? 'holdings at the Nordnet export · cash not included' : 'loading live prices…');
     setCard('cv-day', '—', '');
-    setCard('cv-day-pct', 'loading live prices…', '', true);
+    setCard('cv-day-pct', failed ? 'unavailable' : 'loading live prices…', '', true);
+    setCard('cv-return', '—', '');
+    setCard('cv-return-pct', failed ? 'unavailable' : 'loading live prices…', '', true);
   }
 
-  setCard('cv-return',     displayAmt(returnSEK), pctClass(returnSEK));
-  setCard('cv-return-pct', fmtPct(retPct),        pctClass(retPct), true);
-
+  // allocation (EU = everything except USD stocks, US = USD stocks), from the snapshot's values
+  let eu = 0, us = 0;
+  if (t) Object.values(S.snap.assets).forEach(a => { if (a.ccy === 'USD' && a.type !== 'Fund') us += a.value; else eu += a.value; });
+  const tot = eu + us;
   setText('cv-usdsek', fmtNum(S.fx.USD, 4) + ' kr');
-  document.getElementById('cv-allocation').innerHTML =
-    `<span class="alloc-eu">EU ${euPct}%</span> · <span class="alloc-us">US ${usPct}%</span>`;
+  document.getElementById('cv-allocation').innerHTML = tot
+    ? `<span class="alloc-eu">EU ${(eu / tot * 100).toFixed(0)}%</span> · <span class="alloc-us">US ${(us / tot * 100).toFixed(0)}%</span>`
+    : '<span class="alloc-eu">EU —%</span> · <span class="alloc-us">US —%</span>';
+  renderValuationStatus();
+}
+
+// One dim line under the tiles that says what the numbers are made of.
+function renderValuationStatus() {
+  const el = document.getElementById('valuation-status');
+  if (!el) return;
+  const exp = (S.snap && S.snap.export_date) || ((S.holdingsFile || '').match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  if (!S.snap) {
+    el.textContent = S.snapState === 'failed' ? `Live prices unavailable, showing the Nordnet export of ${exp || 'an earlier date'}.` : 'Valuing the portfolio with live prices…';
+    return;
+  }
+  const t = S.snap.totals, extra = S.stocks.length + S.funds.length - t.positions;
+  el.textContent = `Valued ${S.snap.asof.slice(11, 16)} with live prices for ${t.live_positions} of ${t.positions} holdings; the others at the Nordnet export of ${exp}.`
+    + (extra > 0 ? ` ${extra} export row${extra > 1 ? 's' : ''} without a position ${extra > 1 ? 'are' : 'is'} listed but not counted.` : '');
 }
 
 function setText(id, val) {
@@ -1007,28 +991,6 @@ function fundRow(f) {
 // ────────────────────────────────────────────────────────────
 
 /** Fetch ~60 trading days OHLCV (MACD needs 35+ days) */
-async function fetchOHLCV(symbol) {
-  const url = `${CFG.yahooBase}/v8/finance/chart/${symbol}?interval=1d&range=3mo&includePrePost=false`;
-  try {
-    const d = await yahooGet(url);
-    const r = d?.chart?.result?.[0];
-    if (!r) return null;
-    const ts = r.timestamp || [];
-    const q  = r.indicators?.quote?.[0] || {};
-    const items = ts.map((t, i) => ({
-      t,
-      open:   q.open?.[i]   ?? null,
-      high:   q.high?.[i]   ?? null,
-      low:    q.low?.[i]    ?? null,
-      close:  q.close?.[i]  ?? null,
-      volume: q.volume?.[i] ?? null,
-    })).filter(x => x.close != null && x.high != null && x.low != null);
-    return items.length >= 20 ? items : null;
-  } catch (_) {
-    return null;
-  }
-}
-
 /** Build EMA series starting after the seed period */
 function emaArray(data, period) {
   if (data.length < period) return [];
@@ -1344,10 +1306,10 @@ async function init() {
     renderAll();
     bindEvents();
 
-    setStatus('loading', 'Fetching live prices…');
+    setStatus('loading', 'Valuing the portfolio…');
 
-    // Fetch live prices (async)
-    await refreshPrices();
+    // The server's valuation (rows, tiles) and the ticker bar quotes
+    await Promise.all([refreshSnapshot(), refreshPrices()]);
 
     // Background: load sparklines + prediction signals
     loadSparklines();
@@ -1356,7 +1318,8 @@ async function init() {
     loadReports();
     setInterval(loadReports, 30 * 60_000);
 
-    // Auto-refresh prices every minute
+    // Auto-refresh: the valuation every 30 s (the server caches quotes for 25 s), the ticker bar every minute
+    setInterval(refreshSnapshot, 30_000);
     setInterval(refreshPrices, CFG.refreshMs);
 
     // Auto-reload portfolio CSVs every 5 minutes (picks up the newest Innehav export)

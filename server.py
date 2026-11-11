@@ -41,6 +41,8 @@ import benchmark             # index buy-and-hold comparison (Yahoo daily closes
 import sectors               # sector / fund category per holding (Yahoo)
 import advisor               # rule-based add / trim review (history cache, no forecasts)
 import reports               # upcoming earnings / ex-dividend dates of the holdings (Yahoo calendarEvents)
+import nav                   # net asset value history (total + per category) from the ledger and Yahoo daily closes
+import valuation             # the ONE valuation every page reads (holdings, account value, unrealised, all-time, today's P&L)
 
 PORT = 8000
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -253,6 +255,19 @@ def _held(p):
     return [{'isin': x['isin'], 'name': x['name'], 'ccy': x.get('ccy')} for x in p['assets'] if x.get('value') and x.get('isin')]
 
 
+def _valued(uid):
+    """(payload with live values, snapshot): the single valuation. Everything a user sees that depends on prices is built from this."""
+    p = _payload(uid)
+    snap = valuation.snapshot(p, _live_quotes(_held(p)))
+    return valuation.apply(p, snap), snap
+
+
+def _curve(uid, ap, snap, fetch=True):
+    """Growth curve of this user, last day anchored to the live valuation."""
+    c = nav.get(uid, ap, fetch=fetch) if fetch else nav.cached_curve(uid)
+    return nav.anchored(c, snap) if c else None
+
+
 def _advice(uid, p, live, profile):
     if _supports(advisor.get, 'owner'):
         return advisor.get(p, live, profile, owner=uid)
@@ -264,6 +279,7 @@ def _forget(uid):
     fn = getattr(advisor, 'forget', None)
     if fn:
         fn(uid)
+    nav.forget(uid)                       # the growth curve is rebuilt from the new files
 
 
 def _me(u):
@@ -609,23 +625,39 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         self._json(200, trade_analytics.signature(profiles.profile_dir(user['uid'])))
 
     def r_trades(self, user):
-        self._json(200, _payload(user['uid']))
+        ap, snap = _valued(user['uid'])
+        c = _curve(user['uid'], ap, snap)
+        nb = dict(zip(c['dates'], c['total']['nav'])) if c and c.get('ok') else None
+        ins = dict(ap['insights'])
+        ins['deposit_behavior'] = trade_analytics.rebuild_deposit_behavior(ap, nb)         # real daily values, same as the growth curve
+        out = dict(ap, insights=ins)
+        out.pop('_cash_events', None)
+        out['valuation'] = dict(out['valuation'], history_pending=bool(c and c.get('pending')) or not nb)
+        self._json(200, out)
+
+    def r_snapshot(self, user):
+        _, snap = _valued(user['uid'])
+        self._json(200, snap)
 
     def r_assets(self, user):
-        p = _payload(user['uid'])
-        self._json(200, {'generated': p['generated'], 'sources': p['sources'], 'assets': p['assets']})
+        ap, _ = _valued(user['uid'])
+        self._json(200, {'generated': ap['generated'], 'sources': ap['sources'], 'assets': ap['assets']})
 
     def r_live(self, user):
         p = _payload(user['uid'])
         self._json(200, {'ok': True, 'asof': datetime.now().isoformat(timespec='seconds'), 'quotes': _live_quotes(_held(p))})
 
     def r_advice(self, user):
-        p = _payload(user['uid'])
+        ap, _ = _valued(user['uid'])
         prof = (self.query.get('profile') or [advisor.DEFAULT_PROFILE])[0]
-        self._json(200, _advice(user['uid'], p, _live_quotes(_held(p)), prof if prof in advisor.PROFILES else advisor.DEFAULT_PROFILE))
+        self._json(200, _advice(user['uid'], ap, None, prof if prof in advisor.PROFILES else advisor.DEFAULT_PROFILE))
+
+    def r_nav(self, user):
+        ap, snap = _valued(user['uid'])
+        self._json(200, _curve(user['uid'], ap, snap))
 
     def r_reports(self, user):
-        self._json(200, reports.upcoming(_payload(user['uid'])))
+        self._json(200, reports.upcoming(_valued(user['uid'])[0]))
 
     def r_sectors(self, user):
         p = _payload(user['uid'])
@@ -665,14 +697,15 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
             import assistant                      # optional module (another worker); the question is never logged
         except ImportError:
             raise ApiError(503, 'unavailable', 'The assistant is not installed.')
-        p = _payload(user['uid'])
+        p, snap = _valued(user['uid'])
         try:
             adv = _advice(user['uid'], p, None, advisor.DEFAULT_PROFILE)
         except Exception:
             adv = None
         try:
             try:
-                p = dict(p, reports=reports.upcoming(p, fetch=False))     # cached dates only: asking never waits for Yahoo
+                c = _curve(user['uid'], p, snap, fetch=False)          # cached only: asking never waits for Yahoo
+                p = dict(p, reports=reports.upcoming(p, fetch=False), nav=(c or {}).get('summary'))
             except Exception:
                 pass
             self._json(200, {'ok': True, **assistant.answer(q, p, adv)})
@@ -705,6 +738,8 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         '/api/live':            {'GET':  ('user', 'r_live')},
         '/api/advice':          {'GET':  ('user', 'r_advice')},
         '/api/reports':         {'GET':  ('user', 'r_reports')},
+        '/api/nav':             {'GET':  ('user', 'r_nav')},
+        '/api/snapshot':        {'GET':  ('user', 'r_snapshot')},
         '/api/sectors':         {'GET':  ('user', 'r_sectors')},
         '/api/benchmark':       {'GET':  ('user', 'r_benchmark')},
         '/api/overlay':         {'GET':  ('user', 'r_overlay')},

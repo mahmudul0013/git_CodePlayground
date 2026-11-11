@@ -15,11 +15,13 @@
   // ───────────────────────── label -> question -> fallback ─────────────────────────
   const HELP = [
     // ---- Portfolio page: summary, ideas, tables
-    [/^total portfolio value/, 'what is my total portfolio value', 'Value of all holdings in kr: the Nordnet export rescaled by live Yahoo prices. Cash is not included.'],
-    [/^today s p&l/, "what is today's P&L", 'What your holdings gained or lost today in kr and %, from live day changes weighted by position size.'],
-    [/^total return$/, 'what is total return', 'Unrealised gain or loss on what you hold now (value minus cost). It leaves out sold positions and dividends; Analytics shows the full result.'],
+    [/^total portfolio value/, 'what is my account value', 'Account value = holdings at live prices + cash. The same number everywhere in the app.'],
+    [/^today s p&l/, "what is today's P&L", "Today's P&L = what the holdings gained or lost today, measured on yesterday's value (so -5% of a position is -5% of what it was worth yesterday)."],
+    [/^total return$/, 'what is the all time result', 'All-time result = account value minus all the money you put in (net deposits): your real result, after fees and including dividends.'],
     [/^usd\/sek/, 'what is the usd sek rate', "Today's price of one US dollar in kronor, used to convert USD holdings to SEK."],
     [/^reports calendar/, 'which of my stocks report this week', 'Upcoming earnings reports and ex-dividend dates of your stocks from Yahoo Finance: today, tomorrow, this week and the next 30 days. Funds and ETFs have none.'],
+    [/^change in range/, 'what does change in range mean', 'How much the account value moved in the chosen range. It includes the money you deposited, so the line under it splits it: deposited, and the real result (market, dividends, fees).'],
+    [/^net asset value/, 'what is net asset value', 'Everything the account is worth on each day: holdings at the closing prices of each day plus cash. The growth view removes deposits, so only real performance shows.'],
     [/^add \/ trim ideas/, 'what are add and trim ideas', 'Rule-based ideas from position size, sector concentration, tiny positions and trend health. A to-check list, not a price forecast.'],
     [/^add \/ buy back/, 'what is an add or buy back idea', 'Small or sold positions in an uptrend that pulled back 5-25% from their 52-week high. Rule-based, not a forecast.'],
     [/^trim \/ consolidate/, 'what do trim consolidate and review mean', 'TRIM: position or sector too big. CONSOLIDATE: under 1 500 kr. REVIEW: downtrend and over 15% under your cost.'],
@@ -41,12 +43,12 @@
     [/^breakdown/, 'what is the breakdown table', 'The same groups as a table with value, weight, today and unrealised return.'],
     [/^concentration/, 'what is concentration', 'Notes on how much of the portfolio sits in the biggest groups and positions.'],
     // ---- Analytics: summary tiles
-    [/^account value/, 'what is account value', 'Holdings at live prices plus cash. Compare it with Deposited to see your real result.'],
+    [/^account value/, 'what is account value', 'Account value = holdings value (shares x price today) + the cash balance. One number, the same on the Portfolio page, Analytics and the growth curve.'],
     [/^deposited/, 'what are net deposits', 'All money you put in, minus withdrawals.'],
-    [/^all time result/, 'what is the all time result', 'Account value minus net deposits: your real profit or loss, including realised, unrealised, dividends and all costs.'],
+    [/^(all time|all-time) result/, 'what is the all time result', 'All-time result = account value - net deposits: your real profit or loss including realised, unrealised, dividends and all costs.'],
     [/^broker costs/, 'what are broker costs', 'Courtage, FX fees, interest and other charges paid to Nordnet since the start.'],
     [/^realised/, 'what is realised profit', 'Profit or loss locked in by selling (average-cost method, after fees).'],
-    [/^unrealised/, 'what is unrealised profit', 'Paper profit or loss on positions you still hold. It becomes real only when you sell.'],
+    [/^unrealised/, 'what is unrealised profit', 'Unrealised = holdings value now minus what the current holdings cost. Paper profit or loss: it becomes real only when you sell.'],
     [/^data range/, 'what is the data range', 'First and last date in your transactions export, with the number of trades and assets.'],
     [/^assets$/, 'how many assets match the view', 'How many assets match the chosen view and filters.'],
     [/^fees paid/, 'what are fees paid', 'Total trade fees paid on the assets in the current view.'],
@@ -69,7 +71,6 @@
     [/^all dividend payers/, 'what is the dividend payers table', 'Every company that paid a dividend: payments, first and last date, gross, tax and net.'],
     [/^what the dividends tell you/, 'what do the dividend insights mean', 'Short notes on how dividends affect your result, income rate, spread and tax.'],
     // ---- Analytics: advice
-    [/^what this is/, 'what is the advice tab', 'Rule-based position management, not a price forecast. The old next-day signal had no edge in a back-test.'],
     [/^entry rules/, 'what are the entry profiles', 'Conservative, Balanced or Aggressive: how strict the add and buy-back test is (pullback size, RSI, trend, waiting time).'],
     [/^where your portfolio stands/, 'what do the advice cards show', 'Size, concentration, risk and trend checks of the whole portfolio.'],
     [/^too many small positions/, 'what are too many small positions', 'Many tiny holdings cost courtage, cannot move the result and are hard to follow.'],
@@ -183,7 +184,6 @@
     [/^(company|asset)$/, 'what is this column', 'The company or asset name.'],
     [/^(first|last)$/, 'what are first and last', 'Date of the first and the most recent payment.'],
     [/^(held|rebought|date|side|sold|total|note|item|sek)$/, 'what does this column mean', 'Detail column of the table; the title above says what is listed.'],
-    [/^(result|verdict)$/, 'what does the back test verdict mean', 'What the back-test result means for the rule.'],
   ];
 
   // ───────────────────────── targets: where an icon may go ─────────────────────────

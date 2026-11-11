@@ -7,3 +7,4 @@ history_cache.json
 data/
 benchmark_series_cache.json
 report_cache.json
+nav_price_cache.json

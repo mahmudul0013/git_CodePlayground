@@ -30,7 +30,7 @@ import symbols
 HERE = os.path.dirname(os.path.abspath(__file__))
 HIST_FILE = os.path.join(HERE, 'history_cache.json')
 HIST_TTL = 6 * 3600
-CACHE_SECONDS = 600      # how long a finished Add / Trim answer is reused (live prices move the weights)
+CACHE_SECONDS = 60      # how long a finished Add / Trim answer is reused (live prices move the weights)
 HEAD = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
 
 MAX_W = 4.0          # % of holdings: above this a position is trimmed back
@@ -212,22 +212,8 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
         if t.get('side') == 'SELL' and (t['isin'] not in last_sell or t['date'] >= last_sell[t['isin']]['date']):
             last_sell[t['isin']] = t
 
-    # value each holding at the newest price (same guard as the heat map: same currency, ratio 0.5-2)
-    rows = []
-    for a in held:
-        val = a['value']
-        h = hist.get(sym_of.get(a['isin']))
-        l = live.get(a['isin'])
-        px, ccy = None, None
-        if l and l.get('price'):
-            px, ccy = l['price'], l.get('currency')
-        elif h:
-            px, ccy = h['c'][-1], h.get('ccy')
-        if px and a.get('price') and str(ccy or '').upper() == str(a.get('ccy', '')).upper():
-            ratio = px / a['price']
-            if .5 < ratio < 2:
-                val = a['value'] * ratio
-        rows.append({'a': a, 'val': val, 'h': h})
+    # values: the payload is live-valued by valuation.apply() (the server's one valuation); the advisor does not price anything itself
+    rows = [{'a': a, 'val': a['value'], 'h': hist.get(sym_of.get(a['isin']))} for a in held]
     total = sum(r['val'] for r in rows)
     for r in rows:
         r['w'] = r['val'] / total * 100
@@ -353,7 +339,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE):
         card('high' if port['max_dd'] < -.25 else 'med', 'Risk of the portfolio as it stands now', f'vol {port["vol"] * 100:.0f}% · max drop {port["max_dd"] * 100:.0f}%',
              f'Over the last year, with today\'s weights, the portfolio moved about {port["vol"] * 100:.0f}% a year up or down and its worst peak-to-trough fall was {port["max_dd"] * 100:.0f}%. The average correlation between your top {port["n"]} holdings is {port["corr"]:.2f}, which behaves like roughly {port["eff_n"]:.0f} independent bets rather than {len(rows)}.')
     card('med' if wt_pct > 25 else 'info', 'Trend health', f'{wt_pct:.0f}% in downtrend',
-         f'{len(wt)} holdings ({wt_pct:.0f}% of value) trade below both 50- and 200-day averages; {broken_loss} of them are also more than 15% under your cost and flagged REVIEW. Downtrends are not a sell signal on their own (the backtest found no edge), but they are where the original reason for owning should be re-checked.')
+         f'{len(wt)} holdings ({wt_pct:.0f}% of value) trade below both 50- and 200-day averages; {broken_loss} of them are also more than 15% under your cost and flagged REVIEW. A downtrend is not a sell signal on its own, but it is where the original reason for owning should be re-checked.')
     adds = [v for v in out.values() if v['action'] == 'ADD']
     trims = [v for v in out.values() if v['action'] == 'TRIM']
     card('info', 'Size of the proposed changes', f'+{_n(sum(v["amount"] for v in out.values() if v["action"] == "ADD"))} / -{_n(sum(v["amount"] for v in trims))} kr',
