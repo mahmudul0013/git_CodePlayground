@@ -4,10 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trading Analytics</title>
+  <script src="theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="analytics.css">
+  <link rel="stylesheet" href="plan.css">
   <link rel="stylesheet" href="privacy.css">
   <link rel="stylesheet" href="auth.css">
   <link rel="stylesheet" href="assistant.css">
@@ -51,7 +53,7 @@
       <button class="tab" data-tab="habits" role="tab">Trading habits &amp; costs</button>
       <button class="tab" data-tab="deposits" role="tab">Deposit behaviour</button>
       <button class="tab" data-tab="dividends" role="tab">Dividends</button>
-      <button class="tab" data-tab="advice" role="tab">Advice</button>
+      <button class="tab" data-tab="advice" role="tab">Plan &amp; advice</button>
     </div>
 
     <!-- ============== ASSETS ============== -->
@@ -139,26 +141,9 @@
       <section class="panel method"><h3>How to read this</h3><ul id="div-method"></ul></section>
     </div>
 
+    <!-- ============== PLAN & ADVICE (built by plan.js) ============== -->
     <div id="tab-advice" hidden>
-      <p class="hint" id="adv-intro">Rule-based position management from size, sector concentration, tiny positions and trend health. It is not a price forecast and not investment advice.</p>
-      <div class="dep-controls">
-        <div><span class="lbl">Entry rules for Add and Buy back</span><div class="chips" id="adv-profile">
-          <button class="chip" data-p="conservative">Conservative</button><button class="chip active" data-p="balanced">Balanced</button><button class="chip" data-p="aggressive">Aggressive</button></div></div>
-      </div>
-      <p class="hint" id="adv-profile-about"></p>
-      <p class="hint" id="adv-status"></p>
-      <h2 class="sec">Where your portfolio stands</h2>
-      <section id="adv-cards" class="findings"></section>
-      <section class="grid g2">
-        <div class="panel"><h3>Theme (Yahoo sector) weights, % of holdings</h3><div class="cv" style="height:320px"><canvas id="a-theme"></canvas></div>
-          <p class="hint">Red = above the 40% cap; new adds in that theme are blocked.</p></div>
-        <div class="panel"><h3>Suggested actions</h3><div class="cv" style="height:320px"><canvas id="a-actions"></canvas></div>
-          <p class="hint">Count of holdings per suggestion.</p></div>
-      </section>
-      <section class="panel"><h3>Add, buy-back and watch ideas</h3><div class="tbl-wrap"><table id="tb-add"></table></div></section>
-      <section class="panel"><h3>Trim, take-profit and trim-watch ideas</h3><div class="tbl-wrap"><table id="tb-trim"></table></div></section>
-      <section class="panel"><h3>Consolidate and review</h3><div class="tbl-wrap"><table id="tb-cons"></table></div></section>
-      <section class="panel method"><h3>How the rules work</h3><ul id="adv-method"></ul></section>
+      <div id="plan-root" class="plan"></div>
     </div>
 
     <!-- ============== HABITS ============== -->
@@ -214,6 +199,7 @@
 
   <script src="asset_chart.js"></script>
   <script src="analytics.js"></script>
+  <script src="plan.js"></script>
   <script src="assistant.js"></script>
   <script src="help.js"></script>
 </body>

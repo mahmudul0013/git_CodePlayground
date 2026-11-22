@@ -14,7 +14,7 @@ th .tv-help { margin-left: -8px; margin-right: -14px; }
 .tv-pop {
   position: fixed; z-index: 400; box-sizing: border-box; width: 280px; max-width: calc(100vw - 16px); overflow: auto;
   background: var(--surface, #1E2130); color: var(--text, #D1D4DC); border: 1px solid var(--border, #2A2E39); border-radius: 8px;
-  padding: 10px 40px 11px 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, .55); font: 400 12.5px/1.45 var(--font, 'Inter', sans-serif);
+  padding: 10px 40px 11px 12px; box-shadow: 0 8px 24px var(--shadow-strong, rgba(0, 0, 0, .55)); font: 400 12.5px/1.45 var(--font, 'Inter', sans-serif);
   text-align: left; text-transform: none; letter-spacing: 0; white-space: normal; outline: none;
 }
 .tv-pop::before {                                    /* arrow pointing at the icon */

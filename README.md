@@ -6,16 +6,25 @@ A personal, browser-based portfolio dashboard inspired by TradingView's dark the
 
 - Portfolio summary: account value, today's P&L, all-time result, SEK/USD allocation (every number comes from the one valuation, see *One source of truth*)
 - Stocks and funds tables with SEK/USD filters, sorting, search and a **Vol 3M** column: the daily volatility of every holding over the last 3 months (the typical size of a one-day price move in %, the standard deviation of daily changes from Yahoo daily closes; funds use their Yahoo NAV history; red from 5% a day, gold from 3%; hover for the yearly figure). It sits directly in front of **Day %**, so you can see at a glance whether today's move is normal for that holding (Day % turns bold when it is at least twice the usual daily move). It replaced the 7-day sparkline
-- Scrolling market ticker (OMXS30, DAX, S&P futures, Gold, USD/SEK, EUR/USD)
+- Scrolling market ticker (OMXS30, DAX, S&P 500 futures, Nasdaq 100 futures, US 10-year yield in %, Gold, BTC/USD, USD/SEK, EUR/USD)
 - Reports Calendar sidebar (replaced the old fixed watchlist) and SEK/USD currency toggle
 - Last-buy tracking: new shares and buy price shown in gold under Qty and Price
-- Add / Trim Ideas: top 5 add or buy-back and top 5 trim / consolidate / review ideas (replaced the old next-day signals; see below)
+- Buy / Sell this month: the top 5 buy ideas (deposit plan, pullbacks in an uptrend, buy-backs) and the top 5 sales due (size cap, trend exit, regime exit, tiny positions); see the portfolio plan below
 - Live price refresh every 60 s; portfolio CSV reload every 5 min
 - **One continuous Portfolio page**: summary, signals, stocks, funds, then the **Heat map** (the nav buttons *Portfolio* / *Heat map* just scroll)
 - **Portfolio heat map**: treemap of the current holdings, size = market value, colour = today's change or unrealised return, grouped by Yahoo Finance sector (or type / country), with distribution doughnut, breakdown table and concentration notes. It syncs by itself: a new or changed Nordnet CSV is picked up within 10 s and live Yahoo prices refresh every 30 s
 - **Net Asset Value growth curve** (Portfolio page, directly above Add / Trim Ideas): the account value on every weekday since your first transaction, rebuilt from your ledger and Yahoo daily closes (not dividend-adjusted, converted to kr with that day's FX rate, cash included; funds and unmatched symbols use your own trade prices). Pick the **time range** (1W, 1M, 3M, YTD, 1Y, 3Y, Max; a range longer than your history shows everything), the **view** (*Value (kr)* with a dashed "net deposited" line, or *Growth (%)*, which is time-weighted so a deposit is never shown as growth), and any **categories** (the same Yahoo sectors as the heat map, up to 8 curves at once in one chart; the axes rescale to the selection). A **Smooth** switch (Off / Light / Strong; Light by default) calms the line for readability only: it is a short moving average with exact end points drawn as a monotone curve, while the tooltip and the tiles always show the exact daily numbers. The whole account is a white line, the money you deposited a gold dashed line, and the area between them is green for a gain and red for a loss; every line also carries a label at its right end. Four tiles show the account value, the change in the range with the deposits inside it, the time-weighted growth and the largest drop. The chat answers "how much has my portfolio grown this year".
 - **Reports calendar** (left sidebar of the Portfolio page; a slide-in drawer on phones): earnings reports and ex-dividend dates of your stocks from Yahoo Finance as one scrollable list, Today, then Tomorrow, then This week (next 7 days), each with the holding's weight and an "(est.)" mark while the date is not confirmed; hover for the analysts' EPS estimate. A date that has already passed means the company just reported and Yahoo has not published the next one yet. Funds and ETFs have no earnings. The chat answers "which of my stocks report this week", "when does ASML report" and "ex-dividend date for Apple".
-- **Add / Trim ideas** (Portfolio page, Analytics → Advice, and the *Add / trim* column of the Assets table): rule-based position management from position size, Yahoo sector concentration, tiny positions and trend health (50/200-day averages, 12-1 month momentum, pullback). It is not a price forecast. Closed positions are checked too (**BUY BACK** ideas). **Philosophy: buy pullbacks in uptrends, take profit when stretched.** A **WATCH** idea means "close to a buy signal" (same test, RSI up to 10 points above the buy level) so the list is never empty while a signal is brewing; a tiny position that is oversold in an uptrend is offered as a top-up (ADD) instead of "consolidate". The sell side has the mirror: **TRIM WATCH** = a holding in profit whose RSI is within 10 points below the take-profit level (Balanced 65-75), no order yet. *Add / buy back* when RSI(14) is below the buy level **and** the price is above its 200-day average (RSI says the pullback is deep enough, the trend filter keeps it from catching falling knives) and it is 5-40% below its 52-week high (Conservative 10-25%, Aggressive up to 60%); *take profit* (a TRIM idea of about a third of the holding) when RSI(14) is above the sell level and the position is in profit. The three profiles differ by 5 RSI points: **Conservative** buy < 30 / sell > 80, **Balanced** buy < 35 / sell > 75, **Aggressive** buy < 40 / sell > 70 (the aggressive one also accepts a mixed trend and acts earlier). Check on 173 stocks over 2 years: RSI < 35 above the 200-day average was followed by +3.6% over the next month against +3.0% for an average day, RSI < 35 below it by only +1.2%, and RSI > 75 was followed by +6.3% (strong stocks stay overbought), so the take-profit idea is discipline, not a forecast. RSI is shown in the Advice tables. The answer is recalculated with live prices every 10 minutes and straight away when a CSV changes. Price history is cached in `history_cache.json` (git-ignored)
+- **Portfolio plan: one strategy per category** (Analytics → *Plan & advice*, the Portfolio page *Buy / Sell this month* panels, the *Add / trim* column of the Assets table). Every holding is put in a category (fund name rules, Yahoo sector and industry; you can move any holding to another category in the Plan tab). Each category has a target share of the whole account (cash included) and its own rule, chosen from a 10-year test of your own holdings per category (2017-2026, 0.3% cost per switch):
+  - **Broad index funds** (target 50%, Balanced): buy and hold with monthly saving, never timed (every timing rule lost: buy and hold 12.3% a year against 4.9-8.6%).
+  - **AI and semiconductor chain** (15%): the theme ETFs and the 5 largest stocks are the *hold half*; the other stocks are the *trend half* and follow the **weekly close vs SMA(200)** rule. Best return per unit of volatility in the test and a smaller worst fall (-36% against -43%).
+  - **Big tech, Healthcare and consumer, Financials** (7 / 7 / 3%): quality, buy and hold; new money only in an uptrend with RSI(14) below 40 (Balanced), and only while the category is under its target. REVIEW when SMA(50) falls below SMA(200) with a loss above 15%.
+  - **Industrials and defence** (5%): half held, half on the weekly SMA(200) rule. **Energy and materials** (3%): hold while SMA(50) is above SMA(200). **Gold, bonds and real estate** (5%) and **Opportunity cash** (5%): fixed weights, no timing.
+  - **Size cap** 4% per stock; tiny positions (under 1 500 kr) are CONSOLIDATE. **No RSI take-profit**: RSI above 75 was followed by more gains in the tests, so profits are taken by the size and category caps. A category more than 5 points over target gets no new money and is reduced by at most the monthly reduction budget (default 15 000 kr), smallest names first; planned sales go on a day the RSI(14) is above 45. RSI only times new money, never a sale.
+  - **"200-day average"** everywhere = SMA(200), the simple average of the last 200 daily closes (dividend adjusted), checked at the **last close of each week**: one weekly close below takes the trend half out, one weekly close above brings it back. A separate check of SMA(50), EMA(100) (daily and weekly), half + EMA(100) and an EMA(100) warning for new money found none that beat the current rules in both 2017-2022 and 2023-2026.
+  - The **Plan & advice** tab shows: the verdict cards, this month (next deposit split, sales due with an "OK today / wait for a bounce" note, buy and watch ideas), every category against its target, the lifetime result per category, all holdings by category with the weekly trend, the evidence (the 10-year test, computed in the background for your own holdings), the fit to the five popular strategies, the transition (months to target) and a stress test. **Plan settings** (monthly deposit, reduction per month, opportunity cash %, category of a holding) are saved per user in `data/profiles/<id>/plan_settings.json`. Profiles: Conservative (index funds 60%, AI 10%), Balanced (50 / 15), Aggressive (40 / 22).
+- **Trend Signals sidebar** (Portfolio page, above the reports calendar; folds away; a drawer on phones): how many holdings closed last week above / below SMA(200) and how much money that is, then *Changed this week*, *May change on Friday* (today's price is on the other side of SMA(200) than the last weekly close) and *Changed in 2-4 weeks*, each with the 8-week history, "choppy" when a holding crossed 3 or more times in 12 weeks, and what the plan does about it (sell the trend half, keep the hold half, stop new money, new money OK).
+- **Light and dark mode**: the sun / moon button in every page header (remembered per browser); every chart repaints in place
 - **Privacy toggle** (eye button in the header of both pages): blurs summary rows, headline numbers, money/size table columns, "... kr" amounts in text and kr chart axes/tooltips. Remembered between pages and reloads (visual masking only)
 
 - **Analytics page** (`/analytics.html`), five tabs:
@@ -24,7 +33,7 @@ A personal, browser-based portfolio dashboard inspired by TradingView's dark the
   - **Deposit behaviour**: deposits per day / week / month as columns, estimated portfolio value (or deposit-free return) and positions held as lines on one shared axis, optional index overlays (OMXS30, S&P 500, Nasdaq 100 futures `NQ=F`), insight cards (return vs market, risk, idle cash, deposit timing, why you are ahead or behind the index, money per position)
 
   - **Dividends**: dividends received (net of withholding tax) per day / week / month, running total, per-calendar-month pattern, top payers, payer table and insight cards. Dividends were always inside the account value; this tab makes them visible
-  - **Advice**: portfolio risk cards (too many small positions, sector concentration, volatility / drawdown / correlation, trend health), theme weights, and the Add / buy-back, Trim and Consolidate / Review tables with reasons and kr amounts
+  - **Plan & advice**: the per-category portfolio plan described above, with your plan settings
 
   Headline values (Account value, All-time result, Unrealised and the Portfolio page totals) are rescaled by live Yahoo prices; the holdings export is only a snapshot from the day it was made.
 
@@ -164,10 +173,12 @@ Yahoo symbol suffixes: `.ST` Sweden, `.OL` Norway, `.HE` Finland, `.CO` Denmark,
 ```
 testTrading/
 ├── index.html               Portfolio page (summary, tables, heat map section)
-├── style.css                TradingView dark theme styles
+├── style.css                TradingView styles, dark and light tokens
+├── theme.js                 Light / dark toggle (TVTheme, tvthemechange event, Chart.js defaults)
 ├── app.js                   Portfolio logic (data, live prices, Add / Trim ideas, nav scroll)
 ├── heatmap.js / heatmap.css Portfolio heat map (treemap, doughnut, live sync)
-├── analytics.html/css/js    Analytics page (Assets, Trading habits, Deposit behaviour, Dividends, Advice)
+├── analytics.html/css/js    Analytics page (Assets, Trading habits, Deposit behaviour, Dividends, Plan & advice)
+├── plan.js / plan.css       The Plan & advice tab
 ├── asset_chart.js           Per-asset price chart with BUY/SELL markers
 ├── privacy.js / privacy.css Master privacy toggle (eye button)
 ├── server.py                Local HTTP server + Yahoo proxy + JSON API (see below)
@@ -176,11 +187,13 @@ testTrading/
 ├── symbols.py / symbol_cache.json   ISIN -> Yahoo symbol (hand edits kept)
 ├── sectors.py / sector_cache.json   Sector / fund category per holding from Yahoo
 ├── valuation.py             The one valuation (snapshot + apply) every page reads; tolerance for the consistency test
-├── tests/                   consistency_test.py (same number everywhere), nav_math_test.py (growth-curve logic)
+├── tests/                   consistency_test.py (same number everywhere), nav_math_test.py (growth-curve logic), advisor_rules_test.py (plan rules), https_test.py
 ├── nav.py                   Net asset value history (total + per category) from the ledger and Yahoo daily closes
 ├── nav.js / nav.css         The growth curve on the Portfolio page
 ├── reports.py               Earnings / ex-dividend calendar of the holdings (Yahoo calendarEvents, report_cache.json)
-├── advisor.py               Add / Trim / Buy back rules, entry profiles, portfolio risk (history_cache.json)
+├── advisor.py               The plan turned into actions per holding, cards, portfolio risk (history_cache.json)
+├── strategy.py              Categories, targets, weekly SMA(200) trend, deposit plan, transition, stress test, plan settings
+├── strategy_bt.py           10-year test of the rules per category on your holdings (background, history10_cache.json)
 ├── nordnet_sync.py          Legacy: baseline builder and optional API mode (uploads now build the baseline)
 ├── start-dashboard.bat      Run the server without VS Code (auto-restart)
 ├── auth.py / profiles.py    Accounts, sessions, invites, per-user profile folders and uploads
@@ -212,7 +225,9 @@ testTrading/
 | `/api/snapshot` | THE valuation: per holding price used, value, cost, unrealised, today's change and weight, plus the totals (holdings, cash, account value, unrealised, all-time result, today's P&L); live quotes shared 25 s |
 | `/api/nav` | Daily net asset value history: total (NAV, cash, net deposits, growth index) and per Yahoo category (value, growth index); built by `nav.py`, price history shared in `nav_price_cache.json` (6 h), curve cached per user for 10 min |
 | `/api/reports` | Upcoming earnings / ex-dividend dates of the signed-in user's holdings (Yahoo `calendarEvents`, 12 h shared cache in `report_cache.json`) |
-| `/api/advice?profile=` | Add / Trim / Buy back review (`conservative`, `balanced`, `aggressive`); cached 10 min |
+| `/api/advice?profile=` | The portfolio plan (`conservative`, `balanced`, `aggressive`): actions per holding with the weekly trend, cards, and `plan` (categories, deposit plan, sales due, transition, stress test, strategy fit, lifetime result per category); cached 60 s |
+| `/api/plan/settings` (GET, POST) | The user's plan settings: monthly deposit, reduction per month, opportunity cash %, category overrides (validated) |
+| `/api/plan/evidence` | The 10-year test of the rules per category on the user's holdings (`pending` while it runs in the background; kept 24 h in memory) |
 | `/api/benchmark`, `/api/overlay` | Index comparison and daily index curves |
 | `/api/symbol` | ISIN / name -> Yahoo symbol |
 | `/yahoo/*` | Yahoo Finance proxy |

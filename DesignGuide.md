@@ -101,9 +101,10 @@ Same dark tokens as the Portfolio page. Five tabs: **Assets**, **Trading habits 
 ### Dividends tab
 KPI row (privacy-masked), a Day / Week / Month chip row, a stacked column chart (net green, tax grey) over a running-total area chart with a linked crosshair, insight cards, a top-payers horizontal bar (green = still held, grey = sold), a per-calendar-month bar and a payer table.
 
-### Advice tab and the Add / trim column
-- Action badges (`.adv`): ADD green, BUY BACK blue, TRIM gold, CONSOLIDATE purple, REVIEW red, HOLD grey. The kr amount sits under the badge (`.adv-amt`, masked by privacy). The tooltip holds the reasons.
-- A one-line note (rule-based, not a forecast, not advice) sits at the top; the entry-profile chips (Conservative / Balanced / Aggressive) follow, then risk cards, a theme bar (red above the 40% cap) and the action tables.
+### Plan & advice tab and the Add / trim column
+- Action badges (`.adv`): ADD green, BUY BACK blue, TRIM (shown as SELL on the Portfolio page) gold, CONSOLIDATE purple, REVIEW red, WATCH dashed grey, HOLD grey; a queued sale carries a grey "queued" tag. The kr amount sits under the badge (`.adv-amt`, masked by privacy). The tooltip holds the reason.
+- The tab (plan.js / plan.css) reads top to bottom: profile chips and the plan settings form (monthly deposit, reduction per month, opportunity cash %, Save plan), the status line, KPI row and ACT / WATCH / NOTE cards; *This month* (three panels: next deposit split with the funds it goes to, sales due with a pill "RSI nn: OK today" in green or "wait for a bounce" in gold, buy / buy back / watch ideas); *One strategy per category* (today against target bars, lifetime result per category in green / red, a category table with an inline bar and a white target tick, status pills over / under / on target); *Holdings by category* (collapsible group rows, weekly trend pill above / below with weeks, a category select per holding); *Evidence* (CAGR and worst-fall bars, buy and hold in grey against the rule used in blue, findings, a details table with the used rule tinted); strategy-fit bars and table; transition lines (plan blue, deposits only aqua, as now orange, dashed target) and stress-test bars (today grey, target blue); the SMA(200) explainer and the rules.
+- Colours come only from the CSS tokens and are read at render time; every chart redraws on `tvthemechange`. Category colours are the categorical series --s1..--s8 in a fixed order (index, AI, big tech, health, industrials, financials, materials, defensive), cash uses the dim text colour.
 - Assets table: no horizontal scrolling at 1100-1440 px with 13 px text. Type and Ccy share one column, Last buy / Last sell are gone, and below 1360 px the Bought / Sold columns hide (CSS `nth-child` 7 and 8; keep those positions if columns change).
 
 ### Cards
@@ -111,7 +112,7 @@ KPI row (privacy-masked), a Day / Week / Month chip row, a stacked column chart 
 
 ## Portfolio Page Layout (continuous)
 
-Summary cards, Add / Trim Ideas (two panels: add or buy back, trim / consolidate / review), Stocks & ETFs, Funds, then the Heat map section. The header nav has only **Portfolio** and **Heat map**; they scroll to the top / to the heat map and highlight by scroll position.
+Summary cards, Buy / Sell this month (two panels: buy this month, sell this month), Stocks & ETFs, Funds, then the Heat map section. The left sidebar holds two foldable panels: Trend Signals (summary bar of money above / below SMA(200), then Changed this week / May change on Friday / Changed in 2-4 weeks, each item with a green ▲ or red ▼, distance to SMA(200), an 8-week strip and an action chip: red sell, green buy, grey keep, gold dashed for a pending Friday decision) and the Reports Calendar. The header nav has only **Portfolio** and **Heat map**; they scroll to the top / to the heat map and highlight by scroll position.
 
 ## Heat Map
 
@@ -222,3 +223,7 @@ Columns that show last-buy data (gold `.lb-tag` text below main value):
 | Data | Nordnet CSV exports (ledger + holdings) | Ground truth for positions, cost and trades |
 | Live data | Yahoo Finance via the local `/yahoo/*` proxy and `server.py` endpoints | Free, no API key |
 | Server | Python standard library (`ThreadingHTTPServer`), started by `start-dashboard.bat` or `python server.py` | No dependencies |
+
+
+## Light and dark mode
+`theme.js` (first script in every page head) sets `data-theme` on `<html>` before first paint, stores the choice in `tv_theme`, injects the sun / moon `.theme-btn` before `#user-menu`, and fires `tvthemechange`. Dark keeps the original TradingView tokens; light uses white / #F7F8FA surfaces, #131722 text and darker green / red / gold so small text keeps 4.5:1 contrast. Charts read colours from tokens at render time and repaint on the event.

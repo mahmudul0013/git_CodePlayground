@@ -1,117 +1,161 @@
-"""Rule check of advisor.py with made-up price histories (no network, no files): run   python tests/advisor_rules_test.py
-Proves: buy only when RSI(14) is below the profile's buy level AND the price is in an uptrend (no falling knives); the profiles differ by
-5 RSI points; an overbought holding in profit gets a take-profit idea (a third of it), one at a loss does not."""
+"""Plan rules check:  python tests/advisor_rules_test.py   (no network: prices, symbols and sectors are made up here)
+
+One strategy per category (strategy.py + advisor.py): categories, the weekly SMA(200) state, settings validation, targets,
+the deposit plan, the transition path, and the actions on a made-up portfolio:
+size cap, trend exit of the trend half, hold half kept, regime exit, pullback ADD, deposit-plan ADD for index funds,
+tiny position, and NO RSI take-profit any more."""
 import os
 import sys
 import time
+from datetime import date, timedelta
 
-PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJ)
-import advisor, sectors, symbols   # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import advisor, sectors, strategy, symbols   # noqa: E402
 
 res = []
 
 
 def ok(name, cond, detail=''):
     res.append(bool(cond))
-    print(('PASS ' if cond else 'FAIL ') + name + (('  ' + str(detail)[:140]) if detail else ''))
+    print(('PASS ' if cond else 'FAIL ') + name + (('  ' + str(detail)[:150]) if detail else ''))
 
 
-# ---- entry test on feature dictionaries
-base = {'trend': 'up', 'rsi': 33.0, 'dd52': -0.12, 'mom12_1': 0.3}
-P = advisor.PROFILES
-ok('profiles differ by 5 RSI points (buy 30 / 35 / 40, take profit 80 / 75 / 70)',
-   (P['conservative']['rsi_buy'], P['balanced']['rsi_buy'], P['aggressive']['rsi_buy']) == (30, 35, 40)
-   and (P['conservative']['rsi_sell'], P['balanced']['rsi_sell'], P['aggressive']['rsi_sell']) == (80, 75, 70))
-ok('balanced buys at RSI 33 in an uptrend', advisor._entry_ok(dict(base), P['balanced']))
-ok('balanced does NOT buy at RSI 37 (needs below 35)', not advisor._entry_ok(dict(base, rsi=37.0), P['balanced']))
-ok('aggressive buys at RSI 37 (below 40)', advisor._entry_ok(dict(base, rsi=37.0), P['aggressive']))
-ok('conservative does NOT buy at RSI 33 (needs below 30)', not advisor._entry_ok(dict(base), P['conservative']))
-ok('conservative buys at RSI 28', advisor._entry_ok(dict(base, rsi=28.0), P['conservative']))
-ok('no buy below the 200-day average, even at RSI 20 (falling knife)', not advisor._entry_ok(dict(base, trend='down', rsi=20.0), P['balanced']))
-ok('aggressive accepts a mixed trend, balanced does not', advisor._entry_ok(dict(base, trend='mixed'), P['aggressive']) and not advisor._entry_ok(dict(base, trend='mixed'), P['balanced']))
-ok('no buy when it has not pulled back at all (within 5% of the high)', not advisor._entry_ok(dict(base, dd52=-0.02), P['balanced']))
-ok('no buy after a crash beyond the allowed pullback (balanced 40%, aggressive 60%)', not advisor._entry_ok(dict(base, dd52=-0.45), P['balanced']) and advisor._entry_ok(dict(base, dd52=-0.45), P['aggressive']) and advisor._entry_ok(dict(base, dd52=-0.30), P['balanced']))
-ok('WATCH band: RSI 35-45 is close to a signal, not a signal', advisor._entry_ok(dict(base, rsi=40.0), P['balanced'], watch=True) and not advisor._entry_ok(dict(base, rsi=40.0), P['balanced']) and not advisor._entry_ok(dict(base, rsi=33.0), P['balanced'], watch=True) and not advisor._entry_ok(dict(base, rsi=48.0), P['balanced'], watch=True))
-ok('WATCH never applies below the 200-day average', not advisor._entry_ok(dict(base, rsi=40.0, trend='down'), P['balanced'], watch=True))
-ok('missing RSI never buys', not advisor._entry_ok(dict(base, rsi=None), P['balanced']))
+# ───── categories ─────
+C = strategy.category_of
+ok('theme ETF -> AI chain', C({'name': 'VanEck Semiconductor ETF', 'type': 'Stock'}, {'quote_type': 'ETF', 'category': 'Technology'}) == 'ai')
+ok('Nordnet index fund -> core', C({'name': 'Nordnet USA Index', 'type': 'Fund'}, {}) == 'core')
+ok('broad UCITS ETF -> core', C({'name': 'SPDR S&P 500 UCITS ETF (Acc)', 'type': 'Stock'}, {'quote_type': 'ETF'}) == 'core')
+ok('physical gold -> defensive', C({'name': 'Xetra-Gold', 'type': 'ETF/ETC'}, {'quote_type': 'ETF'}) == 'defensive')
+ok('metals fund -> energy and materials', C({'name': 'AuAg Essential Metals A', 'type': 'Fund'}, {}) == 'materials')
+ok('semiconductor industry -> AI chain', C({'name': 'Micron Technology'}, {'sector': 'Technology', 'industry': 'Semiconductors'}) == 'ai')
+ok('AI power name -> AI chain', C({'name': 'GE Vernova'}, {'sector': 'Industrials', 'industry': 'Specialty Industrial Machinery'}) == 'ai')
+ok('Alphabet -> big tech', C({'name': 'Alphabet A'}, {'sector': 'Communication Services'}) == 'bigtech')
+ok('healthcare -> health', C({'name': 'Novo Nordisk B'}, {'sector': 'Healthcare'}) == 'health')
+ok('financials', C({'name': 'BlackRock'}, {'sector': 'Financial Services'}) == 'financials')
+ok('energy -> materials', C({'name': 'Chevron'}, {'sector': 'Energy'}) == 'materials')
+ok('industrials', C({'name': 'Alfa Laval'}, {'sector': 'Industrials'}) == 'industrials')
+ok('user override wins', C({'name': 'Alfa Laval', 'isin': 'SE0000695876'}, {'sector': 'Industrials'}, {'SE0000695876': 'health'}) == 'health')
 
-# ---- end to end on a made-up portfolio
-N = 260
-def series(first, daily, days_a, daily_b, days_b):
-    c, v = [], first
+# ───── made-up daily histories: weekdays only, ending on the last Friday ─────
+end = date.today() - timedelta(days=(date.today().weekday() - 4) % 7 or 7)
+N = 320
+
+
+def days(n=N):
+    out, d = [], end
+    while len(out) < n:
+        if d.weekday() < 5:
+            out.append(d.toordinal() - date(1970, 1, 1).toordinal())
+        d -= timedelta(days=1)
+    return out[::-1]
+
+
+def series(kind):
+    c, v = [], 100.0
     for i in range(N):
-        v *= 1 + (daily if i < N - days_b else daily_b)
+        if kind == 'rise':
+            v *= 1.003
+        elif kind == 'pullback':                       # long rise, then 15 down days: oversold but still above SMA(200)
+            v *= 1.004 if i < N - 15 else 0.993
+        elif kind == 'down':                           # rise, then a long fall: below SMA(200) and SMA(50) below SMA(200)
+            v *= 1.003 if i < 200 else 0.991
         c.append(round(v, 4))
-    return c
-hist = {
-    'AAA.ST': series(100, 0.004, 0, 0.025, 15),        # long rise, then 15 hot days: overbought, in profit
-    'BBB.ST': series(100, 0.003, 0, -0.015, 15),       # long rise, then 15 down days: oversold pullback inside an uptrend
-    'CCC.ST': series(100, -0.003, 0, -0.015, 15),      # long decline, then more: oversold but BELOW the 200-day average
-    'LOS.ST': series(100, 0.004, 0, 0.025, 15),        # overbought like AAA but the position is at a loss
-}
-now = time.time()
-for s in hist:
-    hist[s] = {'at': now, 'c': hist[s], 'd': list(range(N)), 'ccy': 'SEK'}
-sym_of = {'A': 'AAA.ST', 'B': 'BBB.ST', 'C': 'CCC.ST', 'L': 'LOS.ST'}
-advisor._histories = lambda syms, budget=45: {s: hist[s] for s in syms if s in hist}
-symbols.resolve = lambda isin, name, ccy: {'symbol': sym_of[isin]} if isin in sym_of else None
-sectors.batch = lambda items, budget=0: ({}, 0)
+    return {'at': time.time(), 'd': days(), 'c': c, 'ccy': 'SEK'}
 
-def asset(isin, name, value, unreal_pct):
-    return {'isin': isin, 'name': name, 'ccy': 'SEK', 'type': 'Stock', 'held': True, 'qty': 10, 'price': value / 10, 'value': value,
-            'unrealized': value * unreal_pct / 100, 'unrealized_pct': unreal_pct, 'sells': 0}
-assets = [asset('A', 'Alpha', 9000, 80), asset('B', 'Beta', 2500, -5), asset('C', 'Gamma', 2500, -30), asset('L', 'Lossy', 9000, -20)]
-assets += [dict(asset(f'F{i}', f'Filler {i}', 8000, 5)) for i in range(40)]
-# a tiny oversold holding in an uptrend must be a top-up (ADD), not 'consolidate'; a holding with RSI 36-44 in an uptrend is WATCH
-def find_series(lo, hi):
-    # a rise, then a choppy decline (down days bigger than up days): RSI in the middle band, price still above its 200-day average
-    for up, down in ((0.009, -0.014), (0.008, -0.013), (0.01, -0.016), (0.007, -0.012)):
-        c, v = [], 100.0
-        for i in range(N):
-            if i < N - 30:
-                v *= 1.003
-            else:
-                v *= 1 + (up if (i % 2 == 0) else down)
-            c.append(round(v, 4))
-        f = advisor._features(c)
-        if lo < f['rsi'] < hi and f['trend'] == 'up' and f['dd52'] <= -0.06:
-            return c
-    raise SystemExit('no test series with RSI in %s-%s' % (lo, hi))
-def find_hot(lo, hi):
-    # a long rise, then a choppy climb (up days bigger than down days): RSI between lo and hi
-    for up, down in ((0.012, -0.006), (0.010, -0.006), (0.014, -0.008), (0.009, -0.005), (0.016, -0.01), (0.008, -0.005)):
-        c, v = [], 100.0
-        for i in range(N):
-            v *= 1.003 if i < N - 30 else 1 + (up if i % 2 == 0 else down)
-            c.append(round(v, 4))
-        f = advisor._features(c)
-        if lo < f['rsi'] < hi:
-            return c
-    raise SystemExit('no test series with RSI in %s-%s' % (lo, hi))
-hist['HOT.ST'] = {'at': now, 'c': find_hot(66, 74), 'd': list(range(N)), 'ccy': 'SEK'}
-hist['HOL.ST'] = hist['HOT.ST']
-sym_of.update({'H': 'HOT.ST', 'J': 'HOL.ST'})
-hist['TNY.ST'] = {'at': now, 'c': series(100, 0.003, 0, -0.015, 15), 'd': list(range(N)), 'ccy': 'SEK'}
-hist['WCH.ST'] = {'at': now, 'c': find_series(36, 44), 'd': list(range(N)), 'ccy': 'SEK'}
-sym_of.update({'T': 'TNY.ST', 'W': 'WCH.ST'})
-assets += [asset('T', 'Tiny', 300, -2), asset('W', 'Watchme', 2500, 3), asset('H', 'Hotish', 2500, 40), asset('J', 'Hotloss', 2500, -10)]
-payload = {'assets': assets, 'trades': [], 'insights': {}, 'generated': 'x'}
-r = advisor.advise(payload, None, 'balanced')
-A = r['assets']
-ok('overbought holding in profit -> TRIM take-profit of about a third', A['A']['action'] == 'TRIM' and 2500 <= A['A']['amount'] <= 3500 and 'RSI(14)' in A['A']['reasons'][0], (A['A']['action'], A['A']['amount']))
-ok('overbought holding at a loss -> no take-profit', A['L']['action'] != 'TRIM', A['L']['action'])
-ok('oversold pullback in an uptrend, small weight -> ADD (balanced)', A['B']['action'] == 'ADD' and 'RSI(14)' in A['B']['reasons'][0], (A['B']['action'], A['B']['reasons'][0][:70]))
-ok('oversold but below the 200-day average -> no ADD', A['C']['action'] != 'ADD', A['C']['action'])
-ok('tiny oversold holding in an uptrend -> ADD (top-up), not CONSOLIDATE', A['T']['action'] == 'ADD' and 'tops it up' in A['T']['reasons'][0], (A['T']['action'], A['T']['reasons'][0][-60:]))
-ok('RSI 36-44 in an uptrend, small weight -> WATCH with the level to wait for', A['W']['action'] == 'WATCH' and 'Wait for the RSI to dip below 35' in A['W']['reasons'][0], (A['W']['action'], A['W']['reasons'][0][:80]))
-ok('counts include WATCH', r['summary']['counts'].get('WATCH', 0) >= 1, r['summary']['counts'])
-ok('in profit, RSI 66-74 (just under the 75 sell level) -> TRIMWATCH, no amount', A['H']['action'] == 'TRIMWATCH' and A['H']['amount'] == 0 and 'take-profit' in A['H']['reasons'][0], (A['H']['action'], A['H']['reasons'][0][:80]))
-ok('same RSI but at a loss -> not TRIMWATCH', A['J']['action'] != 'TRIMWATCH', A['J']['action'])
-ok('counts include TRIMWATCH', r['summary']['counts'].get('TRIMWATCH', 0) >= 1, r['summary']['counts'])
-r2 = advisor.advise(payload, None, 'conservative')
-ok('conservative also finds the deeply oversold pullback', r2['assets']['B']['action'] == 'ADD')
-r3 = advisor.advise(payload, None, 'aggressive')
-ok('aggressive take-profit also fires on the hot holding', r3['assets']['A']['action'] == 'TRIM')
+
+H = {'RISE': series('rise'), 'PULL': series('pullback'), 'DOWN': series('down')}
+wt = strategy.weekly_trend(H['RISE'])
+ok('weekly trend: steady rise is above SMA(200) for many weeks', wt and wt['up'] and wt['weeks'] > 10 and wt['regime_up'], wt and (wt['up'], wt['weeks']))
+wt = strategy.weekly_trend(H['DOWN'])
+ok('weekly trend: long fall is below SMA(200), SMA(50) below SMA(200)', wt and not wt['up'] and not wt['regime_up'], wt and (wt['up'], wt['dist']))
+# the current week is not finished: a Wednesday close must not count as a weekly close
+mid = dict(H['RISE'])
+wed = end + timedelta(days=5)                          # the Wednesday after the last Friday
+mid = {'d': H['RISE']['d'] + [wed.toordinal() - date(1970, 1, 1).toordinal() - 2, wed.toordinal() - date(1970, 1, 1).toordinal() - 1, wed.toordinal() - date(1970, 1, 1).toordinal()],
+       'c': H['RISE']['c'] + [1.0, 1.0, 1.0]}           # crash below SMA(200) on Mon-Wed of the running week
+wt = strategy.weekly_trend(mid, today=wed)
+ok('an unfinished week is ignored (the rule waits for Friday), live state warns', wt and wt['up'] and not wt['live_up'], wt and (wt['up'], wt['live_up']))
+
+# ───── settings ─────
+s = strategy.clean_settings({'deposit': 10000, 'reduce': 15000, 'opportunity_pct': 5, 'overrides': {'SE0000695876': 'health'}})
+ok('valid settings pass', s['deposit'] == 10000 and s['overrides'] == {'SE0000695876': 'health'})
+for bad, why in (({'deposit': -1, 'reduce': 0, 'opportunity_pct': 5}, 'negative deposit'), ({'deposit': 1, 'reduce': 0, 'opportunity_pct': 50}, 'cash above 20%'),
+                 ({'deposit': 1, 'reduce': 0, 'opportunity_pct': 5, 'overrides': {'x': 'ai'}}, 'override key not an ISIN'),
+                 ({'deposit': 1, 'reduce': 0, 'opportunity_pct': 5, 'overrides': {'SE0000695876': 'cash'}}, 'cash is not a holding category'),
+                 ({'deposit': 'abc', 'reduce': 0, 'opportunity_pct': 5}, 'not a number')):
+    try:
+        strategy.clean_settings(bad)
+        ok('rejects ' + why, False)
+    except ValueError:
+        ok('rejects ' + why, True)
+for prof in strategy.TARGETS:
+    ok(f'{prof} targets sum to 100', abs(sum(strategy.targets(prof, strategy.DEFAULT_SETTINGS).values()) - 100) < 1e-9)
+t = strategy.targets('balanced', {'opportunity_pct': 8})
+ok('more opportunity cash comes out of the core', t['cash'] == 8 and t['core'] == 47, t)
+
+# ───── deposit plan and transition ─────
+cat_kr = {k: 0.0 for k in strategy.ORDER}
+cat_kr.update(core=10000, ai=50000, bigtech=5000, health=5000, industrials=5000, financials=3000, materials=3000, defensive=2000, cash=500)
+tg = strategy.targets('balanced', strategy.DEFAULT_SETTINGS)
+dp = strategy.deposit_plan(cat_kr, sum(cat_kr.values()), tg, 10000, {})
+ok('deposit plan spends exactly the deposit', sum(x['amount'] for x in dp) == 10000, dp)
+ok('nothing of the deposit goes to an over-target group', all(x['cat'] != 'ai' for x in dp))
+ok('without stock entry signals the stock groups\' share waits in the core', dp[0]['cat'] == 'core' and all(x['cat'] in ('core', 'cash', 'defensive') for x in dp), dp)
+tr = strategy.transition(cat_kr, tg, 10000, 15000, months=36)
+ok('transition: the over-target group falls under the plan', tr['paths']['plan']['ai'][24] < tr['paths']['deposits_only']['ai'][24] < tr['paths']['status_quo']['ai'][24], [tr['paths'][k]['ai'][24] for k in ('plan', 'deposits_only', 'status_quo')])
+ok('transition: status quo keeps the mix', abs(tr['paths']['status_quo']['ai'][36] - tr['paths']['status_quo']['ai'][0]) < 0.2)
+ok('transition: months to target band reported', tr['over'] == ['ai'] and tr['months_to_band'] is not None, (tr['over'], tr['months_to_band']))
+
+# ───── the whole plan on a made-up portfolio ─────
+# total 76 200 kr: AI chain 29% (over its 15% target), index funds 45% (under 50%), big tech 6% (under 7%)
+ASSETS = [  # isin, name, type, value, unrealised %, symbol, sector, industry
+    ('US0000000001', 'Micron Technology', 'Stock', 9000, -20, 'RISE', 'Technology', 'Semiconductors'),
+    ('US0000000002', 'NVIDIA', 'Stock', 3000, 10, 'RISE', 'Technology', 'Semiconductors'),
+    ('US0000000003', 'ASML Holding', 'Stock', 2900, -5, 'RISE', 'Technology', 'Semiconductor Equipment & Materials'),
+    ('US0000000004', 'Advanced Micro Devices', 'Stock', 2800, -10, 'RISE', 'Technology', 'Semiconductors'),
+    ('US0000000005', 'Applied Materials', 'Stock', 2700, -10, 'RISE', 'Technology', 'Semiconductor Equipment & Materials'),
+    ('US0000000006', 'Seagate Technology', 'Stock', 2000, -30, 'DOWN', 'Technology', 'Computer Hardware'),
+    ('US0000000007', 'Alphabet A', 'Stock', 2500, 50, 'RISE', 'Communication Services', 'Internet Content'),
+    ('US0000000008', 'Microsoft', 'Stock', 2000, 5, 'PULL', 'Technology', 'Software - Infrastructure'),
+    ('US0000000009', 'Chevron', 'Stock', 2500, -5, 'DOWN', 'Energy', 'Oil & Gas Integrated'),
+    ('US0000000010', 'Coca-Cola', 'Stock', 800, 4, 'RISE', 'Consumer Defensive', 'Beverages'),
+    ('DK0000000013', 'Novo Nordisk B', 'Stock', 3000, -5, 'RISE', 'Healthcare', 'Drug Manufacturers'),
+    ('US0000000014', 'BlackRock', 'Stock', 3000, 10, 'RISE', 'Financial Services', 'Asset Management'),
+    ('SE0000000015', 'Alfa Laval', 'Stock', 3000, 3, 'RISE', 'Industrials', 'Specialty Industrial Machinery'),
+    ('DE0000000016', 'Xetra-Gold', 'ETF/ETC', 3000, 2, None, None, None),
+    ('SE0000000011', 'Nordnet USA Index', 'Fund', 20000, 8, None, None, None),
+    ('SE0000000012', 'Nordnet Sverige Index', 'Fund', 14000, 8, None, None, None),
+]
+sym = {a[0]: a[5] for a in ASSETS if a[5]}
+symbols.resolve = lambda isin, name, ccy: {'symbol': sym[isin]} if isin in sym else None
+advisor._histories = lambda syms, budget=45: {s: H[s] for s in syms if s in H}
+sectors.batch = lambda items, budget=0: ({a[0]: {'sector': a[6], 'industry': a[7], 'quote_type': 'EQUITY' if a[2] == 'Stock' else 'MUTUALFUND'} for a in ASSETS if a[6]}, 0)
+assets = [{'isin': a[0], 'name': a[1], 'type': a[2], 'ccy': 'SEK', 'held': True, 'qty': 10, 'value': a[3], 'unrealized': a[3] * a[4] / 100,
+           'unrealized_pct': a[4], 'realized': 0, 'fees': 0, 'sells': 0} for a in ASSETS]
+payload = {'assets': assets, 'trades': [], 'insights': {'overview': {'cash_balance': 0}, 'sell_quality': {'avg_hold_days': 40}}, 'generated': 'x'}
+r = advisor.advise(payload, None, 'balanced', {'deposit': 10000, 'reduce': 15000, 'opportunity_pct': 5})
+A = {v['name']: v for v in r['assets'].values()}
+total = sum(a[3] for a in ASSETS)
+ok('size cap: one stock above 4% of the account is cut back', A['Micron Technology']['action'] == 'TRIM' and A['Micron Technology']['rule'] == 'size_cap'
+   and abs(A['Micron Technology']['amount'] - (9000 - 0.04 * total)) <= 500, (A['Micron Technology']['action'], A['Micron Technology']['amount']))
+ok('hold half: the largest AI names are kept through the trend', all(A[n]['action'] == 'HOLD' and A[n]['keep'] for n in ('NVIDIA', 'ASML Holding', 'Advanced Micro Devices', 'Applied Materials')),
+   [(n, A[n]['action']) for n in ('NVIDIA', 'ASML Holding')])
+ok('trend half: a weekly close below SMA(200) is a sale (trend exit)', A['Seagate Technology']['action'] == 'TRIM' and A['Seagate Technology']['rule'] == 'trend_exit'
+   and A['Seagate Technology']['amount'] == 2000, A['Seagate Technology'])
+ok('no RSI take-profit: an overbought holding in profit is held', A['Alphabet A']['action'] == 'HOLD', (A['Alphabet A']['action'], A['Alphabet A']['reasons'][0][:60]))
+ok('pullback in an uptrend in a group under target -> ADD', A['Microsoft']['action'] == 'ADD' and A['Microsoft']['rule'] in ('pullback',), (A['Microsoft']['action'], A['Microsoft']['rule']))
+ok('energy: SMA(50) below SMA(200) -> regime exit', A['Chevron']['action'] == 'TRIM' and A['Chevron']['rule'] == 'regime_exit', A['Chevron']['rule'])
+ok('tiny position -> CONSOLIDATE', A['Coca-Cola']['action'] == 'CONSOLIDATE', A['Coca-Cola']['action'])
+ok('index funds get new money from the deposit plan', A['Nordnet USA Index']['action'] == 'ADD' and A['Nordnet USA Index']['amount'] > 0, A['Nordnet USA Index'])
+P = r['plan']
+ok('plan: the deposit plan spends the monthly deposit', sum(x['amount'] for x in P['deposit_plan']) == 10000, P['deposit_plan'])
+ok('plan: categories carry target, status and weekly trend counts', all({'key', 'pct', 'target', 'status', 'n_up'} <= set(c) for c in P['categories']))
+ok('plan: AI chain over target, core under target', {c['key']: c['status'] for c in P['categories']}['ai'] == 'over' and {c['key']: c['status'] for c in P['categories']}['core'] == 'under')
+ok('plan: five strategy-fit ratings 0-10', len(P['fit']) == 5 and all(0 <= f['score'] <= 10 for f in P['fit']))
+ok('plan: stress test for today and target', set(P['stress']['now']) == set(P['stress']['target']) == set(strategy.STRESS))
+ok('counts have no TRIMWATCH any more', 'TRIMWATCH' not in r['summary']['counts'], r['summary']['counts'])
+ok('every action has a reason', all(v['reasons'] for v in r['assets'].values()))
+r2 = advisor.advise(payload, None, 'aggressive', {'deposit': 10000, 'reduce': 15000, 'opportunity_pct': 5})
+ok('aggressive has a higher AI target than balanced', {c['key']: c['target'] for c in r2['plan']['categories']}['ai'] > {c['key']: c['target'] for c in P['categories']}['ai'])
 print(f'{sum(res)}/{len(res)} passed')
 sys.exit(0 if all(res) else 1)

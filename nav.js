@@ -10,12 +10,19 @@
   const MODES = [['value', 'Value (kr)'], ['growth', 'Growth (%)']];
   const SMOOTH = [['off', 'Off'], ['light', 'Light'], ['strong', 'Strong']];
   const SMOOTH_R = { off: 0, light: 2, strong: 5 };                          // radius of the moving average in trading days (before the short-range cap)
-  // bright, well separated hues for a dark background, assigned to a curve while it is selected (no two selected curves share one).
-  // Gold and white are reserved: white = whole account, gold = money deposited.
+  // well separated hues, assigned to a curve while it is selected (no two selected curves share one). The colours are CSS tokens
+  // (nav.css --nav-c1..8: bright steps on dark, deeper steps on light), read at draw time; the list below is the dark fallback.
+  // The strongest-text colour and gold are reserved: strongest text (--white) = whole account, gold = money deposited.
   const PALETTE = ['#4C9AFF', '#FF7A45', '#2EC4A0', '#B388FF', '#FF6FB5', '#22D3EE', '#A3E635', '#FF5C5C'];
   const DASHES = [[], [], [], [], [], [8, 3], [2, 3], [10, 3, 2, 3]];       // curves 6-8 also differ by line style (colour-blind friendly)
-  const TOTAL = '__total', TOTAL_COLOR = '#FFFFFF', DEPOSIT_COLOR = '#F7C948', MAX_CURVES = 8;
-  const GAIN = 'rgba(38, 166, 154, .26)', LOSS = 'rgba(239, 83, 80, .28)';
+  const TOTAL = '__total', MAX_CURVES = 8;
+  const tok = (name, dflt) => (window.TVTheme && TVTheme.css(name)) || dflt;
+  const alpha = (hex, a) => { const m = /^#([0-9a-f]{6})$/i.exec(hex); return m ? `rgba(${[0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(', ')}, ${a})` : hex; };
+  let TOK = null;                                                             // colours of the current theme, read once per theme
+  const T = () => TOK || (TOK = {
+    pal: PALETTE.map((d, i) => tok('--nav-c' + (i + 1), d)), total: tok('--white', '#FFFFFF'), deposit: tok('--gold', '#F7C948'),
+    gain: alpha(tok('--green', '#26A69A'), .26), loss: alpha(tok('--red', '#EF5350'), .28), dim: tok('--text-dim', '#787B86'), grid: tok('--border', '#2A2E39'),
+  });
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const nf0 = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 });
@@ -43,15 +50,17 @@
     return Math.min(i, d.length - 2);
   }
   const labelOf = k => k === TOTAL ? 'Total NAV' : k;
-  function colorOf(k) {
-    if (k === TOTAL) return TOTAL_COLOR;
+  // S.colors: curve -> palette slot (not the colour itself), so a theme switch keeps every curve on its slot
+  function slotOf(k) {
     if (!S.colors.has(k)) {
       const used = new Set(S.colors.values());
-      S.colors.set(k, PALETTE.find(c => !used.has(c)) || PALETTE[S.colors.size % PALETTE.length]);
+      const free = PALETTE.findIndex((_, i) => !used.has(i));
+      S.colors.set(k, free >= 0 ? free : S.colors.size % PALETTE.length);
     }
     return S.colors.get(k);
   }
-  const dashOf = k => k === TOTAL ? [] : DASHES[Math.max(0, PALETTE.indexOf(colorOf(k)))] || [];
+  const colorOf = k => k === TOTAL ? T().total : T().pal[slotOf(k)];
+  const dashOf = k => k === TOTAL ? [] : DASHES[slotOf(k)] || [];
   // exact values of one curve for the chosen range / view (server numbers; growth is re-based to 0 at the start of the range)
   function seriesFor(k, s) {
     const D = S.data, n = D.dates.length - s;
@@ -125,7 +134,7 @@
     const a = ch.tooltip && ch.tooltip.getActiveElements ? ch.tooltip.getActiveElements() : [];
     if (!a.length) return;
     const x = a[0].element.x, { top, bottom } = ch.chartArea, g = ch.ctx;
-    g.save(); g.strokeStyle = '#787B86'; g.lineWidth = 1; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore();
+    g.save(); g.strokeStyle = T().dim; g.lineWidth = 1; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore();
   } };
   // direct labels at the right end of every line (so colour is never the only way to tell the lines apart)
   const endLabels = { id: 'navEnd', afterDatasetsDraw(ch) {
@@ -182,7 +191,7 @@
         scales: {
           x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 11 },
             callback(v) { const iso = this.getLabelForValue(v); const n = S.data.dates.length - startIndex(S.range); return n > 190 ? new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) : shortDate(iso); } } },
-          y: { grace: '6%', grid: { color: c => (!value && c.tick && c.tick.value === 0) ? '#787B86' : '#2A2E39' },
+          y: { grace: '6%', grid: { color: c => (!value && c.tick && c.tick.value === 0) ? T().dim : T().grid },
             ticks: { maxTicksLimit: 6, font: { size: 11 }, callback: value ? (v => compact(v) + ' kr') : (v => v + '%') } },
         },
       },
@@ -217,10 +226,10 @@
     });
     if (S.mode === 'value' && S.sel.includes(TOTAL)) {
       const dep = nd.slice(s);
-      datasets.push({ label: 'Net deposited', data: dep, raw: dep, borderColor: DEPOSIT_COLOR, backgroundColor: DEPOSIT_COLOR, borderWidth: 2, borderDash: [7, 4], pointRadius: 0, pointHoverRadius: 0, stepped: 'before', order: 2, endLabel: 'Deposited' });
+      datasets.push({ label: 'Net deposited', data: dep, raw: dep, borderColor: T().deposit, backgroundColor: T().deposit, borderWidth: 2, borderDash: [7, 4], pointRadius: 0, pointHoverRadius: 0, stepped: 'before', order: 2, endLabel: 'Deposited' });
       // the area between the NAV and the money put in = gain (green) or loss (red)
       const ti = datasets.findIndex(d => d.label === 'Total NAV'), di = datasets.length - 1;
-      if (ti >= 0) datasets[ti].fill = { target: di, above: GAIN, below: LOSS };
+      if (ti >= 0) datasets[ti].fill = { target: di, above: T().gain, below: T().loss };
     }
     const empty = !datasets.length || datasets.every(d => d.data.every(v => v == null));
     $('nav-empty').hidden = !empty;
@@ -282,5 +291,7 @@
     load();
   }
   (window.TV && TV.ready ? TV.ready : Promise.resolve()).then(() => { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); });
+  // light / dark switch (theme.js): re-read the colours, rebuild the chart (grid, lines, fills, end labels) and the category pills
+  window.addEventListener('tvthemechange', () => { TOK = null; if (!S.data) return; S.chartMode = null; drawControls(); render(); });
   window.NavCurve = { refresh: load, smoothed };
 })();

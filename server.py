@@ -40,7 +40,9 @@ import trade_analytics       # Nordnet CSV -> analytics JSON (Analytics page)
 import symbols               # ISIN/name -> Yahoo symbol (cached, public data)
 import benchmark             # index buy-and-hold comparison (Yahoo daily closes)
 import sectors               # sector / fund category per holding (Yahoo)
-import advisor               # rule-based add / trim review (history cache, no forecasts)
+import advisor               # the portfolio plan: per-category rules turned into actions (history cache, no forecasts)
+import strategy              # categories, targets, weekly SMA(200) trend, deposit plan, plan settings
+import strategy_bt           # 10-year test of the rules per category on the user's own holdings (background, public prices)
 import reports               # upcoming earnings / ex-dividend dates of the holdings (Yahoo calendarEvents)
 import nav                   # net asset value history (total + per category) from the ledger and Yahoo daily closes
 import valuation             # the ONE valuation every page reads (holdings, account value, unrealised, all-time, today's P&L)
@@ -271,9 +273,8 @@ def _curve(uid, ap, snap, fetch=True):
 
 
 def _advice(uid, p, live, profile):
-    if _supports(advisor.get, 'owner'):
-        return advisor.get(p, live, profile, owner=uid)
-    return advisor.advise(p, live, profile)          # uncached rather than a cache shared between users
+    settings = strategy.load_settings(profiles.profile_dir(uid))         # the user's own plan settings (deposit, reduction, cash %, categories)
+    return advisor.get(p, live, profile, owner=uid, settings=settings)
 
 
 def _forget(uid):
@@ -282,6 +283,7 @@ def _forget(uid):
     if fn:
         fn(uid)
     nav.forget(uid)                       # the growth curve is rebuilt from the new files
+    strategy_bt.forget(uid)
 
 
 def _me(u):
@@ -691,6 +693,30 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         prof = (self.query.get('profile') or [advisor.DEFAULT_PROFILE])[0]
         self._json(200, _advice(user['uid'], ap, None, prof if prof in advisor.PROFILES else advisor.DEFAULT_PROFILE))
 
+    def _profile_arg(self):
+        prof = (self.query.get('profile') or [advisor.DEFAULT_PROFILE])[0]
+        return prof if prof in advisor.PROFILES else advisor.DEFAULT_PROFILE
+
+    def r_plan_settings(self, user):
+        folder = profiles.profile_dir(user['uid'], create=self.command == 'POST')
+        if self.command == 'POST':
+            try:
+                s = strategy.save_settings(folder, self._json_body())
+            except ValueError as e:
+                raise ApiError(400, 'invalid', str(e))
+            advisor.forget(user['uid'])
+        else:
+            s = strategy.load_settings(folder)
+        self._json(200, {'ok': True, 'settings': s, 'defaults': strategy.DEFAULT_SETTINGS,
+                         'categories': [{'key': k, 'label': strategy.CATS[k][0]} for k in strategy.ORDER if k != 'cash']})
+
+    def r_plan_evidence(self, user):
+        ap, _ = _valued(user['uid'])
+        adv = _advice(user['uid'], ap, None, self._profile_arg())
+        if not adv.get('ok'):
+            raise ApiError(409, 'no_holdings', 'No holdings to test.')
+        self._json(200, strategy_bt.evidence(user['uid'], adv['plan']['baskets']))
+
     def r_nav(self, user):
         ap, snap = _valued(user['uid'])
         self._json(200, _curve(user['uid'], ap, snap))
@@ -777,6 +803,8 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         '/api/assets':          {'GET':  ('user', 'r_assets')},
         '/api/live':            {'GET':  ('user', 'r_live')},
         '/api/advice':          {'GET':  ('user', 'r_advice')},
+        '/api/plan/settings':   {'GET':  ('user', 'r_plan_settings'), 'POST': ('user', 'r_plan_settings')},
+        '/api/plan/evidence':   {'GET':  ('user', 'r_plan_evidence')},
         '/api/reports':         {'GET':  ('user', 'r_reports')},
         '/api/nav':             {'GET':  ('user', 'r_nav')},
         '/api/snapshot':        {'GET':  ('user', 'r_snapshot')},

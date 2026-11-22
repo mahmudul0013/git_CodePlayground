@@ -6,9 +6,16 @@
 (function () {
   'use strict';
 
-  var COL = { grid: '#2A2E39', text: '#D1D4DC', dim: '#787B86', line: '#3987e5',
-              buy: '#26A69A', sell: '#EF5350' };
+  // canvas colours come from the CSS tokens (light + dark), read when a chart is drawn and again on a theme switch ('tvthemechange');
+  // the values here are only the dark fallbacks. HTML around the chart uses the CSS variables directly.
+  var DARK = { grid: '#2A2E39', text: '#D1D4DC', dim: '#787B86', line: '#3987e5', buy: '#26A69A', sell: '#EF5350', tip: '#0D1017', title: '#FFFFFF' };
+  function colors() {
+    function t(name, d) { return (window.TVTheme && window.TVTheme.css(name)) || d; }
+    return { grid: t('--border', DARK.grid), text: t('--text', DARK.text), dim: t('--text-dim', DARK.dim), line: t('--s1', DARK.line),
+      buy: t('--green', DARK.buy), sell: t('--red', DARK.sell), tip: t('--tip-bg', DARK.tip), title: t('--white', DARK.title) };
+  }
   var FONT = 'Inter, system-ui, sans-serif';
+  var live = new Set();             // charts on screen, recoloured on a theme switch
   var seriesCache = new Map();      // symbol|range -> Promise<{meta, pts}>
   var symbolCache = new Map();      // isin|name|ccy -> Promise<symbol obj>
   var charts = new WeakMap();       // canvas -> Chart
@@ -112,12 +119,31 @@
     return out;
   }
 
+  // theme switch: same chart, new colours (scales, tooltip, line and markers)
+  function recolor(chart) {
+    var c = colors(), o = chart.config.options, d = chart.data.datasets;
+    ['x', 'y'].forEach(function (k) { var s = o.scales[k]; s.grid.color = c.grid; s.border.color = c.grid; s.ticks.color = c.dim; });
+    var tp = o.plugins.tooltip;
+    tp.backgroundColor = c.tip; tp.borderColor = c.grid; tp.titleColor = c.text; tp.bodyColor = c.text;
+    d[0].borderColor = chart.$tvFaint ? c.dim : c.line;
+    d[1].backgroundColor = c.buy; d[1].borderColor = c.tip;
+    d[2].backgroundColor = c.sell; d[2].borderColor = c.tip;
+    chart.update('none');
+  }
+  window.addEventListener('tvthemechange', function () {
+    live.forEach(function (ch) {
+      if (!ch.canvas || !ch.canvas.isConnected) { live.delete(ch); return; }
+      try { recolor(ch); } catch (e) { live.delete(ch); }
+    });
+  });
+
   function drawChart(canvas, linePts, trades, yOf, opts) {
+    var COL = colors();
     var old = charts.get(canvas);
-    if (old) { try { old.destroy(); } catch (e) {} charts.delete(canvas); }
+    if (old) { live.delete(old); try { old.destroy(); } catch (e) {} charts.delete(canvas); }
     if (typeof Chart === 'undefined') throw new Error('Chart.js missing');
     var existing = Chart.getChart && Chart.getChart(canvas);
-    if (existing) { try { existing.destroy(); } catch (e) {} }
+    if (existing) { live.delete(existing); try { existing.destroy(); } catch (e) {} }
 
     var maxAmt = trades.reduce(function (m, t) { return Math.max(m, Math.abs(t.amount) || 0); }, 0) || 1;
     function radius(t) {
@@ -131,13 +157,13 @@
     var buys = mk('BUY'), sells = mk('SELL');
     var buyDs = {
       label: 'Buy', data: buys, showLine: false, order: 0,
-      pointStyle: 'triangle', rotation: 0, backgroundColor: COL.buy, borderColor: '#0e1118', borderWidth: 1,
+      pointStyle: 'triangle', rotation: 0, backgroundColor: COL.buy, borderColor: COL.tip, borderWidth: 1,
       pointRadius: function (c) { return c.raw && c.raw.t ? radius(c.raw.t) : 6; },
       pointHoverRadius: function (c) { return (c.raw && c.raw.t ? radius(c.raw.t) : 6) + 2; }
     };
     var sellDs = {
       label: 'Sell', data: sells, showLine: false, order: 0,
-      pointStyle: 'triangle', rotation: 180, backgroundColor: COL.sell, borderColor: '#0e1118', borderWidth: 1,
+      pointStyle: 'triangle', rotation: 180, backgroundColor: COL.sell, borderColor: COL.tip, borderWidth: 1,
       pointRadius: buyDs.pointRadius, pointHoverRadius: buyDs.pointHoverRadius
     };
     var lineDs = {
@@ -170,7 +196,7 @@
           legend: { display: false },
           tooltip: {
             filter: function (it) { return it.datasetIndex > 0; },
-            backgroundColor: '#161a23', borderColor: COL.grid, borderWidth: 1,
+            backgroundColor: COL.tip, borderColor: COL.grid, borderWidth: 1,
             titleColor: COL.text, bodyColor: COL.text, titleFont: { family: FONT }, bodyFont: { family: FONT },
             callbacks: {
               title: function (items) { var t = items[0] && items[0].raw && items[0].raw.t; return t ? t.date : ''; },
@@ -186,7 +212,9 @@
         }
       }
     });
+    chart.$tvFaint = !!opts.faint;
     charts.set(canvas, chart);
+    live.add(chart);
     return chart;
   }
 
@@ -200,14 +228,14 @@
 
       containerEl.innerHTML = '';
       var head = document.createElement('div');
-      head.style.cssText = 'font:500 12px ' + FONT + ';color:' + COL.text + ';margin:4px 0 6px';
+      head.style.cssText = 'font:500 12px ' + FONT + ';color:var(--text, ' + DARK.text + ');margin:4px 0 6px';
       head.textContent = (asset.name || '') + (asset.isin ? ' · ' + asset.isin : '');
       var wrap = document.createElement('div');
       wrap.style.cssText = 'position:relative;height:260px;width:100%';
       var canvas = document.createElement('canvas');
       wrap.appendChild(canvas);
       var status = document.createElement('div');
-      status.style.cssText = 'font:12px ' + FONT + ';color:' + COL.dim + ';margin-top:6px;line-height:1.5';
+      status.style.cssText = 'font:12px ' + FONT + ';color:var(--text-dim, ' + DARK.dim + ');margin-top:6px;line-height:1.5';
       containerEl.appendChild(head);
       containerEl.appendChild(wrap);
       containerEl.appendChild(status);
@@ -215,10 +243,10 @@
       var sum = summary(trades, ccy);
       function alive() { return renderToken.get(containerEl) === token && containerEl.isConnected && canvas.isConnected; }
       function setStatus(msg, warn) {
-        status.innerHTML = (msg ? '<div style="color:' + (warn ? '#c98500' : COL.dim) + '">' + esc(msg) + '</div>' : '') +
+        status.innerHTML = (msg ? '<div style="color:' + (warn ? 'var(--gold, #c98500)' : 'var(--text-dim, ' + DARK.dim + ')') + '">' + esc(msg) + '</div>' : '') +
           '<div>' + esc(sum) + '</div>' +
-          '<div><span style="color:' + COL.buy + '">&#9650;</span> Buy &nbsp; <span style="color:' + COL.sell +
-          '">&#9660;</span> Sell &nbsp; <span style="color:' + COL.line + '">&#9473;</span> ' +
+          '<div><span style="color:var(--green, ' + DARK.buy + ')">&#9650;</span> Buy &nbsp; <span style="color:var(--red, ' + DARK.sell +
+          ')">&#9660;</span> Sell &nbsp; <span style="color:var(--s1, ' + DARK.line + ')">&#9473;</span> ' +
           (status.dataset.mode === 'live' ? 'Daily close' : 'Your trade prices') + '</div>';
       }
 

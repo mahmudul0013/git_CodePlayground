@@ -6,8 +6,18 @@
 'use strict';
 
 const POLL_MS = 10_000;
-const C = { s: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
-            other: '#5d6170', green: '#26A69A', red: '#EF5350', dim: '#787B86', grid: '#2A2E39' };
+// chart colours come from the CSS tokens (analytics.css: dark in :root, light in :root[data-theme="light"]), read each time a chart is
+// drawn; the values here are only the dark fallbacks. A light / dark switch (theme.js) redraws the open tab.
+const C = (() => {
+  const tok = (name, dflt) => (window.TVTheme && TVTheme.css(name)) || dflt;
+  const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+  return {
+    get s() { return SERIES.map((d, i) => tok('--s' + (i + 1), d)); },
+    get other() { return tok('--other', '#5d6170'); }, get green() { return tok('--green', '#26A69A'); }, get red() { return tok('--red', '#EF5350'); },
+    get dim() { return tok('--text-dim', '#787B86'); }, get grid() { return tok('--border', '#2A2E39'); },
+    get text() { return tok('--text', '#D1D4DC'); }, get surface() { return tok('--surface', '#1E2130'); },
+  };
+})();
 
 const COUNTRY = { US: 'United States', SE: 'Sweden', NO: 'Norway', DE: 'Germany', GB: 'United Kingdom',
   IE: 'Ireland', LU: 'Luxembourg', NL: 'Netherlands', FI: 'Finland', DK: 'Denmark', CA: 'Canada',
@@ -325,11 +335,11 @@ function doughnut(id, entries, nameFn) {
   const total = data.reduce((a, b) => a + b, 0);
   mkChart(id, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#1E2130', borderWidth: 2 }] },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: C.surface, borderWidth: 2 }] },
     options: { cutout: '58%', plugins: {
-      legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 },
+      legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 }, color: C.text,
         generateLabels: ch => ch.data.labels.map((l, i) => ({ text: `${l} ${total ? (data[i] / total * 100).toFixed(0) : 0}%`,
-          fillStyle: colors[i], strokeStyle: colors[i], index: i, fontColor: '#D1D4DC' })) } },
+          fillStyle: colors[i], strokeStyle: colors[i], index: i, fontColor: C.text })) } },
       tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)} kr (${total ? (c.parsed / total * 100).toFixed(1) : 0}%)` } } } },
   });
 }
@@ -553,7 +563,7 @@ function renderHabits() {
 }
 
 // ───────── render: deposit behaviour tab ─────────
-const DEP = { dep: C.s[0], port: C.s[6], held: C.s[2], net: C.dim };
+const DEP = { get dep() { return C.s[0]; }, get port() { return C.s[6]; }, get held() { return C.s[2]; }, get net() { return C.dim; } };
 const weekStart = d => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return iso(x); };
 
 // One row per day -> one row per bucket. Deposits add up; every level (value, positions...) is the last day's.
@@ -589,7 +599,7 @@ function linkCharts(ids) {
   });
 }
 
-const OV_COLOR = { omx: C.s[1], spx: C.s[3], nq: C.s[4] };
+const OV_COLOR = { get omx() { return C.s[1]; }, get spx() { return C.s[3]; }, get nq() { return C.s[4]; } };
 
 // Index curves come from /api/overlay (Yahoo); fetched only once an index is ticked, again after the CSVs change.
 async function ensureOverlay() {
@@ -803,7 +813,7 @@ function renderDeposits() {
 }
 
 // ───────── dividends tab ─────────
-const DIV = { net: C.s[2], tax: C.other };
+const DIV = { get net() { return C.s[2]; }, get tax() { return C.other; } };
 function divBuckets(series, gran) {
   const key = gran === 'day' ? d => d : gran === 'week' ? weekStart : d => d.slice(0, 7);
   const m = new Map();
@@ -897,8 +907,8 @@ function renderDividends() {
 }
 
 // ───────── advice tab + Add / trim column (rules in advisor.py, served by /api/advice) ─────────
-const ADV_RANK = { TRIM: 0, TRIMWATCH: 1, ADD: 2, BUYBACK: 3, WATCH: 4, REVIEW: 5, CONSOLIDATE: 6, HOLD: 7 };
-const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', WATCH: 'WATCH', TRIMWATCH: 'TRIM WATCH', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
+const ADV_RANK = { TRIM: 0, ADD: 1, BUYBACK: 2, WATCH: 3, REVIEW: 4, CONSOLIDATE: 5, HOLD: 6 };
+const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', WATCH: 'WATCH', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
 
 const advProfile = () => { try { return localStorage.getItem(window.TV ? TV.key('tv_advice_profile') : 'tv_advice_profile') || 'balanced'; } catch (e) { return 'balanced'; } };
 
@@ -920,48 +930,13 @@ function adviceCell(a) {
   if (!v) return '<span class="tag">…</span>';
   const tip = esc(v.reasons.join(' '));
   const amt = v.amount ? `<span class="adv-amt pv">${v.action === 'ADD' || v.action === 'BUYBACK' ? '+' : '−'}${fmt(v.amount)} kr</span>` : '';
-  return `<span class="adv ${v.action}" title="${tip}">${ADV_LABEL[v.action] || v.action}</span>${amt}`;
+  const later = v.action === 'TRIM' && v.when === 'later' ? ' <span class="tag">queued</span>' : '';
+  return `<span class="adv ${v.action}" title="${tip}">${ADV_LABEL[v.action] || v.action}</span>${amt}${later}`;
 }
 
+// The Plan & advice tab is built by plan.js (one strategy per category, deposit plan, evidence, transition, stress test)
 function renderAdvice() {
-  const A = S.advice;
-  if (!A) { $('adv-status').textContent = 'Loading price history from Yahoo for the first time can take up to a minute…'; loadAdvice(); return; }
-  const rows = Object.entries(A.assets).map(([isin, v]) => ({ isin, ...v }));
-  const Y = A.summary;
-  document.querySelectorAll('#adv-profile .chip').forEach(b => b.classList.toggle('active', b.dataset.p === Y.profile));
-  $('adv-profile-about').textContent = 'Add / buy back when: ' + Y.profile_about + '. Size, sector and tiny-position rules are the same for all three.';
-  $('adv-status').textContent = `Based on ${Y.positions} holdings (${Y.covered} with Yahoo price history), valued ${A.asof.replace('T', ' ')}. Weights are % of holdings.`;
-  const sev = { high: 'ACT', med: 'WATCH', info: 'NOTE' };
-  $('adv-cards').innerHTML = A.cards.map(c => `<div class="finding"><h4><span class="sev ${c.sev}">${sev[c.sev] || 'NOTE'}</span>${esc(c.title)}</h4><div class="num">${esc(c.num)}</div><p>${esc(c.text)}</p></div>`).join('');
-
-  const th = Object.entries(Y.theme);
-  mkChart('a-theme', { type: 'bar', data: { labels: th.map(x => x[0]), datasets: [{ data: th.map(x => x[1]), backgroundColor: th.map(x => x[1] > 40 && x[0] !== 'Unclassified' && x[0] !== 'Funds' ? C.red : C.s[0]), borderRadius: 3 }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x.toFixed(1)}% of holdings` } } },
-      scales: { x: { grid: { color: C.grid }, ticks: { callback: v => v + '%' } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } } } });
-  const ac = Object.entries(Y.counts);
-  const accol = { ADD: C.green, BUYBACK: C.s[0], WATCH: C.s[7], TRIMWATCH: C.s[3], TRIM: C.s[3], CONSOLIDATE: C.s[6], REVIEW: C.red, HOLD: C.other };
-  mkChart('a-actions', { type: 'bar', data: { labels: ac.map(x => x[0]), datasets: [{ data: ac.map(x => x[1]), backgroundColor: ac.map(x => accol[x[0]]), borderRadius: 3, maxBarThickness: 40 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: C.grid }, ticks: { precision: 0 } } } } });
-
-  const head = ['Asset', 'Action', 'Weight', 'Amount kr', 'Score', 'Trend', 'RSI 14', '12m momentum', 'From 52w high', 'Why'];
-  const line = v => [esc(v.name), `<span class="adv ${v.action}">${ADV_LABEL[v.action]}</span>`, v.closed ? 'not held' : pct(v.weight, 1), { v: `<span class="pv">${v.amount ? fmt(v.amount) : '—'}</span>` },
-    v.score || '—', (v.metrics && v.metrics.trend) || '—', v.metrics && v.metrics.rsi != null ? Math.round(v.metrics.rsi) : '—', v.metrics && v.metrics.mom12_1 != null ? pct(v.metrics.mom12_1 * 100, 0) : '—',
-    v.metrics && v.metrics.dd52 != null ? pct(v.metrics.dd52 * 100, 0) : '—', { v: `<span class="adv-why">${esc(v.reasons.join(' '))}</span>` }];
-  const by = (acts, f) => rows.filter(r => acts.includes(r.action)).sort(f || ((x, y) => y.score - x.score)).map(line);
-  table('tb-add', head, by(['ADD', 'BUYBACK', 'WATCH'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.score - x.score), 'No add, buy-back or watch ideas right now: nothing is close to oversold (RSI) in an uptrend, or the sector is already over its cap.');
-  table('tb-trim', head, by(['TRIM', 'TRIMWATCH'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.score - x.score), 'No position breaks the size or theme limits, and none is overbought or close to it.');
-  table('tb-cons', head, by(['CONSOLIDATE', 'REVIEW'], (x, y) => (ADV_RANK[x.action] - ADV_RANK[y.action]) || y.amount - x.amount), 'Nothing to consolidate.');
-  $('adv-method').innerHTML = [
-    '<b>TRIM</b>: (1) a position above 4% of holdings is cut back to 4%; (2) in a theme above 40% the holdings of 2.5% or more give back a fifth; (3) <b>take profit</b>: RSI(14) above the profile\'s sell level (Balanced 75) on a holding that is in profit, about a third of it. Strong stocks often stay overbought for weeks, so (3) is discipline, not a prediction.',
-    '<b>ADD</b>: weight under 1.5%, the theme not over its cap, the price above its 200-day average (uptrend, no falling knives), 5-25% below the 52-week high, and RSI(14) below the profile\'s buy level (Balanced 35, Conservative 30, Aggressive 40). Fill to about 2% in orders of at least 1 500 kr. Score = momentum rank, pullback depth and low volatility.',
-    '<b>WATCH</b>: close to an ADD or BUY BACK signal: same trend and pullback test, but RSI(14) is between the buy level and 10 points above it (Balanced 35-45). No order yet; it tells you which names to look at next and which RSI level to wait for.',
-    '<b>TRIM WATCH</b>: the mirror of WATCH: a holding in profit whose RSI(14) is within 10 points below the take-profit level (Balanced 65-75). No order yet; it shows what will become a take-profit idea next.',
-    '<b>BUY BACK</b>: same trend and pullback test applied to positions you have closed (so a good exit is not a lost opportunity), at least 7 days after your last sell, in one order of about 1.5% of the portfolio. The sell price and today\'s price are shown when both are in the same currency.',
-    '<b>CONSOLIDATE</b>: under 1 500 kr. A round trip costs about 16 kr courtage and the position cannot change the result; sell it or top it up.',
-    '<b>REVIEW</b>: below the 200-day, negative momentum and more than 15% under your cost. Not a sell order: re-check why you own it.',
-    '<b>Data</b>: Yahoo adjusted daily closes (2 years, cached 6 h in history_cache.json), live prices for weights, Yahoo sectors, your ledger for cost and unrealised result. Funds without Yahoo history are kept as is.',
-    'Not investment advice. Rules limit risk and cost; they do not predict prices. Check tax effects (selling a loss or a gain) and liquidity before acting.',
-  ].map(x => `<li>${x}</li>`).join('');
+  if (window.Plan) Plan.render();
 }
 
 // ───────── benchmark score + good practice ─────────
@@ -1051,11 +1026,6 @@ function bind() {
     e.target.checked ? S.idx.add(e.target.value) : S.idx.delete(e.target.value);
     renderDeposits();
   });
-  $('adv-profile').addEventListener('click', e => {
-    const b = e.target.closest('.chip'); if (!b) return;
-    try { localStorage.setItem(window.TV ? TV.key('tv_advice_profile') : 'tv_advice_profile', b.dataset.p); } catch (err) { /* private mode */ }
-    S.advice = null; $('adv-status').textContent = 'Recalculating…'; loadAdvice();
-  });
   $('div-gran').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.dgran = b.dataset.g; renderDividends(); } });
   $('dep-metric').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.metric = b.dataset.m; renderDeposits(); } });
 }
@@ -1076,6 +1046,10 @@ function renderTab() {
   S.tabValue = S.data.insights.overview.total_value;
   ({ assets: renderAssets, habits: renderHabits, deposits: renderDeposits, dividends: renderDividends, advice: renderAdvice })[S.tab]();
 }
+
+// light / dark switch (theme.js): the charts read their colours from the tokens when drawn, so redraw the open tab.
+// The Plan & advice tab (plan.js) listens to 'tvthemechange' itself; other tabs redraw when they are opened.
+window.addEventListener('tvthemechange', () => { if (S.data && S.tab !== 'advice') renderTab(); });
 
 // nothing is fetched or read from per-user storage before auth.js knows who is signed in
 (window.TV ? TV.ready : Promise.resolve()).then(() => {

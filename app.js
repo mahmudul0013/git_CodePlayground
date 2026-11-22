@@ -25,9 +25,10 @@ const CFG = {
   yahooBase:  HAS_PROXY ? '/yahoo' : 'https://query1.finance.yahoo.com',
 
   // Ticker bar symbols + display labels
-  tickerSymbols: ['^OMX', '^GDAXI', 'ES=F', 'GC=F', 'USDSEK=X', 'EURUSD=X'],
-  tickerLabels:  { '^OMX':'OMXS30', '^GDAXI':'DAX', 'ES=F':'SP500F',
-                   'GC=F':'GOLD', 'USDSEK=X':'USD/SEK', 'EURUSD=X':'EUR/USD' },
+  tickerSymbols: ['^OMX', '^GDAXI', 'ES=F', 'NQ=F', '^TNX', 'GC=F', 'BTC-USD', 'USDSEK=X', 'EURUSD=X'],
+  tickerLabels:  { '^OMX':'OMXS30', '^GDAXI':'DAX', 'ES=F':'SP500F', 'NQ=F':'NASDAQ100F', '^TNX':'US10Y',
+                   'GC=F':'GOLD', 'BTC-USD':'BTC/USD', 'USDSEK=X':'USD/SEK', 'EURUSD=X':'EUR/USD' },
+  tickerYield:   ['^TNX'],                 // shown as a yield in %, not as a price
 
   refreshMs:    60_000,       // live-price refresh interval (ms)
   csvRefreshMs: 5 * 60_000,  // portfolio CSV re-check interval (ms)
@@ -665,7 +666,7 @@ function renderTickerBar() {
     const arr = up ? '▲' : '▼';
     return `<span class="ticker-item">
       <span class="t-name">${label}</span>
-      <span class="t-price">${fmtNum(q.price, 2)}</span>
+      <span class="t-price">${CFG.tickerYield.includes(sym) ? q.price.toFixed(2) + '%' : fmtNum(q.price, sym === 'BTC-USD' ? 0 : 2)}</span>
       <span class="t-chg ${cls}">${arr}${fmtPct(q.changePercent)}</span>
     </span>`;
   }).join('');
@@ -1054,6 +1055,86 @@ function renderReports() {
     + (r.stale ? `<div class="rep-foot">${r.stale} holdings just reported; Yahoo has no new date yet.</div>` : '');
 }
 
+// ────────────────────────────────────────────────────────────
+// TREND SIGNALS — sidebar summary of the weekly SMA(200) state of every holding (from /api/advice, the same data as the plan)
+//   Changed this week      the last weekly close crossed SMA(200)        -> what the category rule does with it
+//   May change on Friday   today's price is on the other side of SMA(200) than the last weekly close (the rule waits for Friday)
+//   Changed in 2-4 weeks   recent crosses that still matter
+// Choppy names (3+ crosses in 12 weeks) are marked: their signal is unreliable.
+// ────────────────────────────────────────────────────────────
+const SIG_SHORT = { core: 'Index', ai: 'AI / chips', bigtech: 'Big tech', health: 'Health / consumer', industrials: 'Industrials', financials: 'Financials', materials: 'Energy / materials', defensive: 'Gold / bonds' };
+
+function signalAction(v, m, over) {
+  const half = v.category === 'ai' || v.category === 'industrials';
+  if (v.action === 'TRIM' && v.rule === 'trend_exit') return ['sell', v.when === 'later' ? 'Sell (queued): trend half out' : 'Sell: trend half out'];
+  if (v.action === 'TRIM' && v.rule === 'regime_exit') return ['sell', 'Sell: SMA(50) below SMA(200)'];
+  if (v.action === 'TRIM' && v.rule === 'size_cap') return ['sell', 'Trim to 4%'];
+  if (v.category === 'core' || v.category === 'defensive') return ['keep', 'No timing: keep buying monthly'];
+  if (!m.wk_up) return half && v.keep ? ['keep', 'Hold half: keep'] : ['keep', 'Uptrend lost: no new money'];
+  if (v.action === 'ADD' || v.action === 'BUYBACK') return ['buy', 'New money OK'];
+  if (half && !v.keep) return over ? ['keep', 'Back in trend; group over target'] : ['buy', 'Trend half may come back'];
+  return ['keep', 'Uptrend: hold'];
+}
+
+function renderSignals() {
+  const el = document.getElementById('sig-list'), badge = document.getElementById('sig-badge');
+  const r = S.adviceFull;
+  if (!el || !r || !r.assets) return;
+  const over = new Set(((r.plan && r.plan.categories) || []).filter(c => c.status === 'over').map(c => c.key));
+  const rows = Object.values(r.assets).filter(v => !v.closed && v.metrics && v.metrics.wk_up != null);
+  if (!rows.length) { el.innerHTML = '<div class="rep-none">Price history is still loading…</div>'; return; }
+  const up = rows.filter(v => v.metrics.wk_up), down = rows.filter(v => !v.metrics.wk_up);
+  const wUp = up.reduce((s, v) => s + v.weight, 0), wDown = down.reduce((s, v) => s + v.weight, 0), wt = (wUp + wDown) || 1;
+  const lastWeek = rows.map(v => v.metrics.wk_date).sort().pop();
+  const fmtD = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const pctS = x => (x > 0 ? '+' : '') + (x * 100).toFixed(1) + '%';
+  const item = (v, live) => {
+    const m = v.metrics, isUp = live ? m.live_up : m.wk_up;
+    const [kind, act] = live ? ['warn', m.live_up ? 'Above now: Friday\'s close decides' : 'Below now: Friday\'s close decides'] : signalAction(v, m, over.has(v.category));
+    const dist = live ? m.live_dist : m.wk_dist;
+    const strip = (m.wk_hist || []).map(u => `<i class="${u ? 'u' : ''}"></i>`).join('');
+    const chop = m.wk_flips12 >= 3 ? `<span class="sig-chop" title="${m.wk_flips12} changes in the last 12 weekly closes: the signal is unreliable for this holding">choppy</span>` : '';
+    const tip = [v.name, (SIG_SHORT[v.category] || v.category), live ? `Today ${pctS(m.live_dist)} vs SMA(200); last weekly close ${pctS(m.wk_dist)}` : `Weekly close ${pctS(m.wk_dist)} vs SMA(200) since ${m.wk_since} (${m.wk_weeks} week${m.wk_weeks > 1 ? 's' : ''})`,
+      `${v.weight.toFixed(1)}% of account`, act].join(' · ');
+    return `<div class="sig-item ${isUp ? 'up' : 'down'}${v.weight >= 2 ? ' big' : ''}" title="${escHtml(tip)}">
+      <div class="rep-top"><span class="sig-arrow">${isUp ? '▲' : '▼'}</span><span class="rep-name">${escHtml(v.name)}</span><span class="sig-dist">${pctS(dist)}</span></div>
+      <div class="rep-sub">${escHtml(SIG_SHORT[v.category] || '')} · ${live ? 'today' : 'since ' + fmtD(m.wk_since)} · ${v.weight.toFixed(1)}%<span class="sig-strip" aria-hidden="true">${strip}</span>${chop}</div>
+      <span class="sig-act ${kind}">${escHtml(act)}</span></div>`;
+  };
+  const byRisk = (a, b) => (a.metrics.wk_up - b.metrics.wk_up) || b.weight - a.weight;          // turned down first, then by size
+  const week = rows.filter(v => v.metrics.wk_weeks === 1).sort(byRisk);
+  const maybe = rows.filter(v => v.metrics.live_up !== v.metrics.wk_up).sort((a, b) => b.weight - a.weight);
+  const recent = rows.filter(v => v.metrics.wk_weeks >= 2 && v.metrics.wk_weeks <= 4).sort(byRisk);
+  const sec = (title, hint, list, live) => `<div class="rep-sec"><span>${title}</span><em>${hint}</em><i>${list.length}</i></div>`
+    + (list.length ? list.map(v => item(v, live)).join('') : '<div class="rep-none">Nothing</div>');
+  el.innerHTML = `<div class="sig-sum" title="Share of the stock and fund money (with price history) whose last weekly close was above / below its simple 200-day average">
+      <b class="up">▲ ${up.length}</b> above · <b class="down">▼ ${down.length}</b> below SMA(200)
+      <div class="sig-bar"><i class="up" style="width:${(wUp / wt * 100).toFixed(1)}%"></i><i class="down" style="width:${(wDown / wt * 100).toFixed(1)}%"></i></div>
+      ${(wUp / wt * 100).toFixed(0)}% of the money in an uptrend · weekly close ${lastWeek ? fmtD(lastWeek) : '—'}</div>`
+    + sec('Changed this week', lastWeek ? 'close ' + fmtD(lastWeek) : '', week, false)
+    + sec('May change on Friday', 'price now', maybe, true)
+    + sec('Changed in 2–4 weeks', '', recent, false)
+    + '<a class="sig-link" href="analytics.html#advice">Every holding by category → Plan &amp; advice</a>';
+  if (badge) badge.textContent = String(week.length + maybe.length);
+}
+
+function bindSidebarFolds() {
+  document.querySelectorAll('#sidebar .side-fold').forEach(b => {
+    const panel = document.getElementById(b.dataset.panel), key = LS('tv_fold_' + b.dataset.panel);
+    const set = folded => {
+      panel.classList.toggle('folded', folded);
+      b.setAttribute('aria-expanded', folded ? 'false' : 'true');
+      b.setAttribute('aria-label', (folded ? 'Expand ' : 'Collapse ') + panel.querySelector('.sidebar-title').textContent.toLowerCase());
+    };
+    try { set(localStorage.getItem(key) === '1'); } catch (e) { /* private mode */ }
+    b.addEventListener('click', () => {
+      const f = !panel.classList.contains('folded');
+      set(f);
+      try { localStorage.setItem(key, f ? '1' : '0'); } catch (e) { /* private mode */ }
+    });
+  });
+}
+
 /**
  * Add / Trim ideas (replaces the old "Tomorrow's Signals").
  * The old 8-indicator next-day score was back-tested on 77 holdings over 5 years and had no predictive power
@@ -1068,19 +1149,26 @@ async function loadPredictions() {
     const named = Object.entries(r.assets).map(([isin, v]) => ({ isin, ...v }));
     const stock = n => S.stocks.find(s => s.name === n) || S.funds.find(f => f.name === n);
     const mk = v => ({ ...v, stock: stock(v.name) });
+    const ORDER_UP = { ADD: 0, BUYBACK: 1, WATCH: 2 }, ORDER_DOWN = { TRIM: 0, REVIEW: 1, CONSOLIDATE: 2 };
     S.predictions = {
-      // signals first (ADD, BUY BACK by score), then the ones that are close (WATCH, nearest to the buy level first)
-      up:   named.filter(v => ['ADD', 'BUYBACK', 'WATCH'].includes(v.action)).sort((a, b) => ({ ADD: 0, BUYBACK: 1, WATCH: 2 }[a.action] - { ADD: 0, BUYBACK: 1, WATCH: 2 }[b.action]) || b.score - a.score).slice(0, 5).map(mk),
-      // order: trim / take-profit signals, review flags, then the ones that are close (TRIM WATCH), housekeeping (consolidate) last
-      down: named.filter(v => ['TRIM', 'REVIEW', 'TRIMWATCH', 'CONSOLIDATE'].includes(v.action))
-                 .sort((a, b) => ({ TRIM: 0, REVIEW: 1, TRIMWATCH: 2, CONSOLIDATE: 3 }[a.action] - { TRIM: 0, REVIEW: 1, TRIMWATCH: 2, CONSOLIDATE: 3 }[b.action]) || b.score - a.score || b.amount - a.amount)
+      // stock ideas first (pullbacks in an uptrend, buy-backs), then index funds from the deposit plan, then the ones that are close (WATCH)
+      up:   named.filter(v => ['ADD', 'BUYBACK', 'WATCH'].includes(v.action))
+                 .sort((a, b) => (ORDER_UP[a.action] - ORDER_UP[b.action]) || ((a.rule === 'deposit_plan') - (b.rule === 'deposit_plan')) || b.score - a.score || b.amount - a.amount).slice(0, 5).map(mk),
+      // sales due this month (size cap, trend exit, regime exit), review flags, then tiny positions; queued sales are left for later months
+      down: named.filter(v => ['TRIM', 'REVIEW', 'CONSOLIDATE'].includes(v.action) && v.when !== 'later')
+                 .sort((a, b) => (ORDER_DOWN[a.action] - ORDER_DOWN[b.action]) || b.score - a.score || b.amount - a.amount)
                  .slice(0, 5).map(mk),
     };
+    S.planInfo = r.plan || null;
+    S.adviceFull = r;
+    renderSignals();
     S.adviceCounts = r.summary.counts;
     renderPredictions();
   } catch (e) {
     console.warn('[advice]', e.message);
     if (badge) badge.textContent = 'Advice unavailable (' + e.message + ')';
+    const sl = document.getElementById('sig-list');
+    if (sl && !S.adviceFull) sl.innerHTML = '<div class="rep-none">Signals unavailable right now</div>';
   }
 }
 
@@ -1089,10 +1177,11 @@ function renderPredictions() {
   const badge = document.getElementById('pred-badge');
   if (!upEl || !downEl) return;
   const c = S.adviceCounts || {};
-  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.BUYBACK || 0} buy back · ${c.WATCH || 0} watch · ${c.TRIM || 0} trim · ${c.TRIMWATCH || 0} trim watch · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
+  if (badge) badge.textContent = `${c.ADD || 0} add · ${c.BUYBACK || 0} buy back · ${c.WATCH || 0} watch · ${c.TRIM || 0} sell · ${c.CONSOLIDATE || 0} consolidate · ${c.REVIEW || 0} review · ${new Date().toLocaleTimeString()}`;
 
   const card = (e, rank) => {
-    const watch = e.action === 'WATCH' || e.action === 'TRIMWATCH', up = e.action === 'ADD' || e.action === 'BUYBACK', cls = watch ? 'signal-watch' : up ? 'signal-bull' : 'signal-bear';
+    const watch = e.action === 'WATCH', up = e.action === 'ADD' || e.action === 'BUYBACK', cls = watch ? 'signal-watch' : up ? 'signal-bull' : 'signal-bear';
+    const RULE = { size_cap: 'size cap', trend_exit: 'trend exit', regime_exit: 'regime exit', pullback: 'pullback in an uptrend', deposit_plan: 'deposit plan', consolidate: 'tiny position', review: 'review', near_entry: 'close to an entry', buyback: 'buy back' };
     const rsi = e.metrics && e.metrics.rsi != null ? 'RSI ' + Math.round(e.metrics.rsi) : '';
     const sign = up ? '+' : '−';
     const why = (e.reasons[0] || '').replace(/\s+/g, ' ');
@@ -1101,18 +1190,18 @@ function renderPredictions() {
       <div class="pred-logo-wrap" data-logo="${escHtml(e.name)}"></div>
       <div class="pred-info">
         <div class="pred-name" title="${escHtml(e.name)}">${escHtml(e.name)}</div>
-        <div class="pred-ticker"><span class="pred-signal-label ${cls}">${e.action === 'BUYBACK' ? 'BUY BACK' : e.action === 'TRIMWATCH' ? 'TRIM WATCH' : e.action}</span>&nbsp;${e.closed ? 'sold earlier, not held' : e.weight.toFixed(1) + '% of portfolio'} · ${escHtml(e.sector)}</div>
+        <div class="pred-ticker"><span class="pred-signal-label ${cls}">${e.action === 'BUYBACK' ? 'BUY BACK' : e.action === 'TRIM' ? 'SELL' : e.action}</span>&nbsp;${e.closed ? 'sold earlier, not held' : e.weight.toFixed(1) + '% of account'} · ${escHtml(e.category_label || e.sector)}</div>
         <div class="pred-signals" title="${escHtml(e.reasons.join(' '))}">${escHtml(why)}</div>
       </div>
       <div class="pred-right">
         <div class="pred-prob${watch ? '' : ' pv'}">${watch ? rsi : e.amount ? sign + fmtNum(e.amount, 0) + ' kr' : '—'}</div>
         <div class="pred-bar-wrap"><div class="pred-bar-fill" style="width:${Math.max(8, Math.min(100, e.score))}%"></div></div>
-        <div class="pred-rsi">${watch ? 'close to a signal' : 'priority ' + e.score}</div>
+        <div class="pred-rsi">${watch ? 'close to an entry' : escHtml(RULE[e.rule] || ('priority ' + e.score))}</div>
       </div>
     </div>`;
   };
-  upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">Nothing is oversold (RSI) in an uptrend right now, and nothing is close to it</div>';
-  downEl.innerHTML = S.predictions.down.length ? S.predictions.down.map((e, i) => card(e, i + 1)).join('') : '<div class="pred-loading">Nothing to trim, review or consolidate, and nothing close to a take-profit level</div>';
+  upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">No new money is due: set a monthly deposit in Analytics → Plan &amp; advice</div>';
+  downEl.innerHTML = S.predictions.down.length ? S.predictions.down.map((e, i) => card(e, i + 1)).join('') : '<div class="pred-loading">No sale is due this month by the category rules</div>';
   document.querySelectorAll('#predictions-section [data-logo]').forEach(el => { el.appendChild(buildLogoEl(el.dataset.logo)); });
 }
 
@@ -1248,6 +1337,7 @@ async function init() {
     // First render with CSV data only
     renderAll();
     bindEvents();
+    bindSidebarFolds();
 
     setStatus('loading', 'Valuing the portfolio…');
 

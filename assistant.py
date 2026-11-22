@@ -449,13 +449,14 @@ def i_eff(c):
                f"You hold {_n(s['positions'])} positions, which act like about {num(p['eff_n'], 0)}.")
 
 
-@intent('sma200', 'glossary', 'gloss', ['200 day average', '200 day', 'sma200', 'moving average', 'uptrend', 'downtrend', 'trend'], 'What is the 200-day average?', 'advice')
+@intent('sma200', 'glossary', 'gloss', ['200 day average', '200 day', 'sma200', 'sma 200', 'moving average', 'uptrend', 'downtrend', 'trend', 'ema'], 'What is the 200-day average?', 'advice')
 def i_sma(c):
     a = _adv_held(c)
-    dn = sum(1 for v in a if (v.get('metrics') or {}).get('trend') == 'down')
-    up = sum(1 for v in a if (v.get('metrics') or {}).get('trend') == 'up')
-    return two('The 200-day average is the long-term trend line; price above it (and the 50-day above it) = uptrend.',
-               f"Your holdings: {up} in uptrend, {dn} in downtrend.")
+    dn = sum(1 for v in a if (v.get('metrics') or {}).get('wk_up') is False)
+    up = sum(1 for v in a if (v.get('metrics') or {}).get('wk_up') is True)
+    return two('The 200-day average is a simple moving average of the last 200 daily closes, SMA(200), not an EMA. The plan checks it at the last close of each week: '
+               'a weekly close above it = uptrend, below it = downtrend. One weekly close decides.',
+               f"Your holdings at the last weekly close: {up} above SMA(200), {dn} below.")
 
 
 @intent('momentum', 'glossary', 'gloss', ['12 1 momentum', 'momentum', '12 month momentum', 'twelve month momentum'], 'What is 12-1 momentum?', 'advice')
@@ -471,15 +472,39 @@ def i_mom(c):
 def i_rsi(c):
     a = [(v.get('metrics') or {}).get('rsi') for v in _adv_held(c)]
     a = [x for x in a if x is not None]
-    return two('RSI (14 days) measures the speed of recent moves, 0-100. Add ideas start below 35 (in an uptrend), profit-taking above 75 (Balanced).',
-               f"Yours: {sum(1 for x in a if x > 75)} above 75, {sum(1 for x in a if x < 35)} below 35, {sum(1 for x in a if x < 40)} below 40." if a else None)
+    lvl = ((c.advice().get('plan') or {}).get('rsi_add') if c.adv else None) or 40
+    return two(f'RSI (14 days) measures the speed of recent moves, 0-100. The plan uses it only to time new money: a stock in an uptrend gets new money below {lvl}. '
+               'It is never a sell signal: in the tests, RSI above 75 was followed by more gains. Planned sales are placed on a day the RSI is above 45.',
+               f"Yours: {sum(1 for x in a if x > 75)} above 75, {sum(1 for x in a if x < 35)} below 35, {sum(1 for x in a if x < 45)} below 45." if a else None)
 
 
 @intent('watch_idea', 'glossary', 'gloss', ['watch idea', 'watch', 'what does watch mean', 'close to a buy signal', 'watch list', 'watchlist idea'], 'What does WATCH mean?', 'advice')
 def i_watch(c):
     n = sum(1 for v in c.advice().get('assets', {}).values() if v.get('action') == 'WATCH') if c.adv else None
-    return two('WATCH means close to a buy signal: the stock is in an uptrend and pulled back, and its RSI(14) is within 10 points above the buy level (Balanced 35). No order yet.',
-               f'Right now {n} on watch. TRIM WATCH is the mirror: a holding in profit whose RSI is close to the take-profit level.' if n is not None else None)
+    return two('WATCH means close to an entry: the stock is in an uptrend, its group is under its target, and its RSI(14) is a little above the level where new money may go in. No order yet.',
+               f'Right now {n} on watch.' if n is not None else None)
+
+
+@intent('average_down', 'portfolio', 'fact', ['average down', 'averaging down', 'lower my average', 'lower the average', 'gav down', 'buy more to lower', 'catch a falling knife', 'falling knife'], 'Should I average down?', 'advice')
+def i_avg_down(c):
+    plan = c.advice().get('plan') if c.adv else None
+    over = [x for x in (plan or {}).get('categories', []) if x['status'] == 'over']
+    tail = (f"Right now {', '.join(x['label'] for x in over)} {'is' if len(over) == 1 else 'are'} over target, so no new money goes there." if over else None)
+    return two('Averaging down only to lower your average price is a trap: the average cost does not change what the stock does next. '
+               'Add to a holding only when you would buy it fresh today: its group is under its target, the weekly close is above SMA(200) and the RSI is low. '
+               'Below SMA(200) or in an over-target group, new money goes to the index funds instead.', tail)
+
+
+@intent('month_plan', 'portfolio', 'fact', ['plan', 'this month', 'what should i do', 'what to do', 'deposit plan', 'where should my deposit go', 'next deposit', 'monthly plan'], 'What is my plan this month?', 'advice')
+def i_plan(c):
+    plan = c.advice().get('plan') if c.adv else None
+    if not plan:
+        return two('The plan is not ready yet; open Analytics, Plan & advice.', None)
+    dep = ', '.join(f"{d['label']} {kr(d['amount'])}" for d in plan.get('deposit_plan', []))
+    sells = plan.get('sells_now', [])
+    return two(f"Next deposit ({kr(plan['settings']['deposit'])}): {dep or 'nothing under target'}. "
+               f"Sales due this month: {len(sells)} ({kr(sum(x['amount'] for x in sells))})" + (f", {plan['queued']} more queued." if plan.get('queued') else '.'),
+               'Details and reasons on Analytics, Plan & advice.')
 
 
 @intent('pullback', 'glossary', 'gloss', ['pullback', 'pulled back', 'below 52 week high', '52 week high', 'dip', 'from the high'], 'What is a pullback?', 'advice')
@@ -907,7 +932,7 @@ def f_range(c):
         'What are the add / trim ideas?', 'advice')
 def f_advice(c):
     cnt = c.adv_summary().get('counts') or {}
-    return two(f"Rule-based ideas now: {cnt.get('ADD', 0)} add, {cnt.get('BUYBACK', 0)} buy back, {cnt.get('TRIM', 0)} trim, {cnt.get('CONSOLIDATE', 0)} consolidate, {cnt.get('REVIEW', 0)} review.",
+    return two(f"Plan ideas now: {cnt.get('ADD', 0)} add, {cnt.get('BUYBACK', 0)} buy back, {cnt.get('TRIM', 0)} sell, {cnt.get('CONSOLIDATE', 0)} consolidate, {cnt.get('REVIEW', 0)} review.",
                'Not a forecast; see the Advice tab for reasons and amounts.')
 
 

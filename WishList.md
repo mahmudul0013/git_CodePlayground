@@ -104,11 +104,15 @@ Funds section below stocks section.
 
 ## Phase 2 — Implemented Features
 
-### Add / Trim Ideas (replaced "Tomorrow's Signals")
-The old 8-indicator next-day score was back-tested on 77 holdings over 5 years (~70 000 samples) and had no predictive power, so it was removed.
-Ideas now come from `advisor.py` (`/api/advice`): TRIM (position over 4% or sector over 40%), ADD (under-weight, uptrend, pulled back),
-BUY BACK (the same test on closed positions), CONSOLIDATE (under 1 500 kr) and REVIEW (downtrend and over 15% under cost).
-Three entry profiles (Conservative / Balanced / Aggressive). Shown on the Portfolio page, in the Assets table (*Add / trim* column) and in Analytics → Advice.
+### Portfolio plan: one strategy per category (replaced Add / Trim Ideas and "Tomorrow's Signals")
+The old 8-indicator next-day score had no predictive power and the RSI take-profit was dropped (RSI above 75 was followed by more gains).
+`strategy.py` puts every holding in a category with a target share and its own rule, chosen from a 10-year test of the user's own holdings
+(`strategy_bt.py`): index funds buy and hold with monthly saving; AI and semiconductor chain half held + half on the weekly SMA(200) rule;
+quality groups buy and hold with new money only on pullbacks in an uptrend; industrials half + weekly SMA(200); energy and materials SMA(50) > SMA(200);
+gold / bonds and opportunity cash at fixed weights. `advisor.py` turns it into ADD / BUY BACK / WATCH / TRIM / CONSOLIDATE / REVIEW per holding,
+a deposit plan, sales due this month, the transition, a stress test and the fit to five popular strategies. Shown in Analytics → Plan & advice,
+on the Portfolio page (Buy / Sell this month, Trend Signals sidebar) and in the Assets table (*Add / trim* column). Plan settings per user.
+Verified against SMA(50), EMA(100) (daily and weekly), half + EMA(100) and an EMA(100) new-money warning: none beat the current rules in both 2017-2022 and 2023-2026.
 
 ---
 

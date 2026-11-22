@@ -39,8 +39,8 @@ canvas { max-width: 100%; }
   .wl-toggle { display: inline-flex; }
   #sidebar { display: flex; position: fixed; z-index: 170; top: var(--ticker-h, 34px); bottom: 0; left: 0; width: min(280px, 82vw);
     transform: translateX(-102%); visibility: hidden; transition: transform .2s ease, visibility 0s linear .2s; box-shadow: none; }
-  body.wl-open #sidebar { transform: none; visibility: visible; transition: transform .2s ease; box-shadow: 8px 0 24px rgba(0, 0, 0, .5); }
-  body.wl-open #wl-backdrop { display: block; position: fixed; inset: var(--ticker-h, 34px) 0 0 0; z-index: 160; background: rgba(0, 0, 0, .45); }
+  body.wl-open #sidebar { transform: none; visibility: visible; transition: transform .2s ease; box-shadow: 8px 0 24px var(--shadow-strong, rgba(0, 0, 0, .5)); }
+  body.wl-open #wl-backdrop { display: block; position: fixed; inset: var(--ticker-h, 34px) 0 0 0; z-index: 160; background: var(--backdrop, rgba(0, 0, 0, .45)); }
 }
 @media (prefers-reduced-motion: reduce) { #sidebar { transition: none; } }
 
@@ -61,7 +61,7 @@ canvas { max-width: 100%; }
 .data-table tbody td.col-name { background-color: inherit; }
 .data-table tbody tr:nth-child(odd) td.col-name { background-color: var(--bg); }
 .data-table tbody tr:nth-child(even) td.col-name { background-color: var(--surface2); }
-.data-table th.col-name { background-color: #2A2E39; z-index: 12; }
+.data-table th.col-name { background-color: var(--border); z-index: 12; }
 .col-name { min-width: 130px; max-width: min(220px, 40vw); }
 .name-cell { max-width: min(210px, 38vw); }
 @media (max-width: 900px) {

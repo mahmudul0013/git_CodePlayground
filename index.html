@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trading Dashboard</title>
+  <script src="theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -31,15 +32,28 @@
   <!-- App Layout -->
   <div id="app">
 
-    <!-- Sidebar: reports calendar (earnings + ex-dividend dates of the holdings) -->
-    <aside id="sidebar" aria-label="Reports calendar">
-      <div class="sidebar-header">
-        <span class="sidebar-title">Reports Calendar</span>
-        <span class="rep-count" id="rep-badge"></span>
-      </div>
-      <div id="rep-list">
-        <div class="loading-row">Loading...</div>
-      </div>
+    <!-- Sidebar: trend signals (weekly close vs SMA(200) changes of the holdings) + reports calendar (earnings + ex-dividend dates) -->
+    <aside id="sidebar" aria-label="Trend signals and reports calendar">
+      <section class="side-panel" id="sig-panel">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Trend Signals</span>
+          <span class="rep-count" id="sig-badge"></span>
+          <button type="button" class="side-fold" data-panel="sig-panel" aria-expanded="true" aria-controls="sig-list" aria-label="Collapse trend signals"><span aria-hidden="true">▾</span></button>
+        </div>
+        <div id="sig-list" class="side-list">
+          <div class="loading-row">Loading...</div>
+        </div>
+      </section>
+      <section class="side-panel" id="rep-panel">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Reports Calendar</span>
+          <span class="rep-count" id="rep-badge"></span>
+          <button type="button" class="side-fold" data-panel="rep-panel" aria-expanded="true" aria-controls="rep-list" aria-label="Collapse reports calendar"><span aria-hidden="true">▾</span></button>
+        </div>
+        <div id="rep-list" class="side-list">
+          <div class="loading-row">Loading...</div>
+        </div>
+      </section>
     </aside>
 
     <!-- Main Content -->
@@ -136,18 +150,18 @@
         <!-- Tomorrow's Signals -->
         <section id="predictions-section">
           <div class="pred-header">
-            <h2 class="section-title">Add / Trim Ideas
+            <h2 class="section-title">Buy / Sell this month
               <span class="pred-badge" id="pred-badge">Analyzing…</span>
             </h2>
-            <span class="pred-meta" id="pred-meta">Position size, theme concentration, fees and trend health (rule-based, not a price forecast) · details on Analytics → Advice</span>
+            <span class="pred-meta" id="pred-meta">One strategy per category: deposit plan, weekly SMA(200) trend, size and category caps (rule-based, not a price forecast) · details on Analytics → Plan &amp; advice</span>
           </div>
           <div class="pred-grid">
             <div class="pred-panel pred-up">
-              <div class="pred-panel-title">▲ Add / buy back / watch (oversold in an uptrend)</div>
+              <div class="pred-panel-title">▲ Buy this month (deposit plan, pullbacks in an uptrend)</div>
               <div id="pred-up-list"><div class="pred-loading">Fetching data…</div></div>
             </div>
             <div class="pred-panel pred-down">
-              <div class="pred-panel-title">▼ Trim / review / watch / consolidate</div>
+              <div class="pred-panel-title">▼ Sell this month (size cap, trend exit, tiny positions)</div>
               <div id="pred-down-list"><div class="pred-loading">Fetching data…</div></div>
             </div>
           </div>

@@ -1,4 +1,7 @@
 /* Net asset value growth curve (Portfolio page, above Add / Trim Ideas). Fluid: everything scales with the screen. */
+/* curve colours (nav.js reads them at draw time): bright steps on dark, deeper steps on light; total = --white, deposits = --gold */
+:root { --nav-c1: #4C9AFF; --nav-c2: #FF7A45; --nav-c3: #2EC4A0; --nav-c4: #B388FF; --nav-c5: #FF6FB5; --nav-c6: #22D3EE; --nav-c7: #A3E635; --nav-c8: #FF5C5C; }
+:root[data-theme="light"] { --nav-c1: #1E6FD9; --nav-c2: #C94F1A; --nav-c3: #0B8F68; --nav-c4: #7B4FE0; --nav-c5: #C2357A; --nav-c6: #087F96; --nav-c7: #3F7F00; --nav-c8: #CF2F3C; }
 #nav-section { margin: 0 16px 16px; }
 .nav-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 10px; }
 
@@ -28,8 +31,8 @@
 .nav-cat input { position: absolute; opacity: 0; pointer-events: none; }
 .nav-cat i { width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex: none; }
 .nav-cat span { color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.nav-cat.on { border-color: currentColor; background: rgba(255, 255, 255, .04); }
-.nav-cat.on i { box-shadow: 0 0 0 2px rgba(255, 255, 255, .12); }
+.nav-cat.on { border-color: currentColor; background: color-mix(in srgb, var(--white) 4%, transparent); }
+.nav-cat.on i { box-shadow: 0 0 0 2px color-mix(in srgb, var(--white) 12%, transparent); }
 .nav-cat.off { opacity: .55; }
 
 .nav-note { margin-top: 8px; font-size: 11.5px; color: var(--text-dim); line-height: 1.45; }

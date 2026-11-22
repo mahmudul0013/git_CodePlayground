@@ -7,7 +7,14 @@
 'use strict';
 const Heat = (() => {
 const S = { snap: null, sig: null, timers: [], data: null, heat: { group: 'cat', color: 'day' }, sectors: null, charts: {}, tab: '' };
-const C = { s: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'], other: '#5d6170', grid: '#2A2E39' };
+// colours come from the CSS tokens (style.css / heatmap.css, light + dark), read at render time; the values here are dark fallbacks
+const tok = (name, dflt) => (window.TVTheme && TVTheme.css(name)) || dflt;
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+const C = {
+  get s() { return SERIES.map((d, i) => tok('--s' + (i + 1), d)); },
+  get other() { return tok('--other', '#5d6170'); }, get grid() { return tok('--border', '#2A2E39'); },
+  get text() { return tok('--text', '#D1D4DC'); }, get surface() { return tok('--surface', '#1E2130'); },
+};
 const COUNTRY = { US: 'United States', SE: 'Sweden', NO: 'Norway', DE: 'Germany', GB: 'United Kingdom',
   IE: 'Ireland', LU: 'Luxembourg', NL: 'Netherlands', FI: 'Finland', DK: 'Denmark', CA: 'Canada',
   FR: 'France', KY: 'Cayman Is.', JE: 'Jersey', CH: 'Switzerland', IT: 'Italy', ES: 'Spain', BM: 'Bermuda',
@@ -36,16 +43,17 @@ function doughnut(id, entries, nameFn) {
   const items = entries.slice(0, MAX);
   const rest = entries.slice(MAX).reduce((s, e) => s + e[1], 0);
   const labels = items.map(e => nameFn(e[0])), data = items.map(e => e[1]);
-  const colors = items.map((_, i) => C.s[i]);
+  const series = C.s, text = C.text;
+  const colors = items.map((_, i) => series[i]);
   if (rest > 0) { labels.push('Other'); data.push(rest); colors.push(C.other); }
   const total = data.reduce((a, b) => a + b, 0);
   mkChart(id, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#1E2130', borderWidth: 2 }] },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: C.surface, borderWidth: 2 }] },
     options: { cutout: '58%', plugins: {
-      legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 }, color: '#D1D4DC',
+      legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 }, color: text,
         generateLabels: ch => ch.data.labels.map((l, i) => ({ text: `${l} ${total ? (data[i] / total * 100).toFixed(0) : 0}%`,
-          fillStyle: colors[i], strokeStyle: colors[i], index: i, fontColor: '#D1D4DC' })) } },
+          fillStyle: colors[i], strokeStyle: colors[i], index: i, fontColor: text })) } },
       tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)} kr (${total ? (c.parsed / total * 100).toFixed(1) : 0}%)` } } } },
   });
 }
@@ -58,7 +66,13 @@ function table(id, head, rows) {
 // ───────── render: portfolio heat map tab ─────────
 // Tile size = market value (SEK), tile colour = day change or unrealised %, groups = Yahoo sector / type / country.
 const HEAT_SCALE = { day: 3, unreal: 25 };               // % at which the colour is fully saturated
-const NEUTRAL = [58, 63, 80], GOOD = [27, 138, 127], BAD = [192, 64, 62];
+// diverging fills from the heatmap.css tokens --heat-neutral / --heat-good / --heat-bad (light + dark); dark fallbacks here
+const HEAT_DARK = { neutral: [58, 63, 80], good: [27, 138, 127], bad: [192, 64, 62] };
+const rgbOf = (s, d) => { const m = /^#([0-9a-f]{6})$/i.exec(String(s || '').trim()); return m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)) : d; };
+const heatPalette = () => ({ neutral: rgbOf(tok('--heat-neutral'), HEAT_DARK.neutral), good: rgbOf(tok('--heat-good'), HEAT_DARK.good), bad: rgbOf(tok('--heat-bad'), HEAT_DARK.bad) });
+// tile text: white (TradingView style) unless the fill is too light for it (light theme, small moves), then near-black
+const lum = c => c.reduce((s, x, i) => { x /= 255; return s + [0.2126, 0.7152, 0.0722][i] * (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); }, 0);
+const tileInk = c => { const L = lum(c), white = 1.05 / (L + 0.05), black = (L + 0.05) / 0.0544; return white >= 4 || white >= black ? '#fff' : '#0B0E14'; };
 
 async function ensureSectors() {
   const gen = S.data.generated;
@@ -82,10 +96,10 @@ function heatCategory(a) {
   return a.type === 'ETF/ETC' ? 'ETFs' : a.type === 'Fund' ? 'Funds' : 'Unclassified';
 }
 
-function heatColor(v, kind) {
-  if (v == null || isNaN(v)) return `rgb(${NEUTRAL})`;
-  const t = Math.min(Math.abs(v) / HEAT_SCALE[kind], 1), to = v >= 0 ? GOOD : BAD;
-  return `rgb(${NEUTRAL.map((n, i) => Math.round(n + (to[i] - n) * t))})`;
+function heatRgb(v, kind, P) {
+  if (v == null || isNaN(v)) return P.neutral;
+  const t = Math.min(Math.abs(v) / HEAT_SCALE[kind], 1), to = v >= 0 ? P.good : P.bad;
+  return P.neutral.map((n, i) => Math.round(n + (to[i] - n) * t));
 }
 
 // squarified treemap: items [{v}] sorted by v desc -> [{item, x, y, w, h}]
@@ -143,7 +157,8 @@ function renderHeat() {
   $('heat-hint').innerHTML = `${held} holdings, <span class="pv">${fmt(total)} kr</span>. Tile size = market value, colour = change ${unit}`
     + (S.heat.group === 'cat' ? '. Category = sector from Yahoo Finance for stocks; ETFs and funds have no sector there and are grouped as ETFs / Funds.' : '.')
     + (loading ? ' Looking up categories…' : '');
-  $('heat-scale').innerHTML = `<span>−${HEAT_SCALE[kind]}%</span><i style="background:linear-gradient(90deg,rgb(${BAD}),rgb(${NEUTRAL}),rgb(${GOOD}))"></i><span>+${HEAT_SCALE[kind]}%</span>`;
+  const P = heatPalette();
+  $('heat-scale').innerHTML = `<span>−${HEAT_SCALE[kind]}%</span><i style="background:linear-gradient(90deg,rgb(${P.bad}),rgb(${P.neutral}),rgb(${P.good}))"></i><span>+${HEAT_SCALE[kind]}%</span>`;
 
   const box = $('heat-map'), W = box.clientWidth, H = box.clientHeight, HEAD = 20;
   const tip = $('heat-tip');
@@ -160,7 +175,8 @@ function renderHeat() {
       const a = t.item.a, id = data.push({ a, g }) - 1;
       const big = t.w > 64 && t.h > 36, mid = t.w > 34 && t.h > 20;
       const m = t.item.m, label = m == null ? '' : (m > 0 ? '+' : '') + m.toFixed(1).replace('.', ',') + '%';
-      html += `<div class="hm-tile" data-i="${id}" style="left:${t.x}px;top:${t.y}px;width:${t.w - 1}px;height:${t.h - 1}px;background:${heatColor(m, kind)}">`
+      const fill = heatRgb(m, kind, P);
+      html += `<div class="hm-tile" data-i="${id}" style="left:${t.x}px;top:${t.y}px;width:${t.w - 1}px;height:${t.h - 1}px;background:rgb(${fill});color:${tileInk(fill)}">`
         + (mid ? `<b style="font-size:${big ? 12 : 11}px">${esc(a.name)}</b>` : '') + (big ? `<span>${label}</span>` : '') + '</div>';
     }
   }
@@ -273,6 +289,7 @@ function bind() {
   $('heat-group').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.heat.group = b.dataset.g; renderHeat(); } });
   $('heat-color').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.heat.color = b.dataset.c; renderHeat(); } });
   window.addEventListener('resize', () => { if (S.tab === 'heatmap') renderHeat(); });
+  window.addEventListener('tvthemechange', () => { if (S.tab === 'heatmap') renderHeat(); });      // light / dark switch (theme.js)
   $('heat-refresh').addEventListener('click', () => { S.sectors = null; S.snap = null; load(); });
 }
 bind();

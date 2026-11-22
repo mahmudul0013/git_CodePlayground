@@ -17,13 +17,37 @@
   --green:       #26A69A;
   --red:         #EF5350;
   --gold:        #F7C948;
-  --white:       #FFFFFF;
+  --white:       #FFFFFF;          /* strongest text (dark in the light theme): text and emphasis only, never a fill */
   --ticker-bg:   #0F1117;
+  /* categorical series, fixed order (dark-surface steps; same as analytics.css) */
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --border-strong: #3a3f4f;        /* hover border */
+  --other:       #5d6170;          /* "other" / sold / withheld grey, dashed outlines */
+  --muted:       #9aa4b2;          /* quiet label text (WATCH) */
+  --info-text:   #7aa8f0;          /* blue text on a blue wash */
+  --tip-bg:      #0D1017;          /* tooltips */
+  --shadow:        rgba(0, 0, 0, .45);
+  --shadow-strong: rgba(0, 0, 0, .55);
+  --backdrop:      rgba(0, 0, 0, .45);
 
   --sidebar-w:   220px;
   --ticker-h:    34px;
   --header-h:    50px;
   --font:        'Inter', 'Trebuchet MS', sans-serif;
+}
+
+/* Light theme (theme.js sets <html data-theme="light">). Same tokens in analytics.css and auth.css.
+   Green / red / gold are a little deeper than TradingView's light steps so small text keeps 4.5:1 on every surface. */
+:root[data-theme="light"] {
+  --bg: #FFFFFF; --surface: #F7F8FA; --surface2: #EEF0F4; --border: #DCE0E8;
+  --text: #131722; --text-dim: #5F6370; --accent: #2962FF;
+  --green: #067A66; --red: #C9303C; --gold: #8A6600; --white: #0B0E14;
+  --ticker-bg: #F0F3FA;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --border-strong: #B8BECA; --other: #8A909C; --muted: #565B67; --info-text: #1E5BC6;
+  --tip-bg: #FFFFFF; --shadow: rgba(16, 24, 40, .14); --shadow-strong: rgba(16, 24, 40, .18); --backdrop: rgba(16, 24, 40, .32);
 }
 
 html, body {
@@ -67,7 +91,7 @@ html, body {
   padding: 0 18px;
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
-  border-right: 1px solid rgba(42,46,57,0.6);
+  border-right: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   cursor: default;
 }
 
@@ -132,12 +156,12 @@ html, body {
   justify-content: space-between;
   align-items: center;
   padding: 8px 14px;
-  border-bottom: 1px solid rgba(42,46,57,0.4);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
   cursor: pointer;
   transition: background 0.1s;
 }
 
-.wl-item:hover { background: rgba(42,46,57,0.6); }
+.wl-item:hover { background: color-mix(in srgb, var(--border) 60%, transparent); }
 
 .wl-left  { display: flex; flex-direction: column; gap: 1px; }
 .wl-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
@@ -257,7 +281,7 @@ html, body {
 /* Last-buy annotation shown below qty / price in table cells */
 .lb-tag {
   display: block;
-  color: #F7C948;
+  color: var(--gold);
   font-size: 10px;
   line-height: 1.4;
   opacity: 0.9;
@@ -467,7 +491,7 @@ html, body {
   color: var(--text-dim);
   white-space: nowrap;
   user-select: none;
-  border-bottom: 1px solid rgba(42,46,57,0.8);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 
 .data-table th.col-name { text-align: left; }
@@ -482,13 +506,13 @@ html, body {
 .data-table th.sort-desc .sort-icon { opacity: 1; }
 
 .data-table tbody tr {
-  border-bottom: 1px solid rgba(42,46,57,0.45);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
   transition: background 0.08s;
 }
 
 .data-table tbody tr:nth-child(odd)  { background: var(--bg); }
 .data-table tbody tr:nth-child(even) { background: var(--surface2); }
-.data-table tbody tr:hover           { background: rgba(42,46,57,0.8) !important; }
+.data-table tbody tr:hover           { background: color-mix(in srgb, var(--border) 80%, transparent) !important; }
 
 .data-table td {
   padding: 7px 9px;
@@ -556,7 +580,7 @@ html, body {
   justify-content: center;
   font-size: 8.5px;
   font-weight: 700;
-  color: var(--white);
+  color: #fff;                 /* on a coloured avatar fill in both themes */
   flex-shrink: 0;
   letter-spacing: 0.3px;
 }
@@ -568,7 +592,7 @@ html, body {
   font-weight: 600;
   padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(42,46,57,0.8);
+  background: color-mix(in srgb, var(--border) 80%, transparent);
   color: var(--text-dim);
   letter-spacing: 0.3px;
 }
@@ -639,8 +663,8 @@ html, body {
   border-bottom: 1px solid var(--border);
 }
 
-.pred-up .pred-panel-title  { color: var(--green); background: rgba(38,166,154,0.08); }
-.pred-down .pred-panel-title { color: var(--red);   background: rgba(239,83,80,0.08); }
+.pred-up .pred-panel-title  { color: var(--green); background: color-mix(in srgb, var(--green) 8%, transparent); }
+.pred-down .pred-panel-title { color: var(--red);   background: color-mix(in srgb, var(--red) 8%, transparent); }
 
 .pred-loading {
   padding: 18px 14px;
@@ -659,7 +683,7 @@ html, body {
   transition: background 0.15s;
 }
 .pred-card:last-child { border-bottom: none; }
-.pred-card:hover { background: rgba(255,255,255,0.03); }
+.pred-card:hover { background: color-mix(in srgb, var(--white) 3%, transparent); }
 
 .pred-rank {
   font-size: 11px;
@@ -755,9 +779,9 @@ html, body {
   border-radius: 3px;
   vertical-align: middle;
 }
-.signal-bull { background: rgba(38,166,154,0.18); color: var(--green); }
-.signal-bear { background: rgba(239,83,80,0.18);  color: var(--red); }
-.signal-watch { background: transparent; color: #9aa4b2; border: 1px dashed #5d6170; }
+.signal-bull { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.signal-bear { background: color-mix(in srgb, var(--red) 18%, transparent);  color: var(--red); }
+.signal-watch { background: transparent; color: var(--muted); border: 1px dashed var(--other); }
 
 /* ============================================================
    SCROLLBAR
@@ -808,16 +832,50 @@ a.nav-link-out:hover { background: var(--border); color: var(--text); }
   font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; color: var(--text); }
 .rep-sec em { font-style: normal; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-dim); }
 .rep-sec i { margin-left: auto; font-style: normal; font-weight: 400; color: var(--text-dim); }
-.rep-item { padding: 7px 14px; border-bottom: 1px solid rgba(42, 46, 57, .4); }
+.rep-item { padding: 7px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
 .rep-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .rep-name { font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .rep-item.big .rep-name { font-weight: 700; color: var(--white, #fff); }
 .rep-tag { flex: none; font-size: 9.5px; font-weight: 700; padding: 0 6px; border-radius: 999px; letter-spacing: .03em; }
-.rep-earn { background: rgba(247, 201, 72, .15); color: var(--gold, #F7C948); }
-.rep-div { background: rgba(57, 135, 229, .18); color: #7aa8f0; }
+.rep-earn { background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold, #F7C948); }
+.rep-div { background: color-mix(in srgb, var(--s1) 18%, transparent); color: var(--info-text); }
 .rep-sub { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
-.rep-none { padding: 8px 14px; font-size: 11.5px; color: var(--text-dim); border-bottom: 1px solid rgba(42, 46, 57, .4); }
+.rep-none { padding: 8px 14px; font-size: 11.5px; color: var(--text-dim); border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
 .rep-foot { padding: 10px 14px; font-size: 11px; color: var(--text-dim); }
+
+/* sidebar: two panels (trend signals, reports calendar); each scrolls on its own and can be folded */
+.side-panel { display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; }
+.side-panel + .side-panel { border-top: 1px solid var(--border); }
+.side-panel.folded { flex: 0 0 auto; }
+.side-panel.folded .side-list { display: none; }
+.side-panel .sidebar-header { gap: 6px; padding: 9px 8px 9px 14px; }
+.side-panel .sidebar-header .sidebar-title { margin-right: auto; white-space: nowrap; letter-spacing: .5px; }
+.side-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.side-fold { flex: none; width: 24px; height: 24px; border: 1px solid transparent; border-radius: 4px; background: none; color: var(--text-dim); cursor: pointer; font-size: 12px; line-height: 1; }
+.side-fold:hover { color: var(--text); border-color: var(--border); }
+.side-fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.side-panel.folded .side-fold span { display: inline-block; transform: rotate(-90deg); }
+.sig-sum { padding: 8px 14px 9px; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--text-dim); }
+.sig-sum b.up { color: var(--green); } .sig-sum b.down { color: var(--red); }
+.sig-bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin: 5px 0 3px; background: var(--bg); }
+.sig-bar i { display: block; height: 100%; }
+.sig-bar i.up { background: var(--green); } .sig-bar i.down { background: var(--red); }
+.sig-item { padding: 7px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
+.sig-item .sig-arrow { flex: none; font-size: 10px; width: 12px; }
+.sig-item.up .sig-arrow { color: var(--green); } .sig-item.down .sig-arrow { color: var(--red); }
+.sig-dist { flex: none; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-dim); }
+.sig-item.big .rep-name { font-weight: 700; color: var(--white); }
+.sig-act { display: inline-block; margin-top: 3px; font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 999px; letter-spacing: .02em; }
+.sig-act.sell { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+.sig-act.buy { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.sig-act.keep { color: var(--text-dim); border: 1px solid var(--border); }
+.sig-act.warn { color: var(--gold); border: 1px dashed color-mix(in srgb, var(--gold) 55%, transparent); }
+.sig-strip { display: inline-flex; gap: 2px; vertical-align: middle; margin-left: 6px; }
+.sig-strip i { width: 4px; height: 9px; border-radius: 1px; background: var(--red); opacity: .85; }
+.sig-strip i.u { background: var(--green); }
+.sig-chop { color: var(--gold); font-size: 10px; margin-left: 4px; }
+.sig-link { display: block; padding: 9px 14px; font-size: 11.5px; color: var(--accent); text-decoration: none; }
+.sig-link:hover { text-decoration: underline; }
 
 /* one dim line under the summary tiles: what the numbers are made of */
 .valuation-status { margin: -6px 16px 14px; font-size: 11.5px; color: var(--text-dim); line-height: 1.4; }

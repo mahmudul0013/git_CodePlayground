@@ -19,6 +19,6 @@ html.privacy .adv-amt,
 html.privacy #asset-kpis .kpi .v, html.privacy #asset-kpis .kpi .s,
 html.privacy .vcard .big, html.privacy .finding .num,
 html.privacy .pv {
-  color: transparent !important; text-shadow: 0 0 12px rgba(209, 212, 220, .75);
+  color: transparent !important; text-shadow: 0 0 12px color-mix(in srgb, var(--text, #D1D4DC) 75%, transparent);
   user-select: none; -webkit-user-select: none; pointer-events: none;
 }

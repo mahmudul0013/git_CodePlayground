@@ -2,7 +2,7 @@
    defaults below are in place before the first chart is created (responsive.css does the CSS side).
    - Chart.js defaults by screen width (font, legend, ticks); re-applied on rotation / resize
    - debounced resize + orientation handling: every chart is resized and refitted, custom renderers (heat map) get a resize event
-   - Portfolio page: the reports-calendar sidebar becomes a slide-in drawer on narrow screens (button injected here)
+   - Portfolio page: the sidebar (trend signals + reports calendar) becomes a slide-in drawer on narrow screens (button injected here)
    - warns in the console when the viewport meta tag is missing */
 'use strict';
 (function () {
@@ -35,6 +35,8 @@
       if (s && s.ticks) { s.ticks.maxTicksLimit = lim; s.ticks.autoSkipPadding = narrow ? 14 : 6; }
     }
     if (D.scale && D.scale.ticks) { D.scale.ticks.autoSkipPadding = narrow ? 14 : 6; if (narrow) D.scale.ticks.maxRotation = 0; }
+    // colours (axis text, grid, tooltip) follow the light / dark tokens: one place for them, theme.js
+    if (window.TVTheme && TVTheme.chartDefaults) TVTheme.chartDefaults();
   }
   applyDefaults();
 
@@ -78,13 +80,13 @@
     if (side && head) {
       const btn = document.createElement('button');
       btn.type = 'button'; btn.id = 'wl-toggle'; btn.className = 'wl-toggle';
-      btn.setAttribute('aria-controls', 'sidebar'); btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-label', 'Show reports calendar');
+      btn.setAttribute('aria-controls', 'sidebar'); btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-label', 'Show trend signals and reports calendar');
       btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
       head.insertBefore(btn, head.firstChild);
       const back = document.createElement('div'); back.id = 'wl-backdrop'; document.body.appendChild(back);
       const set = on => {
         document.body.classList.toggle('wl-open', on);
-        btn.setAttribute('aria-expanded', on ? 'true' : 'false'); btn.setAttribute('aria-label', on ? 'Hide reports calendar' : 'Show reports calendar');
+        btn.setAttribute('aria-expanded', on ? 'true' : 'false'); btn.setAttribute('aria-label', on ? 'Hide trend signals and reports calendar' : 'Show trend signals and reports calendar');
       };
       btn.addEventListener('click', () => set(!document.body.classList.contains('wl-open')));
       back.addEventListener('click', () => set(false));
