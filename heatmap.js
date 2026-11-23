@@ -58,9 +58,12 @@ function doughnut(id, entries, nameFn) {
   });
 }
 
-function table(id, head, rows) {
+function table(id, head, rows) {          // class 'stack': wraps, and becomes labelled cards on phones (responsive.css)
+  const lab = head.map(h => String(h).replace(/<[^>]*>/g, '').replace(/"/g, '&quot;').trim());
+  $(id).classList.add('stack');
   $(id).innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${
-    rows.map(r => `<tr>${r.map(c => `<td${c && c.c ? ` class="${c.c}"` : ''}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    rows.map(r => `<tr>${r.map((c, i) => `<td data-label="${lab[i] || ''}"${c && c.c ? ` class="${c.c}"` : ''}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  if (window.TVRows) TVRows.limit($(id), 12);
 }
 
 // ───────── render: portfolio heat map tab ─────────
@@ -256,34 +259,27 @@ async function load() {
   }
 }
 
-async function refreshValuation() {
+// No timers of its own (keeps the page light): the Portfolio page sends every fresh valuation ('tvsnapshot') and every
+// file change ('tvfiles'). The map is redrawn only while it is on screen; otherwise once when it scrolls into view.
+let onScreen = true, dirty = false;
+function redraw() {
   if (S.tab !== 'heatmap' || !S.data) return;
-  try {
-    S.snap = await getJSON('/api/snapshot');
-    renderHeat();
-    status();
-  } catch (e) { /* keep the last valuation; the status line shows when it was made */ }
+  if (!onScreen) { dirty = true; return; }
+  dirty = false; renderHeat(); status();
 }
-
-// while the tab is open: new CSV on disk -> reload holdings; every 30 s -> fresh valuation
-async function checkCsv() {
-  if (S.tab !== 'heatmap') return;
-  try {
-    const sig = JSON.stringify(await getJSON('/api/trades/status'));
-    if (S.sig && sig !== S.sig) { S.sig = sig; S.sectors = null; S.snap = null; await load(); return; }
-    S.sig = sig;
-  } catch (e) { /* server briefly busy */ }
-}
+window.addEventListener('tvsnapshot', e => { S.snap = e.detail; redraw(); });
+window.addEventListener('tvfiles', () => { if (S.tab === 'heatmap') { S.sectors = null; S.snap = null; load(); } });
 
 function show() {
   S.tab = 'heatmap';
-  S.sig = null;
-  checkCsv();                       // baseline signature of the CSV files
   load();
-  S.timers.forEach(clearInterval);
-  S.timers = [setInterval(checkCsv, 10000), setInterval(refreshValuation, 30000)];
+  const sec = document.getElementById('heatmap-section');
+  if (sec && 'IntersectionObserver' in window && !S.io) {
+    S.io = new IntersectionObserver(es => { onScreen = es.some(x => x.isIntersecting); if (onScreen && dirty) redraw(); }, { rootMargin: '200px' });
+    S.io.observe(sec);
+  }
 }
-function hide() { S.tab = ''; S.timers.forEach(clearInterval); S.timers = []; }
+function hide() { S.tab = ''; }
 
 function bind() {
   $('heat-group').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { S.heat.group = b.dataset.g; renderHeat(); } });

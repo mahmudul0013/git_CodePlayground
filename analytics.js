@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-const POLL_MS = 10_000;
+const POLL_MS = 60_000;          // file-signature check in market hours (10 min when closed, paused while the tab is hidden)
 // chart colours come from the CSS tokens (analytics.css: dark in :root, light in :root[data-theme="light"]), read each time a chart is
 // drawn; the values here are only the dark fallbacks. A light / dark switch (theme.js) redraws the open tab.
 const C = (() => {
@@ -68,7 +68,7 @@ async function getJSON(url) {
 // ───────── data load + auto-sync ─────────
 // The server values everything once (valuation.py): /api/trades is already live-valued, and /api/snapshot (small) carries the
 // same valuation for the 30 s refresh. The browser does no pricing of its own, it only copies those numbers into S.data.
-const SNAP_MS = 30_000, HISTORY_RETRY_MS = 20_000;
+const SNAP_MS = 30_000, HISTORY_RETRY_MS = 20_000;       // valuation: every 30 s in market hours (15 min when closed)
 const tolerance = x => Math.max(5, 0.0005 * Math.abs(x));      // same rule as valuation.allowed(): rounding / FX differences up to 5 kr or 0.05%
 const SCORE = (v, good, poor, lower) => { if (v == null) return null; const t = lower ? (poor - v) / (poor - good || 1) : (v - poor) / (good - poor || 1); return Math.round(Math.max(0, Math.min(1, t)) * 100); };
 const GRADE = s => s >= 85 ? 'A' : s >= 70 ? 'B' : s >= 55 ? 'C' : s >= 40 ? 'D' : s >= 25 ? 'E' : 'F';
@@ -127,7 +127,7 @@ async function load(force) {
   try {
     const sig = await getJSON('/api/trades/status');
     const sigStr = JSON.stringify(sig);
-    if (!force && sigStr === S.sig && S.data) { setSync(true); loadAdvice(); return; }
+    if (!force && sigStr === S.sig && S.data) { setSync(true); return; }            // nothing changed: nothing else is fetched
     const data = await getJSON('/api/trades');
     S.sig = sigStr;
     S.data = data;
@@ -376,21 +376,24 @@ function renderTable(d) {
     const a = r.a, w = r.w, open = S.open.has(a.isin);
     let h = `<tr class="row" data-i="${esc(a.isin)}">
       <td class="name" title="${esc(a.name)} · ${esc(a.isin)}">${open ? '▾' : '▸'} ${esc(a.name)}</td>
-      <td class="tag tl">${esc(a.type)} · ${esc(a.ccy)}</td>
-      <td><span class="badge ${a.held ? 'held' : 'closed'}">${a.held ? 'Held' : 'Closed'}</span></td>
-      <td class="adv-td">${adviceCell(a)}</td>
-      <td>${a.held ? fmt2(a.qty).replace(/,00$/, '') : '—'}</td><td>${a.held ? fmt(a.value) : '—'}</td>
-      <td>${fmt(w.bought)}</td><td>${fmt(w.sold)}</td><td>${w.nb} / ${w.ns}</td>
-      <td>${fmt(a.fees)}</td><td class="${cls(a.realized)}">${sgn(a.realized)}</td>
-      <td class="${cls(a.unrealized)}">${a.held ? sgn(a.unrealized) : '—'}</td><td class="${cls(a.total_pnl)}">${sgn(a.total_pnl)}</td></tr>`;
+      <td class="tag tl" data-label="Type">${esc(a.type)} · ${esc(a.ccy)}</td>
+      <td data-label="Status"><span class="badge ${a.held ? 'held' : 'closed'}">${a.held ? 'Held' : 'Closed'}</span></td>
+      <td class="adv-td" data-label="Add / trim">${adviceCell(a)}</td>
+      <td data-label="Qty">${a.held ? fmt2(a.qty).replace(/,00$/, '') : '—'}</td><td data-label="Value">${a.held ? fmt(a.value) : '—'}</td>
+      <td data-label="Bought">${fmt(w.bought)}</td><td data-label="Sold">${fmt(w.sold)}</td><td data-label="Buys / sells">${w.nb} / ${w.ns}</td>
+      <td data-label="Fees">${fmt(a.fees)}</td><td data-label="Realised" class="${cls(a.realized)}">${sgn(a.realized)}</td>
+      <td data-label="Unrealised" class="${cls(a.unrealized)}">${a.held ? sgn(a.unrealized) : '—'}</td><td data-label="Total" class="${cls(a.total_pnl)}">${sgn(a.total_pnl)}</td></tr>`;
     if (open) h += `<tr class="detail"><td colspan="${cols.length}">${detail(a)}</td></tr>`;
     return h;
   }).join('');
   const sum = f => list.reduce((s, r) => s + (f(r) || 0), 0);
-  const foot = `<tr><td>Total (${list.length})</td><td></td><td></td><td></td><td></td><td>${fmt(sum(r => r.a.value))}</td>
-    <td>${fmt(sum(r => r.w.bought))}</td><td>${fmt(sum(r => r.w.sold))}</td><td>${sum(r => r.w.nb)} / ${sum(r => r.w.ns)}</td>
-    <td>${fmt(sum(r => r.a.fees))}</td><td>${sgn(sum(r => r.a.realized))}</td><td>${sgn(sum(r => r.a.unrealized))}</td><td>${sgn(sum(r => r.a.total_pnl))}</td></tr>`;
+  const foot = `<tr><td>Total (${list.length})</td><td></td><td></td><td></td><td></td><td data-label="Value">${fmt(sum(r => r.a.value))}</td>
+    <td data-label="Bought">${fmt(sum(r => r.w.bought))}</td><td data-label="Sold">${fmt(sum(r => r.w.sold))}</td><td data-label="Buys / sells">${sum(r => r.w.nb)} / ${sum(r => r.w.ns)}</td>
+    <td data-label="Fees">${fmt(sum(r => r.a.fees))}</td><td data-label="Realised">${sgn(sum(r => r.a.realized))}</td><td data-label="Unrealised">${sgn(sum(r => r.a.unrealized))}</td><td data-label="Total">${sgn(sum(r => r.a.total_pnl))}</td></tr>`;
+  $('asset-table').classList.add('stack');
   $('asset-table').innerHTML = `<thead><tr>${th}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:var(--text-dim)">No assets match this filter.</td></tr>`}</tbody><tfoot>${foot}</tfoot>`;
+  if (window.TVRows) TVRows.limit($('asset-table'), 20);
+  if (window.TVRows) document.querySelectorAll('#asset-table .detail-inner table').forEach(t => TVRows.limit(t, 8));     // an asset's trades: first 8 + Show all
   $('table-title').textContent = `${v.label} — ${list.length} assets`;
   if (window.AssetChart) {
     document.querySelectorAll('.asset-chart[data-chart]').forEach(el => {
@@ -403,10 +406,10 @@ function renderTable(d) {
 
 function detail(a) {
   const rows = [...a.trades].reverse().map(t => `<tr>
-    <td>${t.date}</td><td class="${t.side === 'BUY' ? 'buy-t' : 'sell-t'}">${t.side === 'BUY' ? 'Buy' : 'Sell'}</td>
-    <td>${t.qty}</td><td>${t.price == null ? '—' : fmt2(t.price) + ' ' + esc(t.ccy)}</td><td>${fmt(t.amount)}</td><td>${fmt2(t.fee)}</td>
-    <td class="${cls(t.realized)}">${t.realized == null ? '—' : sgn(t.realized)}</td><td>${t.hold_days == null ? '—' : t.hold_days + ' d'}</td><td>${t.pos_after}</td></tr>`).join('');
-  return `<div class="asset-chart" data-chart="${esc(a.isin)}"></div><div class="detail-inner"><table><thead><tr><th>Date</th><th>Side</th><th>Qty</th><th>Price</th><th>Amount kr</th><th>Fee kr</th><th>Realised kr</th><th>Held</th><th>Position after</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <td>${t.date}</td><td data-label="Side" class="${t.side === 'BUY' ? 'buy-t' : 'sell-t'}">${t.side === 'BUY' ? 'Buy' : 'Sell'}</td>
+    <td data-label="Qty">${t.qty}</td><td data-label="Price">${t.price == null ? '—' : fmt2(t.price) + ' ' + esc(t.ccy)}</td><td data-label="Amount kr">${fmt(t.amount)}</td><td data-label="Fee kr">${fmt2(t.fee)}</td>
+    <td data-label="Realised kr" class="${cls(t.realized)}">${t.realized == null ? '—' : sgn(t.realized)}</td><td data-label="Held">${t.hold_days == null ? '—' : t.hold_days + ' d'}</td><td data-label="Position after">${t.pos_after}</td></tr>`).join('');
+  return `<div class="asset-chart" data-chart="${esc(a.isin)}"></div><div class="detail-inner tbl-wrap"><table id="trades-${esc(a.isin)}" class="stack"><thead><tr><th>Date</th><th>Side</th><th>Qty</th><th>Price</th><th>Amount kr</th><th>Fee kr</th><th>Realised kr</th><th>Held</th><th>Position after</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function exportCsv() {
@@ -424,10 +427,17 @@ function exportCsv() {
 }
 
 // ───────── render: habits tab ─────────
-function table(id, head, rows, empty) {
-  $(id).innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${
-    rows.length ? rows.map(r => `<tr>${r.map(c => `<td${c && c.c ? ` class="${c.c}"` : ''}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')
+// Tables never scroll sideways: class 'stack' lets cells wrap, and on phones every row becomes a card labelled from the header
+// (responsive.css). A cell can be a value or { v, c (class), l (label) }.
+const plainLabel = h => String(h).replace(/<[^>]*>/g, '').replace(/"/g, '&quot;').trim();
+const ROW_LIMIT = { 'tb-size': 8, 'tb-hold': 8, 'tb-costs': 8, 'tb-churn': 8, 'tb-split': 8, 'tb-sameday': 8, 'tb-rebuy': 8, 'tb-busy': 8, 'tb-payers': 10 };
+function table(id, head, rows, empty, wide) {
+  const el = $(id); el.classList.add('stack'); el.classList.toggle('wide', !!wide);
+  const lab = head.map(plainLabel);
+  el.innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${
+    rows.length ? rows.map(r => `<tr>${r.map((c, i) => `<td data-label="${c && c.l !== undefined ? plainLabel(c.l) : lab[i] || ''}"${c && c.c ? ` class="${c.c}"` : ''}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')
       : `<tr><td colspan="${head.length}" style="text-align:center;color:var(--text-dim);padding:14px">${empty || 'Nothing found.'}</td></tr>`}</tbody>`;
+  if (ROW_LIMIT[id] && window.TVRows) TVRows.limit(el, ROW_LIMIT[id]);
 }
 
 function renderHabits() {
@@ -553,7 +563,7 @@ function renderHabits() {
   table('tb-busy', ['Date', 'Trades'], I.rhythm.busiest_days.map(b => [b.date, b.trades]));
 
   $('method').innerHTML = [
-    `Source files: <b>${esc(S.data.sources.transactions?.file || '—')}</b> (ledger) and <b>${esc(S.data.sources.holdings?.file || 'none')}</b> (current holdings). Drop a newer export in the project folder and this page updates by itself within ~${POLL_MS / 1000}s.`,
+    `Source files: <b>${esc(S.data.sources.transactions?.file || '—')}</b> (ledger) and <b>${esc(S.data.sources.holdings?.file || 'none')}</b> (current holdings). Drop a newer export in the project folder and this page updates by itself within about a minute (10 minutes outside market hours).`,
     'Realised P&L uses the average-cost method in SEK; buy fees are part of cost and sell fees reduce proceeds. Holding time uses FIFO lots. Nordnet\'s own "Resultat" column is converted at the trade FX rate and is shown in the ledger for comparison only, so small differences are expected.',
     'Account result = (holdings value + cash balance) − (deposits − withdrawals). It includes every cost and needs no assumption about prices.',
     'Asset type and country are inferred from the name and the ISIN prefix; the CSV carries no sector data, so none is shown.',
@@ -910,14 +920,13 @@ function renderDividends() {
 const ADV_RANK = { TRIM: 0, ADD: 1, BUYBACK: 2, WATCH: 3, REVIEW: 4, CONSOLIDATE: 5, HOLD: 6 };
 const ADV_LABEL = { ADD: 'ADD', BUYBACK: 'BUY BACK', WATCH: 'WATCH', TRIM: 'TRIM', CONSOLIDATE: 'CONSOLIDATE', REVIEW: 'REVIEW', HOLD: 'HOLD' };
 
-const advProfile = () => { try { return localStorage.getItem(window.TV ? TV.key('tv_advice_profile') : 'tv_advice_profile') || 'balanced'; } catch (e) { return 'balanced'; } };
 
 async function loadAdvice() {
   if (S.advLoading) return;
   S.advLoading = true;
   try {
-    const r = await getJSON('/api/advice?profile=' + advProfile());
-    if (r.ok) { S.advice = r; if (S.tab === 'assets') renderTable(derive()); if (S.tab === 'advice') renderAdvice(); }
+    const r = await getJSON('/api/advice');            // the profile saved in the plan settings
+    if (r.ok) { S.advice = r; S.adviceAt = Date.now(); if (S.tab === 'assets') renderTable(derive()); if (S.tab === 'advice') renderAdvice(); }
   } catch (e) { /* column stays empty */ }
   S.advLoading = false;
 }
@@ -1040,6 +1049,7 @@ function setTab(tab) {
   $('tab-advice').hidden = tab !== 'advice';
   history.replaceState(null, '', '#' + tab);
   if (S.data) renderTab();
+  if (tab === 'advice' && S.advice && Date.now() - (S.adviceAt || 0) > 120_000) loadAdvice();      // opening the plan: fresh when older than 2 min
 }
 function tabFromHash() { const h = location.hash.slice(1); return ['habits', 'deposits', 'dividends', 'advice'].includes(h) ? h : 'assets'; }
 function renderTab() {
@@ -1056,6 +1066,7 @@ window.addEventListener('tvthemechange', () => { if (S.data && S.tab !== 'advice
   bind();
   setTab(tabFromHash());
   load(true);
-  setInterval(() => load(false), POLL_MS);
-  setInterval(refreshSnapshot, SNAP_MS);
+  TVPulse.every('files', () => load(false), { open: POLL_MS, closed: 10 * 60_000 });
+  TVPulse.every('snapshot', refreshSnapshot, { open: SNAP_MS, closed: 15 * 60_000 });
+  TVPulse.every('advice', () => { if (S.advice) return loadAdvice(); }, { open: 10 * 60_000, closed: 60 * 60_000 });   // the old plan stays on screen until the new one arrives
 });

@@ -53,15 +53,17 @@ def _load():
 
 
 def _save():
+    tmp = None
     try:
         with _LOCK:
             snap = dict(_h10)
         fd, tmp = tempfile.mkstemp(dir=HERE, prefix='h10_', suffix='.tmp')
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
-            json.dump(snap, f)
+            json.dump(snap, f, separators=(',', ':'))
         os.replace(tmp, H10_FILE)
     except Exception:
-        pass
+        if tmp and os.path.exists(tmp):
+            os.remove(tmp)
 
 
 def _fetch(sym):
@@ -185,12 +187,21 @@ def run(baskets, hist):
     return out
 
 
+def _release():
+    """Drop the 10-year prices from memory (about 30 MB as Python objects) once no test is running; the file stays on disk."""
+    global _h10
+    with _LOCK:
+        if not _running:
+            _h10 = None
+
+
 def _job(key, baskets):
     try:
         syms = sorted({s for v in baskets.values() for s in v})
         hist = _histories(syms)
         data = {'ok': True, 'pending': False, 'computed': time.strftime('%Y-%m-%dT%H:%M:%S'), 'labels': LABELS, 'categories': run(baskets, hist),
                 'excluded': sorted(s for s in syms if s not in hist or len(hist[s]['c']) < MIN_DAYS)}
+        del hist
     except Exception as e:
         data = {'ok': False, 'pending': False, 'error': type(e).__name__}
     with _LOCK:
@@ -199,6 +210,7 @@ def _job(key, baskets):
         while len(_results) > 8:
             _results.popitem(last=False)
         _running.discard(key)
+    _release()
 
 
 def evidence(owner, baskets):

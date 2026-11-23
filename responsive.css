@@ -64,23 +64,22 @@ canvas { max-width: 100%; }
 .data-table th.col-name { background-color: var(--border); z-index: 12; }
 .col-name { min-width: 130px; max-width: min(220px, 40vw); }
 .name-cell { max-width: min(210px, 38vw); }
-@media (max-width: 900px) {
-  #stocks-table th:nth-child(5), #stocks-table td:nth-child(5), #funds-table th:nth-child(5), #funds-table td:nth-child(5) { display: none; }     /* GAV */
-}
-@media (max-width: 700px) {
-  #stocks-table th:nth-child(3), #stocks-table td:nth-child(3), #funds-table th:nth-child(3), #funds-table td:nth-child(3),     /* currency */
-  #stocks-table th:nth-child(4), #stocks-table td:nth-child(4), #funds-table th:nth-child(4), #funds-table td:nth-child(4),     /* quantity */
-  #stocks-table th:nth-child(7), #stocks-table td:nth-child(7), #funds-table th:nth-child(7), #funds-table td:nth-child(7),     /* volatility */
-  #stocks-table th:nth-child(11), #stocks-table td:nth-child(11), #funds-table th:nth-child(11), #funds-table td:nth-child(11) { display: none; }   /* return kr: name, day %, value and return % stay on a phone */
+/* columns: 1 logo, 2 name, 3 cur, 4 qty, 5 gav, 6 price, 7 vol, 8 day, 9 value, 10 return %, 11 return kr.
+   Names wrap to two lines; the least important columns hide first so the table always fits its box (no sideways scrolling). */
+.data-table td.col-name { white-space: normal; }
+.data-table td.col-name .name-cell, .data-table td.col-name .stock-name { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 1250px) { #stocks-table th:nth-child(1), #stocks-table td:nth-child(1), #funds-table th:nth-child(1), #funds-table td:nth-child(1), #stocks-table th:nth-child(3), #stocks-table td:nth-child(3), #funds-table th:nth-child(3), #funds-table td:nth-child(3), #stocks-table th:nth-child(5), #stocks-table td:nth-child(5), #funds-table th:nth-child(5), #funds-table td:nth-child(5) { display: none; } }
+@media (max-width: 1050px) { #stocks-table th:nth-child(4), #stocks-table td:nth-child(4), #funds-table th:nth-child(4), #funds-table td:nth-child(4), #stocks-table th:nth-child(6), #stocks-table td:nth-child(6), #funds-table th:nth-child(6), #funds-table td:nth-child(6) { display: none; } }
+@media (max-width: 760px) {
+  #stocks-table th:nth-child(11), #stocks-table td:nth-child(11), #funds-table th:nth-child(11), #funds-table td:nth-child(11) { display: none; }
   .data-table th, .data-table td { padding-inline: 7px; }
   .table-header-row { padding: 10px; }
 }
-@media (max-width: 520px) {
-  #stocks-table th:nth-child(1), #stocks-table td:nth-child(1), #funds-table th:nth-child(1), #funds-table td:nth-child(1),     /* logo */
-  #stocks-table th:nth-child(6), #stocks-table td:nth-child(6), #funds-table th:nth-child(6), #funds-table td:nth-child(6) { display: none; }   /* price: name, day %, value and return % stay */
-  .col-num { min-width: 60px; }
-  .col-name { min-width: 108px; }
-  .data-table th, .data-table td { padding-inline: 6px; }
+@media (max-width: 560px) {
+  #stocks-table th:nth-child(7), #stocks-table td:nth-child(7), #funds-table th:nth-child(7), #funds-table td:nth-child(7) { display: none; }
+  .col-num { min-width: 0; }
+  .col-name { min-width: 0; max-width: 44vw; }
+  .data-table th, .data-table td { padding-inline: 5px; font-size: 12px; }
   .search-input { width: 100%; }
 }
 
@@ -125,22 +124,12 @@ input[type=search] { max-width: 100%; }
 .table-wrap > table > thead > tr > th:first-child, .tbl-wrap > table > thead > tr > th:first-child { left: 0; z-index: 4; }
 .table-wrap > table > tbody > tr > td.name { max-width: min(175px, 38vw); }
 
-/* asset table: hide columns by width (positions: 1 name, 2 type+ccy, 3 status, 4 add/trim, 5 qty, 6 value, 7 bought, 8 sold, 9 buys/sells, 10 fees, 11 realised, 12 unrealised, 13 total) */
-@media (max-width: 1100px) {
-  #asset-table tr.row > td:nth-child(10), #asset-table thead th:nth-child(10), #asset-table tfoot td:nth-child(10) { display: none; }
-}
-@media (max-width: 900px) {
-  #asset-table tr.row > td:nth-child(9), #asset-table thead th:nth-child(9), #asset-table tfoot td:nth-child(9),
-  #asset-table tr.row > td:nth-child(7), #asset-table thead th:nth-child(7), #asset-table tfoot td:nth-child(7),
-  #asset-table tr.row > td:nth-child(8), #asset-table thead th:nth-child(8), #asset-table tfoot td:nth-child(8) { display: none; }
-}
-@media (max-width: 620px) {
-  #asset-table tr.row > td:nth-child(2), #asset-table thead th:nth-child(2), #asset-table tfoot td:nth-child(2),
-  #asset-table tr.row > td:nth-child(3), #asset-table thead th:nth-child(3), #asset-table tfoot td:nth-child(3),
-  #asset-table tr.row > td:nth-child(5), #asset-table thead th:nth-child(5), #asset-table tfoot td:nth-child(5),
-  #asset-table tr.row > td:nth-child(11), #asset-table thead th:nth-child(11), #asset-table tfoot td:nth-child(11),
-  #asset-table tr.row > td:nth-child(12), #asset-table thead th:nth-child(12), #asset-table tfoot td:nth-child(12) { display: none; }
-}
+/* asset table: hide columns by width (positions: 1 name, 2 type+ccy, 3 status, 4 add/trim, 5 qty, 6 value, 7 bought, 8 sold, 9 buys/sells, 10 fees, 11 realised, 12 unrealised, 13 total);
+   names wrap; on phones (box under 460 px) the rows become cards (table.stack, responsive.css) */
+#asset-table td.name { white-space: normal; }
+@media (max-width: 1250px) { #asset-table tr.row > td:nth-child(7), #asset-table thead th:nth-child(7), #asset-table tfoot td:nth-child(7), #asset-table tr.row > td:nth-child(8), #asset-table thead th:nth-child(8), #asset-table tfoot td:nth-child(8), #asset-table tr.row > td:nth-child(10), #asset-table thead th:nth-child(10), #asset-table tfoot td:nth-child(10) { display: none; } }
+@media (max-width: 1000px) { #asset-table tr.row > td:nth-child(2), #asset-table thead th:nth-child(2), #asset-table tfoot td:nth-child(2), #asset-table tr.row > td:nth-child(3), #asset-table thead th:nth-child(3), #asset-table tfoot td:nth-child(3), #asset-table tr.row > td:nth-child(5), #asset-table thead th:nth-child(5), #asset-table tfoot td:nth-child(5), #asset-table tr.row > td:nth-child(9), #asset-table thead th:nth-child(9), #asset-table tfoot td:nth-child(9) { display: none; } }
+@media (max-width: 760px) { #asset-table tr.row > td:nth-child(11), #asset-table thead th:nth-child(11), #asset-table tfoot td:nth-child(11) { display: none; } }
 
 /* ───────── touch targets >= 40 px ───────── */
 @media (max-width: 900px), (pointer: coarse) {
@@ -172,3 +161,64 @@ input[type=search] { max-width: 100%; }
 #heat-map .hm-tile b[style*="font-size:10px"] { font-size: 11px !important; }
 
 @media (max-width: 520px) { .data-table th:not(.sort-asc):not(.sort-desc) .sort-icon { display: none; } }   /* sorting still works by tapping the header */
+
+/* ───────── tables that never scroll sideways ─────────
+   table.stack: cells wrap; when the BOX the table sits in is narrow (container query, so a table in a narrow panel on a tablet
+   is handled too) every row becomes a small card with a label per value (data-label, written by the table builders in
+   analytics.js, heatmap.js and plan.js). table.stack.wide: tables with many columns turn into cards below 900 px of box width. */
+.tbl-wrap, .table-wrap { container-type: inline-size; }
+table.stack { table-layout: auto; }
+table.stack th { white-space: normal; }
+table.stack td { white-space: normal; overflow-wrap: anywhere; }
+table.stack td .nw, table.stack td.num { white-space: nowrap; overflow-wrap: normal; }
+.tbl-wrap > table.stack > tbody > tr > td, .table-wrap > table.stack > tbody > tr > td,
+.tbl-wrap > table.stack > tbody > tr:not(.detail) > td:first-child, .table-wrap > table.stack > tbody > tr:not(.detail) > td:first-child { position: static; }
+@container (max-width: 900px) {
+  table.stack.wide > thead { display: none; }
+  table.stack.wide, table.stack.wide > tbody, table.stack.wide > tfoot, table.stack.wide > tbody > tr, table.stack.wide > tfoot > tr,
+  table.stack.wide > tbody > tr > td, table.stack.wide > tfoot > tr > td { display: block; width: 100%; }
+  table.stack.wide > tbody > tr, table.stack.wide > tfoot > tr { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 8px; padding: 6px 10px; background: var(--surface) !important; }
+  table.stack.wide > tbody > tr > td, table.stack.wide > tfoot > tr > td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border: 0; padding: 3px 0; text-align: right; position: static; max-width: none; }
+  table.stack.wide > tbody > tr > td::before, table.stack.wide > tfoot > tr > td::before { content: attr(data-label); flex: none; max-width: 48%; color: var(--text-dim); font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .03em; text-align: left; }
+  table.stack.wide > tbody > tr > td:first-child, table.stack.wide > tfoot > tr > td:first-child { justify-content: flex-start; text-align: left; font-weight: 600; color: var(--white); }
+  table.stack.wide > tbody > tr > td:first-child::before, table.stack.wide > tfoot > tr > td:first-child::before,
+  table.stack.wide td[data-label=""]::before, table.stack.wide td:not([data-label])::before, table.stack.wide td[colspan]::before { content: none; }
+  table.stack.wide > tbody > tr > td[data-label=""]:empty, table.stack.wide > tfoot > tr > td:empty { display: none; }
+  table.stack.wide > tbody > tr > td[colspan] { display: block; text-align: left; }
+  table.stack.wide > tbody > tr.grp, table.stack.wide > tbody > tr.sub { border: 0; padding: 6px 0 2px; background: transparent !important; }
+}
+@container (max-width: 460px) {
+  table.stack > thead { display: none; }
+  table.stack, table.stack > tbody, table.stack > tfoot, table.stack > tbody > tr, table.stack > tfoot > tr,
+  table.stack > tbody > tr > td, table.stack > tfoot > tr > td { display: block; width: 100%; }
+  table.stack > tbody > tr, table.stack > tfoot > tr { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 8px; padding: 6px 10px; background: var(--surface) !important; }
+  table.stack > tbody > tr > td, table.stack > tfoot > tr > td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border: 0; padding: 3px 0; text-align: right; position: static; max-width: none; }
+  table.stack > tbody > tr > td::before, table.stack > tfoot > tr > td::before { content: attr(data-label); flex: none; max-width: 48%; color: var(--text-dim); font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .03em; text-align: left; }
+  table.stack > tbody > tr > td:first-child, table.stack > tfoot > tr > td:first-child { justify-content: flex-start; text-align: left; font-weight: 600; color: var(--white); }
+  table.stack > tbody > tr > td:first-child::before, table.stack > tfoot > tr > td:first-child::before,
+  table.stack td[data-label=""]::before, table.stack td:not([data-label])::before, table.stack td[colspan]::before { content: none; }
+  table.stack > tbody > tr > td[data-label=""]:empty, table.stack > tfoot > tr > td:empty { display: none; }
+  table.stack > tbody > tr > td[colspan] { display: block; text-align: left; }
+  table.stack > tbody > tr.grp, table.stack > tbody > tr.sub { border: 0; padding: 6px 0 2px; background: transparent !important; }
+}
+/* wide tables as cards: the values sit in columns inside the card (half the height); name, notes and full-width cells span the card */
+@container (max-width: 900px) {
+  table.stack.wide > tbody > tr:not(.grp):not(.sub):not(.why-row) { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); column-gap: 18px; }
+  table.stack.wide > tbody > tr > td:first-child, table.stack.wide > tbody > tr > td[colspan], table.stack.wide > tbody > tr > td.span2 { grid-column: 1 / -1; }
+}
+/* panels side by side have the same height: a chart grows to fill its panel, a scrolling table box fills the rest of its panel
+   instead of stopping at 300 px and leaving an empty gap under it; a 'full' table shows every row */
+.grid > .panel { display: flex; flex-direction: column; }
+.grid > .panel > .cv { flex: 1 0 auto; }
+.table-wrap.full { max-height: none; }
+/* two panels side by side only when each has room */
+@media (max-width: 900px) { .grid.g2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* "Show all N" under a long table (TVRows in responsive.js) */
+table tr.rl-more, table tr.rl-more + tr.detail, table tr.rl-more + tr.why-row, table tr.rl-more + tr.sub { display: none !important; }
+.rows-more { display: block; margin: 8px 0 2px; padding: 6px 12px; min-height: 32px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.rows-more:hover { border-color: var(--accent); color: var(--white); }
+.rows-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rows-more[hidden] { display: none; }
+@media (max-width: 900px), (pointer: coarse) { .rows-more { min-height: 40px; } }

@@ -9,7 +9,7 @@
 .tv-help svg { width: 18px; height: 18px; pointer-events: none; display: block; }
 .tv-help:hover, .tv-help[aria-expanded="true"] { opacity: 1; color: var(--accent, #2962FF); }
 .tv-help:focus-visible { outline: 2px solid var(--accent, #2962FF); outline-offset: -4px; opacity: 1; }
-th .tv-help { margin-left: -8px; margin-right: -14px; }
+th .tv-help { margin-left: -8px; margin-right: -5px; }
 
 .tv-pop {
   position: fixed; z-index: 400; box-sizing: border-box; width: 280px; max-width: calc(100vw - 16px); overflow: auto;

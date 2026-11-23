@@ -15,6 +15,7 @@ The Yahoo v7 quote batch API needs auth now, so /yahoo/v7/finance/quote is trans
 """
 
 import argparse
+import gzip
 import hashlib
 import http.server
 import socket
@@ -61,6 +62,8 @@ STATIC_TYPES = {
     '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
     '.ico': 'image/x-icon', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.woff2': 'font/woff2',
 }
+GZIP_MIN = 1024
+_GZ_STATIC = {}                 # (file, etag) -> gzipped bytes of a static file (a few hundred KB in total)
 STATIC_NAME = re.compile(r'^/[A-Za-z0-9_][A-Za-z0-9_.-]*$')
 
 YAHOO_HEADERS = {
@@ -272,8 +275,9 @@ def _curve(uid, ap, snap, fetch=True):
     return nav.anchored(c, snap) if c else None
 
 
-def _advice(uid, p, live, profile):
-    settings = strategy.load_settings(profiles.profile_dir(uid))         # the user's own plan settings (deposit, reduction, cash %, categories)
+def _advice(uid, p, live, profile=None):
+    settings = strategy.load_settings(profiles.profile_dir(uid))         # the user's own plan settings (profile, deposit, reduction, cash %, categories)
+    profile = profile if profile in advisor.PROFILES else settings.get('profile') or advisor.DEFAULT_PROFILE   # no ?profile= -> the saved one
     return advisor.get(p, live, profile, owner=uid, settings=settings)
 
 
@@ -351,10 +355,22 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
-    def _send(self, code, body=b'', ctype='application/json; charset=utf-8', headers=None):
+    def _send(self, code, body=b'', ctype='application/json; charset=utf-8', headers=None, cache='no-store', gz_key=None):
+        # gzip text answers above 1 KB when the browser accepts it (JSON shrinks 5-10x); static files keep their compressed copy
+        if (code == 200 and len(body) >= GZIP_MIN and (ctype.startswith('text/') or ctype.startswith('application/json'))
+                and 'gzip' in (self.headers.get('Accept-Encoding') or '').lower()):
+            z = _GZ_STATIC.get(gz_key) if gz_key else None
+            if z is None:
+                z = gzip.compress(body, 6)
+                if gz_key:
+                    if len(_GZ_STATIC) > 80:
+                        _GZ_STATIC.clear()
+                    _GZ_STATIC[gz_key] = z
+            body = z
+            headers = dict(headers or {}, **{'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding'})
         self.send_response(code)
         self.send_header('Content-Type', ctype)
-        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Cache-Control', cache)
         self.send_header('Content-Length', str(len(body)))
         for k, v in (headers or {}).items():
             self.send_header(k, v)
@@ -457,9 +473,16 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         full = os.path.join(ROOT, name)
         if not os.path.isfile(full) or os.path.dirname(os.path.realpath(full)) != REAL_ROOT:
             return self._send(404, b'Not found', 'text/plain; charset=utf-8')
+        # the browser keeps the file and asks "changed?" (ETag from time + size): a 304 costs a few bytes, and a git pull is
+        # picked up straight away because the ETag changes with the file
+        st = os.stat(full)
+        etag = f'"{int(st.st_mtime)}-{st.st_size}"'
+        ctype = STATIC_TYPES[os.path.splitext(name)[1].lower()]
+        if self.headers.get('If-None-Match') == etag:
+            return self._send(304, b'', ctype, {'ETag': etag}, cache='no-cache')
         with open(full, 'rb') as f:
             data = f.read()
-        self._send(200, data, STATIC_TYPES[os.path.splitext(name)[1].lower()])
+        self._send(200, data, ctype, {'ETag': etag}, cache='no-cache', gz_key=(full, etag))
 
     # ---- API routing ----
     def _api(self, method):
@@ -690,12 +713,11 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
 
     def r_advice(self, user):
         ap, _ = _valued(user['uid'])
-        prof = (self.query.get('profile') or [advisor.DEFAULT_PROFILE])[0]
-        self._json(200, _advice(user['uid'], ap, None, prof if prof in advisor.PROFILES else advisor.DEFAULT_PROFILE))
+        self._json(200, _advice(user['uid'], ap, None, self._profile_arg()))
 
     def _profile_arg(self):
-        prof = (self.query.get('profile') or [advisor.DEFAULT_PROFILE])[0]
-        return prof if prof in advisor.PROFILES else advisor.DEFAULT_PROFILE
+        prof = (self.query.get('profile') or [None])[0]
+        return prof if prof in advisor.PROFILES else None              # None = the profile saved in the user's plan settings
 
     def r_plan_settings(self, user):
         folder = profiles.profile_dir(user['uid'], create=self.command == 'POST')
@@ -764,7 +786,7 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
             raise ApiError(503, 'unavailable', 'The assistant is not installed.')
         p, snap = _valued(user['uid'])
         try:
-            adv = _advice(user['uid'], p, None, advisor.DEFAULT_PROFILE)
+            adv = _advice(user['uid'], p, None)
         except Exception:
             adv = None
         try:

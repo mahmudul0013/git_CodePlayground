@@ -462,9 +462,7 @@ html, body {
    DATA TABLE
    ============================================================ */
 .table-wrap {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 440px;
+  overflow-x: auto;           /* long tables show their first rows and a "Show all" button (TVRows), never a scroll box */
 }
 
 .data-table {

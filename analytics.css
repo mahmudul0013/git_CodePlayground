@@ -109,8 +109,8 @@ section.panel { margin-bottom: 14px; }
 .sec { font-size: 15px; font-weight: 600; color: var(--white); margin: 22px 0 6px; }
 
 /* tables */
-.table-wrap { overflow: auto; max-height: 620px; border: 1px solid var(--border); border-radius: 6px; }
-.table-wrap.short { max-height: 300px; margin-top: 8px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }      /* no inner vertical scroll: TVRows shows the first rows + Show all */
+.table-wrap.short { margin-top: 8px; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 th { position: sticky; top: 0; background: var(--border); color: var(--text-dim); font-size: 11px; text-transform: uppercase;
   letter-spacing: .03em; text-align: right; padding: 7px 9px; white-space: nowrap; z-index: 2; }
@@ -129,7 +129,7 @@ tfoot td { font-weight: 700; color: var(--white); background: var(--border); pos
 .badge.closed { background: color-mix(in srgb, var(--text-dim) 18%, transparent); color: var(--text-dim); }
 .tag { color: var(--text-dim); }
 tr.detail > td { padding: 0; background: var(--bg) !important; text-align: left; }
-.detail-inner { padding: 8px 12px 12px 24px; max-height: 260px; overflow: auto; }
+.detail-inner { padding: 8px 12px 12px 24px; }          /* an asset's trades: first rows + Show all (TVRows), no scroll box */
 .detail-inner table th { position: static; }
 .detail-inner td, .detail-inner th { padding: 3px 8px; }
 .buy-t { color: var(--green); font-weight: 600; } .sell-t { color: var(--red); font-weight: 600; }

@@ -31,7 +31,7 @@ const CFG = {
   tickerYield:   ['^TNX'],                 // shown as a yield in %, not as a price
 
   refreshMs:    60_000,       // live-price refresh interval (ms)
-  csvRefreshMs: 5 * 60_000,  // portfolio CSV re-check interval (ms)
+  // uploaded files are checked by a small signature request (checkFiles), not by re-reading the CSV
 };
 
 // ────────────────────────────────────────────────────────────
@@ -420,6 +420,21 @@ async function loadHoldings() {
 }
 
 /** Re-fetch CSVs, detect new buys, re-render tables + refresh prices. */
+// Uploaded files: a small signature check; the holdings, plan and calendar are reloaded only when a file really changed
+async function checkFiles() {
+  try {
+    const sig = JSON.stringify(await (await fetch('/api/trades/status', { cache: 'no-store' })).json());
+    if (S.filesSig && sig !== S.filesSig) {
+      S.filesSig = sig;
+      await reloadPortfolio();
+      loadPredictions(); loadReports();
+      window.dispatchEvent(new CustomEvent('tvfiles'));
+      return;
+    }
+    S.filesSig = sig;
+  } catch (e) { /* server briefly busy: next check */ }
+}
+
 async function reloadPortfolio() {
   setStatus('loading', 'Refreshing portfolio…');
   try {
@@ -545,6 +560,7 @@ async function refreshSnapshot() {
     S.snap = d;
     S.snapState = 'ok';
     applySnapshot();
+    window.dispatchEvent(new CustomEvent('tvsnapshot', { detail: d }));     // the heat map reuses this valuation instead of asking again
     setStatus('live', 'Live · ' + d.asof.slice(11, 19) + (S.holdingsFile ? ' · ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
   } catch (e) {
     console.warn('[snapshot]', e.message);
@@ -807,6 +823,7 @@ function renderStocksTable() {
   }
 
   tbody.innerHTML = rows.map(s => stockRow(s)).join('');
+  if (window.TVRows) TVRows.limit(document.getElementById('stocks-table'), 15);
 
   // Inject the DOM-based logo (can't do this in innerHTML)
   rows.forEach(s => {
@@ -885,6 +902,7 @@ function renderFundsTable() {
   }
 
   tbody.innerHTML = rows.map(f => fundRow(f)).join('');
+  if (window.TVRows) TVRows.limit(document.getElementById('funds-table'), 10);
 
   rows.forEach(f => {
     const idx      = S.funds.indexOf(f);
@@ -1144,7 +1162,7 @@ function bindSidebarFolds() {
 async function loadPredictions() {
   const badge = document.getElementById('pred-badge');
   try {
-    const r = await (await fetch('/api/advice?profile=' + (localStorage.getItem(LS('tv_advice_profile')) || 'balanced'), { cache: 'no-store' })).json();
+    const r = await (await fetch('/api/advice', { cache: 'no-store' })).json();       // the profile saved in the plan settings
     if (!r.ok) throw new Error(r.error || 'no data');
     const named = Object.entries(r.assets).map(([isin, v]) => ({ isin, ...v }));
     const stock = n => S.stocks.find(s => s.name === n) || S.funds.find(f => f.name === n);
@@ -1344,18 +1362,18 @@ async function init() {
     // The server's valuation (rows, tiles) and the ticker bar quotes
     await Promise.all([refreshSnapshot(), refreshPrices()]);
 
-    // Background: add / trim ideas
+    // Background jobs on one light schedule (pulse.js): paused while the tab is hidden, slower when the market is closed.
+    //   Correct, current numbers come first: valuation every 30 s in market hours (15 min when closed: prices do not move) ·
+    //   ticker 1 min / 5 min (BTC trades all week) · plan and trend signals 10 min / 1 h
+    //   (signals change at the weekly close) · reports calendar 6 h · uploaded files: a small signature check every 2 / 10 min
     loadPredictions();
-    setInterval(loadPredictions, 10 * 60_000);
     loadReports();
-    setInterval(loadReports, 30 * 60_000);
-
-    // Auto-refresh: the valuation every 30 s (the server caches quotes for 25 s), the ticker bar every minute
-    setInterval(refreshSnapshot, 30_000);
-    setInterval(refreshPrices, CFG.refreshMs);
-
-    // Auto-reload portfolio CSVs every 5 minutes (picks up the newest Innehav export)
-    setInterval(reloadPortfolio, CFG.csvRefreshMs);
+    TVPulse.every('snapshot', refreshSnapshot, { open: 30_000, closed: 15 * 60_000 });
+    TVPulse.every('ticker', refreshPrices, { open: CFG.refreshMs, closed: 5 * 60_000 });
+    TVPulse.every('advice', loadPredictions, { open: 10 * 60_000, closed: 60 * 60_000 });
+    TVPulse.every('reports', loadReports, { open: 6 * 3600_000, closed: 6 * 3600_000 });
+    TVPulse.every('files', checkFiles, { open: 2 * 60_000, closed: 10 * 60_000 });
+    checkFiles();                                     // baseline signature
 
   } catch (err) {
     console.error('[init]', err);

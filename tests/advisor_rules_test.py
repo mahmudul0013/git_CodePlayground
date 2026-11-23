@@ -88,6 +88,12 @@ for bad, why in (({'deposit': -1, 'reduce': 0, 'opportunity_pct': 5}, 'negative 
         ok('rejects ' + why, False)
     except ValueError:
         ok('rejects ' + why, True)
+ok('the profile is a saved setting', strategy.clean_settings({'profile': 'aggressive'}, partial=True) == {'profile': 'aggressive'})
+try:
+    strategy.clean_settings({'profile': 'wild'}, partial=True)
+    ok('rejects an unknown profile', False)
+except ValueError:
+    ok('rejects an unknown profile', True)
 for prof in strategy.TARGETS:
     ok(f'{prof} targets sum to 100', abs(sum(strategy.targets(prof, strategy.DEFAULT_SETTINGS).values()) - 100) < 1e-9)
 t = strategy.targets('balanced', {'opportunity_pct': 8})

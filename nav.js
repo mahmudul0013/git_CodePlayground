@@ -265,6 +265,7 @@
   // ───────── load ─────────
   async function load() {
     clearTimeout(S.timer);
+    S.loading = true; S.loadedAt = Date.now();
     try {
       const r = await fetch('/api/nav', { cache: 'no-store' });
       const d = await r.json();
@@ -276,10 +277,12 @@
       drawControls(); render();
       if (first) $('nav-chart').closest('.nav-card').dataset.ready = '1';
       if (d.pending) { $('nav-badge').textContent += ' · loading prices'; S.timer = setTimeout(load, 20000); }
-      else S.timer = setTimeout(load, 10 * 60 * 1000);
+      // no timer here: TVPulse refreshes it every 30 min in market hours (2 h closed) and 'tvfiles' after an upload
     } catch (e) {
       $('nav-badge').textContent = 'Not available';
-      S.timer = setTimeout(load, 60000);
+      S.timer = setTimeout(load, 60000);                // not available yet: try again in a minute
+    } finally {
+      S.loading = false;
     }
   }
 
@@ -289,6 +292,28 @@
     if (!SMOOTH_R.hasOwnProperty(S.smooth)) S.smooth = 'light';
     if (!Array.isArray(S.sel) || !S.sel.length) S.sel = [TOTAL];
     load();
+    if (window.TVPulse) TVPulse.every('nav', load, { open: 30 * 60000, closed: 2 * 3600000 });
+    // the curve's last point and its Account value tile must equal the page's valuation: reload as soon as they differ by more than
+    // the accepted rounding (max(5 kr, 0.05%), the same tolerance as valuation.allowed)
+    // (at most one reload per 20 s; a difference inside that window is caught up at its end, never ignored)
+    const differs = () => {
+      const a = S.lastAccount, D = S.data;
+      return a != null && D && D.total && D.total.nav.length && Math.abs(a - D.total.nav[D.total.nav.length - 1]) > Math.max(5, 0.0005 * Math.abs(a));
+    };
+    const catchUp = () => {
+      clearTimeout(S.catchup);
+      if (!differs()) return;
+      const left = 20000 - (Date.now() - (S.loadedAt || 0));
+      if (left <= 0 && !S.loading) load();
+      else S.catchup = setTimeout(catchUp, Math.max(left, 1000));
+    };
+    window.addEventListener('tvsnapshot', e => {
+      const a = e.detail && e.detail.totals && e.detail.totals.account;
+      if (a == null) return;
+      S.lastAccount = a;
+      catchUp();
+    });
+    window.addEventListener('tvfiles', load);
   }
   (window.TV && TV.ready ? TV.ready : Promise.resolve()).then(() => { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); });
   // light / dark switch (theme.js): re-read the colours, rebuild the chart (grid, lines, fills, end labels) and the category pills

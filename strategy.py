@@ -54,7 +54,7 @@ STRESS = {              # illustrative shocks in %, per category (not forecasts)
     'AI recovers':            {'ai': 40, 'core': 10, 'cash': 0, 'defensive': 2, '_other': 10},
 }
 
-DEFAULT_SETTINGS = {'deposit': 10000, 'reduce': 15000, 'opportunity_pct': 5.0, 'overrides': {}}
+DEFAULT_SETTINGS = {'profile': 'balanced', 'deposit': 10000, 'reduce': 15000, 'opportunity_pct': 5.0, 'overrides': {}}
 SETTINGS_FILE = 'plan_settings.json'
 
 _INDEX_WORDS = re.compile(r'\b(index|indeks|indeksi|s&p 500|msci|ftse|stoxx|omxs30|nasdaq-100|nasdaq 100|russell|all-world|world|global leaders|total market|em imi|emerging)\b', re.I)
@@ -191,6 +191,10 @@ def clean_settings(raw, partial=False):
     num('deposit', 0, 1_000_000)
     num('reduce', 0, 1_000_000)
     num('opportunity_pct', 0, 20)
+    if 'profile' in raw:
+        if raw['profile'] not in TARGETS:
+            raise ValueError('profile must be conservative, balanced or aggressive.')
+        out['profile'] = raw['profile']
     if 'overrides' in raw:
         ov = raw['overrides']
         if not isinstance(ov, dict) or len(ov) > 500:
