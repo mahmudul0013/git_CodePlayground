@@ -164,7 +164,16 @@ def main():
             run(c)
         finally:
             srv.terminate()
-            shutil.rmtree(data, ignore_errors=True)
+            try:
+                srv.wait(timeout=15)           # Windows keeps the folder locked until the server has really exited
+            except Exception:
+                srv.kill()
+            log.close()                        # our own handle on server.log, or the folder cannot be removed
+            for _ in range(10):                # remove the test data folder (a copy of the Nordnet files); retry while handles close
+                shutil.rmtree(data, ignore_errors=True)
+                if not os.path.exists(data):
+                    break
+                time.sleep(0.5)
     bad = results.count(False)
     print(f'\n{len(results) - bad}/{len(results)} passed  (tolerance: max({valuation.TOLERANCE_KR:g} kr, {valuation.TOLERANCE_REL * 100:g}% of the figure))')
     sys.exit(1 if bad else 0)
