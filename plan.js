@@ -11,8 +11,6 @@
 const Plan = (() => {
   const P = { built: false, ev: null, evTries: 0, evTimer: 0, settings: null, cats: [], open: new Set(), saving: false };
   const tok = n => (window.TVTheme ? TVTheme.css(n) : getComputedStyle(document.documentElement).getPropertyValue(n).trim()) || '#888';
-  const CATCOL = { core: '--s1', ai: '--s2', bigtech: '--s3', health: '--s4', industrials: '--s5', financials: '--s6', materials: '--s7', defensive: '--s8', cash: '--text-dim' };
-  const col = k => tok(CATCOL[k] || '--text-dim');
   const RULE_TXT = { size_cap: 'size cap', trend_exit: 'trend exit', regime_exit: 'regime exit', pullback: 'pullback in an uptrend', deposit_plan: 'deposit plan',
     consolidate: 'tiny position', review: 'review', hold_half: 'hold half', near_entry: 'close to an entry', buyback: 'buy back', core: 'index fund', fixed: 'defensive' };
   const kr = n => `<span class="pv nw">${fmt(n)} kr</span>`;
@@ -30,7 +28,7 @@ const Plan = (() => {
           <button class="chip" role="radio" data-p="conservative">Conservative</button><button class="chip" role="radio" data-p="balanced">Balanced</button><button class="chip" role="radio" data-p="aggressive">Aggressive</button></div></div>
         <span class="pl-saved" id="pl-saved" role="status" aria-live="polite"></span>
       </div>
-      <p class="hint pl-explain">The profile sets the target mix (index funds 60 / 50 / 40%, AI and chips at most 10 / 15 / 22%) and how low the RSI must be before new money goes into a stock (35 / 40 / 45). A click applies it at once and saves it for your account, so the Portfolio page, this tab, the assistant and every device use the same plan. The plan assumes 10 000 kr deposited a month.</p>
+      <p class="hint pl-explain">The profile sets the target mix (index funds 60 / 50 / 40%, AI and chips at most 10 / 15 / 22%) and how low the RSI must be before new money goes into a stock (35 / 40 / 45). A click applies it at once and saves it for your account, so the Portfolio page, this tab, the assistant and every device use the same plan. The plan assumes <span id="pl-assume">your monthly deposit</span> a month.</p>
       <p class="hint" id="pl-status"></p>
 
       <section class="panel pl-verdict"><h3>The short verdict</h3><div id="pl-verdict"></div></section>
@@ -47,7 +45,7 @@ const Plan = (() => {
       <h2 class="sec">This month</h2>
       <section class="grid g2">
         <div class="panel"><h3 id="pl-dep-title">Next deposit</h3><div class="tbl-wrap"><table id="pl-deposit"></table></div><p class="hint" id="pl-dep-note"></p></div>
-        <div class="panel"><h3>Sell this month</h3><div class="tbl-wrap"><table id="pl-sells"></table></div><p class="hint" id="pl-sell-note"></p></div>
+        <div class="panel"><h3>Sell this month</h3><div class="tbl-wrap scroll"><table id="pl-sells"></table></div><p class="hint" id="pl-sell-note"></p></div>
       </section>
 
       <h2 class="sec">One strategy per category</h2>
@@ -55,7 +53,7 @@ const Plan = (() => {
 
       <h2 class="sec">Holdings by category</h2>
       <p class="hint">Click a category to open it. "Weekly trend" is the last weekly close against the simple 200-day average, SMA(200). Tap (i) for the reason behind an action. If a holding sits in the wrong group, choose another category; the plan is recalculated.</p>
-      <section class="panel"><div class="tbl-wrap"><table id="pl-hold"></table></div></section>
+      <section class="panel"><div class="tbl-wrap scroll tall"><table id="pl-hold"></table></div></section>
 
       <h2 class="sec">The evidence: which rule worked for which category</h2>
       <p class="hint" id="pl-ev-status"></p>
@@ -65,7 +63,7 @@ const Plan = (() => {
       </section>
       <div class="pl-key"><span><i style="background:var(--text-dim)"></i>Buy and hold</span><span><i style="background:var(--s1)"></i>Rule used for the category</span></div>
       <ul class="pl-findings" id="pl-ev-find"></ul>
-      <details class="panel"><summary>Every rule in every category</summary><div class="tbl-wrap"><table id="pl-ev-all"></table></div></details>
+      <details class="panel"><summary>Every rule in every category</summary><div class="tbl-wrap scroll tall"><table id="pl-ev-all"></table></div></details>
 
       <h2 class="sec">The transition</h2>
       <section class="grid g2">
@@ -207,19 +205,19 @@ const Plan = (() => {
     const L = A.plan, rows = Object.entries(A.assets).map(([isin, v]) => ({ isin, ...v }));
     const dep = L.settings.deposit;
     $('pl-dep-title').textContent = `Next deposit: ${fmt(dep)} kr`;
+    const as = $('pl-assume'); if (as) as.textContent = `${fmt(dep)} kr deposited`;
     let h = '<thead><tr><th>Goes to</th><th>Amount</th></tr></thead><tbody>';
     L.deposit_plan.forEach(d => {
-      h += `<tr><td data-label=""><span class="sw" style="background:${col(d.cat)}"></span><b>${esc(d.label)}</b></td><td data-label="Amount">${kr(d.amount)}</td></tr>`;
+      h += `<tr><td data-label=""><b>${esc(d.label)}</b></td><td data-label="Amount">${kr(d.amount)}</td></tr>`;
       (d.where || []).forEach(w => { h += `<tr class="sub"><td data-label=""><span class="pl-small">→ ${esc(w.name)}</span></td><td data-label=""><span class="pl-small">${kr(w.amount)}</span></td></tr>`; });
       if (d.cat === 'cash') h += `<tr class="sub"><td data-label="" colspan="2"><span class="pl-small">→ stays as cash on the account</span></td></tr>`;
     });
-    if (!L.deposit_plan.length) h += `<tr><td colspan="2" class="pl-empty">${dep ? 'Nothing is under its target.' : 'Set a monthly deposit above.'}</td></tr>`;
+    if (!L.deposit_plan.length) h += `<tr><td colspan="2" class="pl-empty">${dep ? 'Nothing is under its target.' : 'No monthly deposit is set in the plan.'}</td></tr>`;
     const el = $('pl-deposit'); el.className = 'stack'; el.innerHTML = h + '</tbody>';
     $('pl-dep-note').textContent = 'Split over the groups furthest under their target. A stock group gets money only when one of its stocks has an entry signal; otherwise its share waits in the index funds. Orders under 2 500 kr are merged.';
 
     const sells = rows.filter(r => r.action === 'TRIM' && r.when !== 'later').sort((a, b) => a.amount - b.amount);
     let s = '<thead><tr><th>Holding</th><th>Amount</th><th>When</th><th></th></tr></thead><tbody>';
-    const SHOW = 6;
     sells.forEach((r, i) => {
       const rsi = r.metrics && r.metrics.rsi != null ? Math.round(r.metrics.rsi) : null;
       const okNow = rsi == null || rsi > 45;
@@ -230,7 +228,6 @@ const Plan = (() => {
     });
     if (!sells.length) s += '<tr><td colspan="4" class="pl-empty">No sale is due this month.</td></tr>';
     const se = $('pl-sells'); se.className = 'stack'; se.innerHTML = s + '</tbody>';
-    if (window.TVRows) TVRows.limit(se, SHOW);
     const tiny = rows.filter(r => r.action === 'CONSOLIDATE');
     const tot = sells.reduce((x, r) => x + r.amount, 0);
     $('pl-sell-note').innerHTML = `${sells.length} sales, ${kr(tot)}.` + (L.queued ? ` ${L.queued} more (${kr(L.queued_kr)}) are queued for the next months by the ${fmt(L.settings.reduce)} kr monthly reduction budget.` : '') +
@@ -242,8 +239,8 @@ const Plan = (() => {
     const max = Math.max(60, ...L.categories.map(c => Math.max(c.pct, c.target)));
     let h = '<thead><tr><th>Category and strategy</th><th>Now / target</th><th>Status</th><th>Above SMA(200)</th></tr></thead><tbody>';
     L.categories.forEach(c => {
-      h += `<tr><td data-label=""><span class="sw" style="background:${col(c.key)}"></span>${esc(c.label)} <span class="pl-small">· ${c.n} holdings · ${kr(c.kr)}</span><br><span class="pl-strat">${esc(c.strategy)}</span></td>
-        <td data-label="Now / target"><span class="bar" aria-hidden="true"><i style="width:${c.pct / max * 100}%;background:${col(c.key)}"></i><b style="left:${c.target / max * 100}%"></b></span><span class="nw">${pct(c.pct, 1)} / ${pct(c.target, 0)}</span></td>
+      h += `<tr><td data-label="">${esc(c.label)} <span class="pl-small">· ${c.n} holdings · ${kr(c.kr)}</span><br><span class="pl-strat">${esc(c.strategy)}</span></td>
+        <td data-label="Now / target"><span class="bar ${c.status}" aria-hidden="true"><i style="width:${c.pct / max * 100}%"></i><b style="left:${c.target / max * 100}%"></b></span><span class="nw">${pct(c.pct, 1)} / ${pct(c.target, 0)}</span></td>
         <td data-label="Status"><span class="pill ${c.status}">${st[c.status]} ${c.gap > 0 ? '+' : ''}${c.gap.toFixed(0)} pts</span></td>
         <td data-label="Above SMA(200)" title="holdings whose last weekly close was above their 200-day average"><span class="nw">${c.n_trend ? `${c.n_up} of ${c.n_trend}` : '—'}</span></td></tr>`;
     });
@@ -262,7 +259,7 @@ const Plan = (() => {
       const xs = (by[c.key] || []).sort((a, b) => b.weight - a.weight);
       if (!xs.length) return;
       const open = P.open.has(c.key);
-      html += `<tr class="grp" data-k="${c.key}" tabindex="0" aria-expanded="${open}" style="--cat:${col(c.key)}"><td colspan="${N}"><span class="chev">${open ? '▾' : '▸'}</span><span class="sw" style="background:${col(c.key)}"></span>${esc(c.label)} · ${xs.length} · ${pct(c.pct, 1)} <span class="pl-small">(target ${pct(c.target, 0)})</span></td></tr>`;
+      html += `<tr class="grp" data-k="${c.key}" tabindex="0" aria-expanded="${open}"><td colspan="${N}"><span class="chev" aria-hidden="true">${open ? '▾' : '▸'}</span>${esc(c.label)} <span class="pl-small">${xs.length} holdings · ${pct(c.pct, 1)} of the account · target ${pct(c.target, 0)}</span> <span class="pill ${c.status}">${c.status === 'over' ? 'over target' : c.status === 'under' ? 'under target' : 'on target'}</span></td></tr>`;
       if (!open) return;
       xs.forEach(v => {
         const m = v.metrics || {}, a = (S.data && S.data.assets || []).find(x => x.isin === v.isin) || {};
@@ -322,7 +319,7 @@ const Plan = (() => {
   function charts() {
     const A = S.advice; if (!A || !A.plan) return;
     const L = A.plan, cats = L.categories, ax = axes();
-    const narrow = (document.documentElement.clientWidth || 1000) < 600, lw = narrow ? 16 : 24;
+    const vw = document.documentElement.clientWidth || 1000, narrow = vw < 600, lw = narrow ? 16 : vw < 1100 ? 26 : 34;
     const lk = cats.filter(c => L.lifetime[c.key] && (L.lifetime[c.key].n || L.lifetime[c.key].life)).map(c => c.key).sort((a, b) => L.lifetime[a].life - L.lifetime[b].life);
     mkChart('pl-life', { type: 'bar', data: { labels: lk.map(k => cats.find(c => c.key === k).label), datasets: [{ data: lk.map(k => L.lifetime[k].life),
         backgroundColor: lk.map(k => L.lifetime[k].life < 0 ? tok('--red') : tok('--green')), borderRadius: 3, maxBarThickness: 18 }] },
@@ -387,7 +384,7 @@ const Plan = (() => {
     let h = '<thead><tr><th>Rule</th><th>CAGR</th><th>Worst fall</th><th>Return / vol</th><th>Return / worst fall</th><th>Time invested</th><th>Switches a year</th><th>2022</th><th>Last year</th><th>This year</th></tr></thead><tbody>';
     keys.forEach(k => {
       const c = E.categories[k];
-      h += `<tr class="grp" style="--cat:${col(k)}"><td colspan="10"><span class="sw" style="background:${col(k)}"></span><b>${esc(labs[k])}</b> <span class="pl-small">${c.n} holdings, from ${c.start}</span></td></tr>`;
+      h += `<tr class="grp"><td colspan="10">${esc(labs[k])} <span class="pl-small">${c.n} holdings, tested from ${c.start}</span></td></tr>`;
       Object.entries(c.rules).forEach(([r, o]) => {
         const y = o.years || {};
         h += `<tr class="${r === c.pick ? 'pick' : ''}"><td data-label="">${esc(E.labels[r])}${r === c.pick ? ' <span class="tag">used</span>' : ''}</td><td data-label="CAGR">${o.cagr}%</td><td data-label="Worst fall">${o.mdd}%</td>

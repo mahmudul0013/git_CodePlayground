@@ -128,7 +128,7 @@ def upcoming(payload, today=None, budget=25, fetch=True):
     total = sum(a['value'] for a in held) or 1.0
     sym_of = {}
     for a in held:
-        r = symbols.resolve(a['isin'], a['name'], a.get('ccy'))
+        r = symbols.of(a)                      # the listing on the holding's own market
         if r and r.get('symbol') and not r['symbol'].startswith('0P'):
             sym_of[a['isin']] = r['symbol']
     ev, pending = _events_for(sorted(set(sym_of.values())), budget, fetch)

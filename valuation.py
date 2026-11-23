@@ -66,7 +66,7 @@ def snapshot(payload, quotes=None, now=None, vol=None):
         day_pnl = (v - v / (1 + day / 100)) if day is not None and day > -99 else 0.0
         live_n += live
         assets[a['isin']] = {
-            'name': a['name'], 'ccy': a.get('ccy'), 'type': a.get('type'), 'qty': a.get('qty'),
+            'name': a['name'], 'ccy': a.get('ccy'), 'market': a.get('market') or '', 'type': a.get('type'), 'qty': a.get('qty'),
             'price': price, 'price_export': a.get('price'), 'live': live, 'symbol': symbol,
             'value': round(v, 2), 'value_export': round(v_exp, 2), 'cost': round(cost, 2),
             'unrealized': round(unreal, 2), 'unrealized_pct': round(unreal / cost * 100, 2) if cost > 0 else a.get('unrealized_pct'),

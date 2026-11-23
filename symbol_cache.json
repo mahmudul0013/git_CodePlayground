@@ -8,12 +8,15 @@
     "symbol": "AYA.TO"
   },
   "CA15101Q2071": {
-    "checked": 1793543593.4637918,
-    "currency": "CAD",
-    "exchange": "TOR",
+    "ccy": "USD",
+    "checked": 1795467447.3732157,
+    "currency": "USD",
+    "exchange": "NYQ",
+    "market": "New York Stock Exchange",
     "name": "Celestica",
     "source": "yahoo_search",
-    "symbol": "CLS.TO"
+    "symbol": "CLS",
+    "was": "CLS.TO"
   },
   "CA46016U1084": {
     "checked": 1793921066.502967,
@@ -104,7 +107,7 @@
     "symbol": "ENR.DE"
   },
   "DE000JY6GY20": {
-    "checked": 1793921074.6767762,
+    "checked": 1795466778.860709,
     "name": "MINI L SANDISK CO NORDNET SE29",
     "symbol": null
   },
@@ -125,12 +128,15 @@
     "symbol": "NOVO-B.CO"
   },
   "FI0009000681": {
-    "checked": 1793143329.5578506,
-    "currency": null,
-    "exchange": null,
+    "ccy": "SEK",
+    "checked": 1795467447.431466,
+    "currency": "SEK",
+    "exchange": "STO",
+    "market": "Nasdaq Stockholm AB",
     "name": "Nokia",
-    "source": "ticker_map",
-    "symbol": "NOKIA.HE"
+    "source": "yahoo_search",
+    "symbol": "NOKIA-SEK.ST",
+    "was": "NOKIA.HE"
   },
   "FI0009003727": {
     "checked": 1793921062.9213173,
@@ -253,20 +259,26 @@
     "symbol": "IUSL.DE"
   },
   "IE00B8GF1M35": {
-    "checked": 1793143329.16623,
-    "currency": null,
-    "exchange": null,
+    "ccy": "EUR",
+    "checked": 1795467447.3984644,
+    "currency": "EUR",
+    "exchange": "GER",
+    "market": "Xetra",
     "name": "SS SPDR Dow Jones Global Real Estate UCITS ETF",
-    "source": "ticker_map",
-    "symbol": "GLRE.L"
+    "source": "yahoo_search",
+    "symbol": "SPYJ.DE",
+    "was": "GLRE.L"
   },
   "IE00BF2FN646": {
-    "checked": 1793143329.5598578,
-    "currency": "GBP",
-    "exchange": "LSE",
+    "ccy": "EUR",
+    "checked": 1795467707.2314434,
+    "currency": "EUR",
+    "exchange": "GER",
+    "market": "Xetra",
     "name": "Invesco US Treasury Bond 7-10 Year UCITS ETF Dist",
     "source": "yahoo_search",
-    "symbol": "TREX.L"
+    "symbol": "TRDX.DE",
+    "was": "TREX.L"
   },
   "IE00BFMXXD54": {
     "checked": 1792710220.7406397,
@@ -293,20 +305,26 @@
     "symbol": "XRS2.DE"
   },
   "IE00BK5BR626": {
-    "checked": 1792710366.7887113,
-    "currency": null,
-    "exchange": null,
+    "ccy": "EUR",
+    "checked": 1795467447.3279612,
+    "currency": "EUR",
+    "exchange": "GER",
+    "market": "Xetra",
     "name": "Vanguard FTSE All-World High Dividend Yield UCITS ETF - (USD) Acc",
-    "source": "ticker_map",
-    "symbol": "VHYL.L"
+    "source": "yahoo_search",
+    "symbol": "VGWE.DE",
+    "was": "VHYL.L"
   },
   "IE00BKM4GZ66": {
-    "checked": 1793143328.1974866,
-    "currency": null,
-    "exchange": null,
+    "ccy": "EUR",
+    "checked": 1795467447.3552213,
+    "currency": "EUR",
+    "exchange": "GER",
+    "market": "Xetra",
     "name": "iShares Core MSCI EM IMI UCITS ETF USD (Acc)",
-    "source": "ticker_map",
-    "symbol": "EIMI.L"
+    "source": "yahoo_search",
+    "symbol": "IS3N.DE",
+    "was": "EIMI.L"
   },
   "IE00BKVD2N49": {
     "checked": 1793143326.9234128,
@@ -317,12 +335,15 @@
     "symbol": "STX"
   },
   "IE00BMC38736": {
-    "checked": 1792710220.7516413,
-    "currency": null,
-    "exchange": null,
+    "ccy": "EUR",
+    "checked": 1795467447.2925212,
+    "currency": "EUR",
+    "exchange": "GER",
+    "market": "Xetra",
     "name": "VanEck Semiconductor ETF",
-    "source": "ticker_map",
-    "symbol": "SMH"
+    "source": "yahoo_search",
+    "symbol": "VVSM.DE",
+    "was": "SMH"
   },
   "IE00BMTD2G30": {
     "checked": 1793921078.7856593,
@@ -381,7 +402,7 @@
     "symbol": "GFS"
   },
   "LU0030164395": {
-    "checked": 1793921060.3687289,
+    "checked": 1795466777.134441,
     "name": "SEB Europe Exposure Fund C EUR",
     "symbol": null
   },
@@ -402,12 +423,97 @@
     "symbol": "0P0001D63M.ST"
   },
   "LU1829221024": {
-    "checked": 1792710220.7573602,
+    "ccy": "EUR",
+    "checked": 1795467447.3207948,
     "currency": "EUR",
-    "exchange": "PAR",
+    "exchange": "GER",
+    "market": "Xetra",
     "name": "Amundi Nasdaq-100 II UCITS ETF Acc",
     "source": "yahoo_search",
-    "symbol": "UST.PA"
+    "symbol": "LYMS.DE",
+    "was": "UST.PA"
+  },
+  "NAME:amundi nasdaq-100 ii ucits etf acc": {
+    "checked": 1795466657.7518845,
+    "name": "Amundi Nasdaq-100 II UCITS ETF Acc",
+    "symbol": null
+  },
+  "NAME:asml holding": {
+    "checked": 1795466657.7831721,
+    "currency": null,
+    "exchange": null,
+    "name": "ASML HOLDING",
+    "source": "ticker_map",
+    "symbol": "ASML"
+  },
+  "NAME:celestica": {
+    "checked": 1795466657.8143897,
+    "name": "Celestica",
+    "symbol": null
+  },
+  "NAME:ishares core msci em imi ucits etf usd (acc)": {
+    "checked": 1795466657.6822324,
+    "currency": null,
+    "exchange": null,
+    "name": "iShares Core MSCI EM IMI UCITS ETF USD (Acc)",
+    "source": "ticker_map",
+    "symbol": "EIMI.L"
+  },
+  "NAME:novo nordisk b": {
+    "checked": 1795466657.7313511,
+    "currency": null,
+    "exchange": null,
+    "name": "Novo Nordisk B",
+    "source": "ticker_map",
+    "symbol": "NOVO-B.CO"
+  },
+  "NAME:schneider electric se": {
+    "checked": 1795466657.7987938,
+    "currency": null,
+    "exchange": null,
+    "name": "Schneider Electric SE",
+    "source": "ticker_map",
+    "symbol": "SU.PA"
+  },
+  "NAME:siemens ag": {
+    "checked": 1795466657.7230732,
+    "currency": null,
+    "exchange": null,
+    "name": "Siemens AG",
+    "source": "ticker_map",
+    "symbol": "SIE.DE"
+  },
+  "NAME:siemens energy ag": {
+    "checked": 1795466657.767515,
+    "currency": null,
+    "exchange": null,
+    "name": "Siemens Energy AG",
+    "source": "ticker_map",
+    "symbol": "ENR.DE"
+  },
+  "NAME:vaneck semiconductor etf": {
+    "checked": 1795466657.8324225,
+    "currency": null,
+    "exchange": null,
+    "name": "VanEck Semiconductor ETF",
+    "source": "ticker_map",
+    "symbol": "SMH"
+  },
+  "NAME:xtrackers artificial intelligence & big data ucits etf 1c": {
+    "checked": 1795466657.7518845,
+    "currency": null,
+    "exchange": null,
+    "name": "Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C",
+    "source": "ticker_map",
+    "symbol": "XAIX.DE"
+  },
+  "NAME:xtrackers russell 2000 etf 1c": {
+    "checked": 1795466657.707948,
+    "currency": null,
+    "exchange": null,
+    "name": "Xtrackers Russell 2000 ETF 1C",
+    "source": "ticker_map",
+    "symbol": "XRS2.DE"
   },
   "NL0000226223": {
     "checked": 1793314953.233041,
@@ -434,12 +540,15 @@
     "symbol": "NBIS"
   },
   "NL0010273215": {
-    "checked": 1792710679.2520125,
-    "currency": null,
-    "exchange": null,
+    "ccy": "EUR",
+    "checked": 1795467447.2884655,
+    "currency": "EUR",
+    "exchange": "AMS",
+    "market": "Euronext Amsterdam",
     "name": "ASML HOLDING",
-    "source": "ticker_map",
-    "symbol": "ASML"
+    "source": "yahoo_search",
+    "symbol": "ASML.AS",
+    "was": "ASML"
   },
   "NO0010063308": {
     "checked": 1793921062.203859,
@@ -448,6 +557,14 @@
     "name": "Telenor",
     "source": "yahoo_search",
     "symbol": "TEL.OL"
+  },
+  "NO0010379266": {
+    "checked": 1795466774.2128592,
+    "currency": "NOK",
+    "exchange": "OSL",
+    "name": "BlueNord",
+    "source": "yahoo_search",
+    "symbol": "BNOR.OL"
   },
   "NO0010791353": {
     "checked": 1793921066.1201725,
@@ -714,9 +831,12 @@
     "symbol": "ATCO-A.ST"
   },
   "SE0017486897": {
-    "checked": 1793921074.2565248,
+    "checked": 1795466778.2832527,
+    "currency": "USD",
+    "exchange": "IOB",
     "name": "Atlas Copco B",
-    "symbol": null
+    "source": "yahoo_search",
+    "symbol": "0XXV.IL"
   },
   "SE0019175563": {
     "checked": 1793143327.3757691,
@@ -845,6 +965,14 @@
     "name": "Analog Devices",
     "source": "ticker_map",
     "symbol": "ADI"
+  },
+  "US03703U1079": {
+    "checked": 1795466773.92451,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "Anthropic",
+    "source": "yahoo_search",
+    "symbol": "ANT"
   },
   "US0378331005": {
     "checked": 1793053251.9694586,
@@ -1021,6 +1149,14 @@
     "name": "ConocoPhillips",
     "source": "yahoo_search",
     "symbol": "COP"
+  },
+  "US21873S1087": {
+    "checked": 1795466774.5248137,
+    "currency": "USD",
+    "exchange": "NMS",
+    "name": "CoreWeave",
+    "source": "yahoo_search",
+    "symbol": "CRWV"
   },
   "US22160K1051": {
     "checked": 1793921073.586583,
@@ -1279,9 +1415,11 @@
     "symbol": "MRNA"
   },
   "US60937P1066": {
-    "checked": 1793143327.8684943,
-    "currency": "SEK",
+    "ccy": "USD",
+    "checked": 1795467447.352221,
+    "currency": "USD",
     "exchange": "NGM",
+    "market": "Nasdaq",
     "name": "MongoDB A",
     "source": "yahoo_search",
     "symbol": "MDB"
@@ -1463,7 +1601,7 @@
     "symbol": "SNPS"
   },
   "US8740391003": {
-    "checked": 1793921070.325792,
+    "checked": 1795466777.8312669,
     "name": "Taiwan Semiconductor Manufacturing ADR",
     "symbol": null
   },

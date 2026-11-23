@@ -59,7 +59,7 @@ def for_assets(assets):
     out, need = {}, []
     now = time.time()
     for a in assets:
-        r = symbols.resolve(a['isin'], a['name'], a.get('ccy'))
+        r = symbols.of(a)                                       # the listing on the holding's own market
         sym = (r or {}).get('symbol')
         if not sym:
             continue

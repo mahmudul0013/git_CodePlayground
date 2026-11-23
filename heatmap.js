@@ -63,7 +63,6 @@ function table(id, head, rows) {          // class 'stack': wraps, and becomes l
   $(id).classList.add('stack');
   $(id).innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${
     rows.map(r => `<tr>${r.map((c, i) => `<td data-label="${lab[i] || ''}"${c && c.c ? ` class="${c.c}"` : ''}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')}</tbody>`;
-  if (window.TVRows) TVRows.limit($(id), 12);
 }
 
 // ───────── render: portfolio heat map tab ─────────

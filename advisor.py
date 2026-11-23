@@ -48,6 +48,12 @@ DUST = strategy.DUST
 MIN_ORDER = strategy.MIN_ORDER
 BUYBACK_WAIT = 7        # days after the last sell before a buy-back is suggested (0-1 day flips lost money in your history)
 BOUNCE_RSI = 45         # a planned sale is best placed on a day the RSI(14) is above this (sell into strength, not into panic)
+
+
+def _lc(label):
+    """'Broad index funds' -> 'broad index funds' inside a sentence; 'AI and semiconductor chain' keeps AI."""
+    w = label.split(' ', 1)[0]
+    return label if w.isupper() else label[:1].lower() + label[1:]
 MAX_BUYBACK = 5
 MAX_TRADES_MONTH = 10
 
@@ -204,12 +210,12 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE, settings=None):
     closed = [a for a in payload['assets'] if not a.get('held') and a.get('isin') and a.get('sells')]
     syms, sym_of = [], {}
     for a in held + closed:
-        r = symbols.resolve(a['isin'], a['name'], a.get('ccy'))
+        r = symbols.of(a)                      # the listing on the holding's market (closed positions: none known)
         if r and r.get('symbol') and not r['symbol'].startswith('0P'):
             sym_of[a['isin']] = r['symbol']; syms.append(r['symbol'])
     hist = _histories(sorted(set(syms)))
     partial = any(s not in hist and time.time() - _fail.get(s, 0) > 3600 for s in syms)
-    sec, _pending = sectors.batch([{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy')} for a in held + closed], budget=8)
+    sec, _pending = sectors.batch([{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy'), 'market': a.get('market') or ''} for a in held + closed], budget=8)
     partial = partial or bool(_pending)
     last_sell = {}
     for t in payload.get('trades', []):
@@ -271,7 +277,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE, settings=None):
         # 2) half_trend categories: the trend half follows the weekly SMA(200) rule, the hold half is kept
         elif rule == 'half_trend':
             if a['isin'] in keep:
-                why.append(f'Hold half of {strategy.CATS[k][0].lower()}: kept through the trend (capped at {MAX_W:.0f}%); {_wk_phrase(wt)}.')
+                why.append(f'Hold half of {_lc(strategy.CATS[k][0])}: kept through the trend (capped at {MAX_W:.0f}%); {_wk_phrase(wt)}.')
                 res['rule'] = 'hold_half'
                 if wt and wt['up'] and k in under and rsi is not None and rsi < rsi_add:
                     res.update(action='ADD', rule='pullback', score=int(100 - rsi))
@@ -288,7 +294,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE, settings=None):
         # 3) regime categories (energy, materials): hold while SMA(50) > SMA(200)
         elif rule == 'regime':
             if wt and not wt['regime_up']:
-                sell(a['value'], 'regime_exit', f'SMA(50) {wt["sma50"]:.4g} is below SMA(200) {wt["sma200_now"]:.4g}: the regime is down. Rule for {strategy.CATS[k][0].lower()}: out until SMA(50) crosses back above.', score=65)
+                sell(a['value'], 'regime_exit', f'SMA(50) {wt["sma50"]:.4g} is below SMA(200) {wt["sma200_now"]:.4g}: the regime is down. Rule for {_lc(strategy.CATS[k][0])}: out until SMA(50) crosses back above.', score=65)
             elif wt and k in under and rsi is not None and rsi < rsi_add:
                 res.update(action='ADD', rule='pullback', score=int(100 - rsi))
                 why.append(f'Regime up (SMA(50) above SMA(200)), category under target, RSI(14) {rsi:.0f}.')
@@ -301,7 +307,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE, settings=None):
                 why.append(f'SMA(50) is below SMA(200) and the position is {up:.0f}% under your cost. Not a sell order: check that the business case still holds.')
             elif wt and wt['up'] and k in under and rsi is not None and rsi < rsi_add and w < MAX_W - 1:
                 res.update(action='ADD', rule='pullback', score=int(100 - rsi))
-                why.append(f'Uptrend ({_wk_phrase(wt)}), {strategy.CATS[k][0].lower()} under its target and RSI(14) {rsi:.0f} below {rsi_add}: a pullback worth new money.')
+                why.append(f'Uptrend ({_wk_phrase(wt)}), {_lc(strategy.CATS[k][0])} under its target and RSI(14) {rsi:.0f} below {rsi_add}: a pullback worth new money.')
             elif wt and wt['up'] and k in under and rsi is not None and rsi < rsi_add + 10:
                 res.update(action='WATCH', rule='near_entry', score=int(max(1, 100 - (rsi - rsi_add) * 8)))
                 why.append(f'Close to an entry: uptrend and category under target, RSI(14) {rsi:.0f} (new money below {rsi_add}).')
@@ -363,7 +369,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE, settings=None):
                 o = out[wh['isin']]
                 if o['action'] in ('HOLD', 'ADD', 'CONSOLIDATE', 'WATCH'):
                     o.update(action='ADD', amount=wh['amount'], rule=o.get('rule') if o.get('rule') == 'pullback' else 'deposit_plan', score=max(o['score'], 50))
-                    o['reasons'].append(f'Deposit plan: {_n(wh["amount"])} kr of next month\'s deposit goes here ({item["label"].lower()} is under its target).')
+                    o['reasons'].append(f'Deposit plan: {_n(wh["amount"])} kr of next month\'s deposit goes here ({_lc(item["label"])} is under its target).')
 
     # ───── buy-backs: closed stocks whose category is under target, in an uptrend and pulled back ─────
     bb = []

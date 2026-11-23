@@ -242,7 +242,7 @@ def curve(payload, today=None, budget=40, fetch=True):
     # symbols, then history
     sym_of = {}
     for a in assets:
-        r = symbols.resolve(a['isin'], a['name'], a.get('ccy'))
+        r = symbols.of(a)                      # the listing on the holding's market (closed positions: none known)
         if r and r.get('symbol') and not r['symbol'].startswith('0P'):
             sym_of[a['isin']] = r['symbol']
     p1 = int(datetime.combine(first - timedelta(days=10), datetime.min.time(), tzinfo=timezone.utc).timestamp())
@@ -261,7 +261,7 @@ def curve(payload, today=None, budget=40, fetch=True):
         if h:
             fx_on[c] = _ffill(h['d'], h['c'], grid)
 
-    sec_info, sec_pending = sectors.batch([{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy')} for a in assets], budget=6 if fetch else 0.1)
+    sec_info, sec_pending = sectors.batch([{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy'), 'market': a.get('market') or ''} for a in assets], budget=6 if fetch else 0.1)
     pending += 1 if sec_pending else 0
 
     by_isin = {}
@@ -417,7 +417,9 @@ def range_start(grid, key, today):
 
 
 def _summary(grid, nav, nd, twr, today):
-    out = {'nav': round(nav[-1], 2), 'net_deposits': round(nd[-1], 2), 'first_date': grid[0], 'ranges': {}}
+    out = {'nav': round(nav[-1], 2), 'net_deposits': round(nd[-1], 2), 'first_date': grid[0], 'ranges': {},
+           # how far the account is below its high today, on the growth index (a deposit is never growth): the panic ladder
+           'from_high_pct': round((twr[-1] / max(twr) - 1) * 100, 2) if twr and max(twr) > 0 else None}
     for key in ('1w', '1m', '3m', 'ytd', '1y', '3y', 'max'):
         s = range_start(grid, key, today)
         peak, dd = twr[s], 0.0

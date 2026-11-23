@@ -109,8 +109,8 @@ section.panel { margin-bottom: 14px; }
 .sec { font-size: 15px; font-weight: 600; color: var(--white); margin: 22px 0 6px; }
 
 /* tables */
-.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }      /* no inner vertical scroll: TVRows shows the first rows + Show all */
-.table-wrap.short { margin-top: 8px; }
+.table-wrap { overflow: auto; max-height: min(72vh, 660px); overscroll-behavior: contain; border: 1px solid var(--border); border-radius: 6px; }
+.table-wrap.short { margin-top: 8px; max-height: 340px; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 th { position: sticky; top: 0; background: var(--border); color: var(--text-dim); font-size: 11px; text-transform: uppercase;
   letter-spacing: .03em; text-align: right; padding: 7px 9px; white-space: nowrap; z-index: 2; }
@@ -129,7 +129,7 @@ tfoot td { font-weight: 700; color: var(--white); background: var(--border); pos
 .badge.closed { background: color-mix(in srgb, var(--text-dim) 18%, transparent); color: var(--text-dim); }
 .tag { color: var(--text-dim); }
 tr.detail > td { padding: 0; background: var(--bg) !important; text-align: left; }
-.detail-inner { padding: 8px 12px 12px 24px; }          /* an asset's trades: first rows + Show all (TVRows), no scroll box */
+.detail-inner { padding: 8px 12px 12px 24px; max-height: 320px; overflow: auto; overscroll-behavior: contain; }
 .detail-inner table th { position: static; }
 .detail-inner td, .detail-inner th { padding: 3px 8px; }
 .buy-t { color: var(--green); font-weight: 600; } .sell-t { color: var(--red); font-weight: 600; }
@@ -213,7 +213,7 @@ code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 1
 /* assets table: compact so all columns fit without horizontal scrolling */
 #asset-table th, #asset-table td { padding: 6px 7px; }
 #asset-table td.name { max-width: 175px; }
-#asset-table .adv-amt { display: block; margin: 2px 0 0; }
+#asset-table .adv-amt { margin-left: 6px; }          /* idea and amount on one line */
 #asset-table td.tl, #asset-table th[data-k="type"], #asset-table th[data-k="advice"], #asset-table td.adv-td { text-align: left; }
 
 /* narrower windows: the money-flow columns Bought / Sold (still in the CSV export and the expanded trade list) make room */

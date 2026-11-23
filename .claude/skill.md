@@ -234,20 +234,24 @@ taskkill /IM python.exe /F
 
 ## Ticker Symbol Map (Yahoo Finance)
 
-`TICKER_MAP` in `app.js` maps CSV stock names → Yahoo Finance ticker symbols.
-**This map must be updated manually when new stocks appear in the CSV.**
-Stocks without a TICKER_MAP entry show `—` for live price (graceful degradation).
+**Valuation symbols come from `symbols.py`, not from `TICKER_MAP`.** `symbols.of(asset)` resolves each holding by ISIN
+and the **Market** column of the Nordnet holdings export, and picks the Yahoo listing on that venue in the export's
+currency (`symbol_cache.json`, `"source": "manual"` entries always win). Getting the venue wrong silently drops a
+holding to its export price, because `valuation.py` rejects a quote in another currency or outside 0.5x-2x of the
+export price. Examples that were wrong before: ASML on Euronext Amsterdam is `ASML.AS` (not US `ASML`), VanEck
+Semiconductor on Xetra `VVSM.DE` (not US `SMH`), iShares Core MSCI EM IMI on Xetra `IS3N.DE` (not `EIMI.L` in USD),
+Celestica on the NYSE `CLS` (not `CLS.TO`), Nokia in SEK `NOKIA-SEK.ST`. Funds (`0P...`) keep the Nordnet value by
+design. `python tests/symbols_market_test.py` covers this.
 
-Exchange suffix conventions:
-- Swedish stocks → `.ST` (e.g. `ABB.ST`, `SAAB-B.ST`)
-- Norwegian stocks → `.OL` (e.g. `KOG.OL`)
-- Finnish stocks → `.HE` (e.g. `NOKIA.HE`)
-- Danish stocks → `.CO` (e.g. `NOVO-B.CO`)
-- London ETFs → `.L` (e.g. `EIMI.L`)
-- German stocks/ETFs → `.DE` (e.g. `SIE.DE`, `IFX.DE`)
-- Paris-listed → `.PA` (e.g. `SU.PA`, `STM.PA`)
-- US stocks → plain ticker (e.g. `NVDA`, `AAPL`, `ARM`)
-- SpaceX → no public ticker (private company)
+Market -> Yahoo suffix: Nasdaq Stockholm `.ST`, Oslo `.OL`, Helsinki `.HE`, Copenhagen `.CO`, Xetra / Frankfurt `.DE`,
+Euronext Amsterdam `.AS`, Euronext Paris `.PA`, London `.L`, Toronto `.TO`, SIX `.SW`, NYSE / Nasdaq US no suffix.
+
+`TICKER_MAP` in `app.js` only labels rows (ticker text, logo lookup) on the Portfolio page; keep it in line with
+`symbols.py` when a new holding appears. SpaceX has no public ticker (private company).
+
+Quote cache (`server.py` `_quote_cached`): 25 s per symbol, shared by all users. A failed Yahoo request reuses that
+symbol's last good quote for up to 20 min (`_QGOOD`, marked `stale`), so one timeout never makes the account value
+jump by the difference between live and export prices.
 
 ---
 

@@ -180,6 +180,11 @@ def _live_quote(symbol: str) -> dict | None:
 _QCACHE = {}
 _QLOCK = threading.Lock()
 _QTTL = 25
+# Last good quote per symbol. One failed Yahoo request (timeout, rate limit) must not drop a holding back to its
+# export price for a refresh: that made the account value jump by thousands and back. A quote up to 20 min old is
+# reused instead (marked stale); after that the holding falls back to the export price as before.
+_QGOOD = {}
+_QGOOD_MAX = 1200
 
 
 def _quote_cached(sym):
@@ -190,22 +195,32 @@ def _quote_cached(sym):
             return e[1]
     q = _live_quote(sym)
     with _QLOCK:
-        _QCACHE[sym] = (time.time(), q)
+        t = time.time()
+        if q:
+            _QGOOD[sym] = (t, q)
+        else:
+            g = _QGOOD.get(sym)
+            if g and t - g[0] <= _QGOOD_MAX:
+                q = dict(g[1], stale=True)
+        _QCACHE[sym] = (t, q)
         if len(_QCACHE) > 800:                       # bounded: forget what is stale
-            cut = time.time() - 300
+            cut = t - 300
             for k in [k for k, v in _QCACHE.items() if v[0] < cut]:
                 _QCACHE.pop(k, None)
             if len(_QCACHE) > 800:
                 for k in list(_QCACHE)[:400]:
                     _QCACHE.pop(k, None)
+        if len(_QGOOD) > 800:
+            for k in [k for k, v in _QGOOD.items() if v[0] < t - _QGOOD_MAX]:
+                _QGOOD.pop(k, None)
     return q
 
 
 def _live_quotes(assets) -> dict:
-    """Yahoo quotes for every given asset that has a Yahoo symbol: {isin: quote}."""
+    """Yahoo quotes for every given asset that has a Yahoo symbol: {isin: quote}. The listing follows the holding's market
+    (symbols.of); symbols are resolved in parallel because a new or re-checked one asks Yahoo."""
     syms = {}
-    for a in assets:
-        r = symbols.resolve(a['isin'], a['name'], a.get('ccy'))
+    for a, r in zip(assets, EXECUTOR.map(symbols.of, assets)):
         if r and r.get('symbol'):
             syms[a['isin']] = r['symbol']
     futs = {EXECUTOR.submit(_quote_cached, sym): isin for isin, sym in syms.items()}
@@ -259,7 +274,8 @@ def _payload(uid):
 
 
 def _held(p):
-    return [{'isin': x['isin'], 'name': x['name'], 'ccy': x.get('ccy')} for x in p['assets'] if x.get('value') and x.get('isin')]
+    return [{'isin': x['isin'], 'name': x['name'], 'ccy': x.get('ccy'), 'market': x.get('market') or ''}
+            for x in p['assets'] if x.get('value') and x.get('isin')]
 
 
 def _valued(uid):
@@ -748,7 +764,8 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
 
     def r_sectors(self, user):
         p = _payload(user['uid'])
-        held = [{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy')} for a in p['assets'] if (a.get('held') or a.get('value')) and a.get('isin')]
+        held = [{'isin': a['isin'], 'name': a['name'], 'ccy': a.get('ccy'), 'market': a.get('market') or ''}
+                for a in p['assets'] if (a.get('held') or a.get('value')) and a.get('isin')]
         info, pending = sectors.batch(held)
         self._json(200, {'ok': True, 'pending': pending, 'sectors': info})
 
@@ -765,7 +782,13 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
 
     def r_symbol(self, user):
         q = lambda k: (self.query.get(k) or [''])[0]
-        self._json(200, symbols.get(q('isin'), q('name'), q('ccy')))
+        market = q('market')
+        if not market and q('isin'):
+            try:                                   # the listing venue of this user's own holding (Nordnet export 'Market')
+                market = next((a.get('market') or '' for a in _payload(user['uid'])['assets'] if a.get('isin') == q('isin')), '')
+            except ApiError:
+                market = ''
+        self._json(200, symbols.get(q('isin'), q('name'), q('ccy'), market or None))
 
     def r_ask(self, user):
         b = self._json_body()
@@ -794,6 +817,8 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
                 c = _curve(user['uid'], p, snap, fetch=False)          # cached only: asking never waits for Yahoo
                 p = dict(p, reports=reports.upcoming(p, fetch=False), nav=(c or {}).get('summary'),
                          vol={k: a['vol_3m'] for k, a in snap['assets'].items() if a.get('vol_3m')})
+                if adv and adv.get('ok'):
+                    p['evidence'] = strategy_bt.cached(user['uid'], adv['plan']['baskets'])   # computed by the Plan tab, never here
             except Exception:
                 pass
             self._json(200, {'ok': True, **assistant.answer(q, p, adv)})

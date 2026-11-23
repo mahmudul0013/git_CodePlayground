@@ -50,7 +50,7 @@ const TICKER_MAP = {
   'Apple':                      'AAPL',
   'Applied Materials':          'AMAT',
   'Arm Holdings ADR':           'ARM',
-  'ASML HOLDING':               'ASML',
+  'ASML HOLDING':               'ASML.AS',
   'Assa Abloy B':               'ASSA-B.ST',
   'AstraZeneca':                { USD: 'AZN', SEK: 'AZN.ST', default: 'AZN' },
   'Atlas Copco A':              'ATCO-A.ST',
@@ -58,6 +58,7 @@ const TICKER_MAP = {
   'BlackRock':                  'BLK',
   'Bloom Energy A':             'BE',
   'Boston Scientific':          'BSX',
+  'Celestica':                  'CLS',
   'Broadcom':                   'AVGO',
   'Chevron':                    'CVX',
   'Cisco Systems':              'CSCO',
@@ -75,7 +76,7 @@ const TICKER_MAP = {
   'Infineon Technologies AG':   'IFX.DE',
   'Intel':                      'INTC',
   'Investor A':                 'INVE-A.ST',
-  'iShares Core MSCI EM IMI UCITS ETF USD (Acc)':                          'EIMI.L',
+  'iShares Core MSCI EM IMI UCITS ETF USD (Acc)':                          'IS3N.DE',
   'iShares Dow Jones Global Leaders Screened UCITS ETF USD (Acc)':         'IUSL.DE',
   'JP Morgan Chase':            'JPM',
   'KLA':                        'KLAC',
@@ -91,7 +92,7 @@ const TICKER_MAP = {
   'Nebius Group':               'NBIS',
   'Netflix':                    'NFLX',
   'Nike':                       'NKE',
-  'Nokia':                      'NOKIA.HE',
+  'Nokia':                      'NOKIA-SEK.ST',
   'Nordea Bank':                'NDA-FI.HE',
   'Novo Nordisk B':             'NOVO-B.CO',
   'NVIDIA':                     'NVDA',
@@ -114,14 +115,14 @@ const TICKER_MAP = {
   'SPDR S&P 500 UCITS ETF (Acc)': 'SPYL.DE',
   'Spotify':                    'SPOT',
   'STMicroelectronics NV':      'STMPA.PA',
-  'SS SPDR Dow Jones Global Real Estate UCITS ETF': 'GLRE.L',
+  'SS SPDR Dow Jones Global Real Estate UCITS ETF': 'SPYJ.DE',
   'Swedbank A':                 'SWED-A.ST',
   'TE Connectivity':            'TEL',
   'Tesla':                      'TSLA',
   'The Trade Desk A':           'TTD',
   'VanEck Defense ETF A USD Acc':   'DFNS.L',
-  'VanEck Semiconductor ETF':       'SMH',
-  'Vanguard FTSE All-World High Dividend Yield UCITS ETF - (USD) Acc': 'VHYL.L',
+  'VanEck Semiconductor ETF':       'VVSM.DE',
+  'Vanguard FTSE All-World High Dividend Yield UCITS ETF - (USD) Acc': 'VGWE.DE',
   'Vanguard S&P 500 UCITS ETF - (USD) Acc': 'VUSA.L',
   'Vår Energi':                 'VAR.OL',
   'Volvo B':                    'VOLV-B.ST',
@@ -594,16 +595,20 @@ function fmtNum(n, dec = 0) {
   }).format(n);
 }
 
+// phones: whole kronor and one decimal for % (the same numbers, less noise; the tables fit the screen)
+const NARROW = window.matchMedia ? window.matchMedia('(max-width: 560px)') : { matches: false };
 function fmtPct(n) {
   if (n == null || isNaN(n)) return '—';
   const sign = n >= 0 ? '+' : '';
-  return `${sign}${n.toFixed(2)}%`;
+  return `${sign}${n.toFixed(NARROW.matches ? 1 : 2)}%`;
 }
 
 function displayAmt(sek) {
-  if (S.displayCur === 'USD') return '$' + fmtNum(sek / S.fx.USD);
-  return fmtNum(sek) + ' kr';
+  const r = v => NARROW.matches && v != null && !isNaN(v) ? Math.round(v) : v;
+  if (S.displayCur === 'USD') return '$' + fmtNum(r(sek / S.fx.USD));
+  return fmtNum(r(sek)) + ' kr';
 }
+if (NARROW.addEventListener) NARROW.addEventListener('change', () => { if (typeof renderAll === 'function') renderAll(); });
 
 function pctClass(n) {
   if (!n || n === 0) return 'flat';
@@ -823,7 +828,6 @@ function renderStocksTable() {
   }
 
   tbody.innerHTML = rows.map(s => stockRow(s)).join('');
-  if (window.TVRows) TVRows.limit(document.getElementById('stocks-table'), 15);
 
   // Inject the DOM-based logo (can't do this in innerHTML)
   rows.forEach(s => {
@@ -902,7 +906,6 @@ function renderFundsTable() {
   }
 
   tbody.innerHTML = rows.map(f => fundRow(f)).join('');
-  if (window.TVRows) TVRows.limit(document.getElementById('funds-table'), 10);
 
   rows.forEach(f => {
     const idx      = S.funds.indexOf(f);
@@ -1240,7 +1243,7 @@ function setStatus(type, msg) {
   const dot  = document.getElementById('status-dot');
   const text = document.getElementById('last-updated-time');
   if (text) text.textContent = msg;
-  if (dot)  dot.className = `dot ${type}`;
+  if (dot)  { dot.className = `dot ${type}`; dot.title = msg; }      // phones show only the dot; the text is its tooltip
 }
 
 // ────────────────────────────────────────────────────────────

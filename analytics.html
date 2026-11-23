@@ -39,7 +39,7 @@
       <span class="dot" id="sync-dot"></span>
       <span id="sync-text">Loading…</span>
       <button id="privacy-btn" class="privacy-btn" type="button" aria-pressed="false" title="Hide portfolio values"><svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
-      <button id="reload-btn" class="btn" title="Re-read the CSV files now">&#8635; Sync now</button>
+      <button id="reload-btn" class="btn" title="Re-read the CSV files now" aria-label="Sync now">&#8635;<span class="btn-label"> Sync now</span></button>
       <div id="user-menu"></div>
     </div>
   </header>
@@ -51,10 +51,10 @@
 
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="assets" role="tab">Assets</button>
-      <button class="tab" data-tab="habits" role="tab">Trading habits &amp; costs</button>
-      <button class="tab" data-tab="deposits" role="tab">Deposit behaviour</button>
+      <button class="tab" data-tab="habits" role="tab"><span class="tl-long">Trading habits &amp; costs</span><span class="tl-short">Habits</span></button>
+      <button class="tab" data-tab="deposits" role="tab"><span class="tl-long">Deposit behaviour</span><span class="tl-short">Deposits</span></button>
       <button class="tab" data-tab="dividends" role="tab">Dividends</button>
-      <button class="tab" data-tab="advice" role="tab">Plan &amp; advice</button>
+      <button class="tab" data-tab="advice" role="tab"><span class="tl-long">Plan &amp; advice</span><span class="tl-short">Plan</span></button>
     </div>
 
     <!-- ============== ASSETS ============== -->

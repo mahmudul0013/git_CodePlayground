@@ -144,12 +144,13 @@ async function load(force) {
 
 function setSync(ok, err) {
   $('sync-dot').className = 'dot ' + (ok ? 'live' : 'err');
-  if (!ok) { $('sync-text').textContent = 'Offline — ' + (err || ''); return; }
+  if (!ok) { $('sync-text').textContent = 'Offline — ' + (err || ''); $('sync-dot').title = $('sync-text').textContent; return; }
   const s = S.data.sources, t = s.transactions, h = s.holdings;
   const stamp = x => x ? new Date(x.mtime * 1000).toLocaleString('sv-SE').slice(0, 16) : '—';
   const stale = t && h && t.mtime < h.mtime - 60;   // ledger older than holdings -> quantities may differ
   $('sync-text').textContent = `Synced ${new Date().toLocaleTimeString('sv-SE')} · holdings: ${h ? h.file : 'none'} (${stamp(h)})`
     + ` · ledger: ${t ? t.file : 'none'} (${stamp(t)})` + (stale ? ' — ledger is older than holdings, export transactions again' : '');
+  $('sync-dot').title = $('sync-text').textContent;              // phones show only the dot
 }
 
 function showBanner(html, isErr) {
@@ -259,7 +260,7 @@ function renderKpis() {
     kpi('Broker costs paid', fmt(c.broker_total) + ' kr', `${pct(c.pct_of_net_deposits)} of deposits · ${pct(c.pct_of_turnover, 2)} of turnover`, 'neg') +
     kpi('Realised (after fees)', sgn(o.realized) + ' kr', `${o.sells} sells`, cls(o.realized)) +
     kpi('Unrealised', sgn(o.unrealized) + ' kr', `${o.held_assets} open positions`, cls(o.unrealized)) +
-    kpi('Data range', `${o.first_date.slice(2)} → ${o.last_date.slice(2)}`, `${o.trades} trades · ${o.distinct_assets} assets`);
+    kpi('Data range', `<span class="v-sm"><span class="nw">${o.first_date}</span> → <span class="nw">${o.last_date}</span></span>`, `${o.trades} trades · ${o.distinct_assets} assets`);
 }
 
 // ───────── render: assets tab ─────────
@@ -376,7 +377,7 @@ function renderTable(d) {
     const a = r.a, w = r.w, open = S.open.has(a.isin);
     let h = `<tr class="row" data-i="${esc(a.isin)}">
       <td class="name" title="${esc(a.name)} · ${esc(a.isin)}">${open ? '▾' : '▸'} ${esc(a.name)}</td>
-      <td class="tag tl" data-label="Type">${esc(a.type)} · ${esc(a.ccy)}</td>
+      <td class="tl dim" data-label="Type">${esc(a.type)} · ${esc(a.ccy)}</td>
       <td data-label="Status"><span class="badge ${a.held ? 'held' : 'closed'}">${a.held ? 'Held' : 'Closed'}</span></td>
       <td class="adv-td" data-label="Add / trim">${adviceCell(a)}</td>
       <td data-label="Qty">${a.held ? fmt2(a.qty).replace(/,00$/, '') : '—'}</td><td data-label="Value">${a.held ? fmt(a.value) : '—'}</td>
@@ -391,9 +392,8 @@ function renderTable(d) {
     <td data-label="Bought">${fmt(sum(r => r.w.bought))}</td><td data-label="Sold">${fmt(sum(r => r.w.sold))}</td><td data-label="Buys / sells">${sum(r => r.w.nb)} / ${sum(r => r.w.ns)}</td>
     <td data-label="Fees">${fmt(sum(r => r.a.fees))}</td><td data-label="Realised">${sgn(sum(r => r.a.realized))}</td><td data-label="Unrealised">${sgn(sum(r => r.a.unrealized))}</td><td data-label="Total">${sgn(sum(r => r.a.total_pnl))}</td></tr>`;
   $('asset-table').classList.add('stack');
+  $('asset-table').classList.toggle('view-held', S.view === 'current');
   $('asset-table').innerHTML = `<thead><tr>${th}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:var(--text-dim)">No assets match this filter.</td></tr>`}</tbody><tfoot>${foot}</tfoot>`;
-  if (window.TVRows) TVRows.limit($('asset-table'), 20);
-  if (window.TVRows) document.querySelectorAll('#asset-table .detail-inner table').forEach(t => TVRows.limit(t, 8));     // an asset's trades: first 8 + Show all
   $('table-title').textContent = `${v.label} — ${list.length} assets`;
   if (window.AssetChart) {
     document.querySelectorAll('.asset-chart[data-chart]').forEach(el => {
@@ -430,14 +430,12 @@ function exportCsv() {
 // Tables never scroll sideways: class 'stack' lets cells wrap, and on phones every row becomes a card labelled from the header
 // (responsive.css). A cell can be a value or { v, c (class), l (label) }.
 const plainLabel = h => String(h).replace(/<[^>]*>/g, '').replace(/"/g, '&quot;').trim();
-const ROW_LIMIT = { 'tb-size': 8, 'tb-hold': 8, 'tb-costs': 8, 'tb-churn': 8, 'tb-split': 8, 'tb-sameday': 8, 'tb-rebuy': 8, 'tb-busy': 8, 'tb-payers': 10 };
 function table(id, head, rows, empty, wide) {
   const el = $(id); el.classList.add('stack'); el.classList.toggle('wide', !!wide);
   const lab = head.map(plainLabel);
   el.innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${
     rows.length ? rows.map(r => `<tr>${r.map((c, i) => `<td data-label="${c && c.l !== undefined ? plainLabel(c.l) : lab[i] || ''}"${c && c.c ? ` class="${c.c}"` : ''}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')
       : `<tr><td colspan="${head.length}" style="text-align:center;color:var(--text-dim);padding:14px">${empty || 'Nothing found.'}</td></tr>`}</tbody>`;
-  if (ROW_LIMIT[id] && window.TVRows) TVRows.limit(el, ROW_LIMIT[id]);
 }
 
 function renderHabits() {
@@ -939,7 +937,7 @@ function adviceCell(a) {
   if (!v) return '<span class="tag">…</span>';
   const tip = esc(v.reasons.join(' '));
   const amt = v.amount ? `<span class="adv-amt pv">${v.action === 'ADD' || v.action === 'BUYBACK' ? '+' : '−'}${fmt(v.amount)} kr</span>` : '';
-  const later = v.action === 'TRIM' && v.when === 'later' ? ' <span class="tag">queued</span>' : '';
+  const later = v.action === 'TRIM' && v.when === 'later' ? '<span class="adv-later" title="queued: sold after this month\'s sales">· later</span>' : '';
   return `<span class="adv ${v.action}" title="${tip}">${ADV_LABEL[v.action] || v.action}</span>${amt}${later}`;
 }
 

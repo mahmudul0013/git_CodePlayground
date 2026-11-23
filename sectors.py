@@ -99,8 +99,8 @@ def _fund_category(symbol):
         return None
 
 
-def _lookup(isin, name, ccy):
-    sym = (symbols.resolve(isin, name, ccy) or {}).get('symbol')
+def _lookup(isin, name, ccy, market=None):
+    sym = (symbols.of({'isin': isin, 'name': name, 'ccy': ccy, 'market': market}) or {}).get('symbol')
     quotes = _search(sym) if sym else None
     if not quotes and isin:
         quotes = _search(isin)
@@ -123,7 +123,7 @@ def _one(a, cache):
     now = time.time()
     if ent and now - ent.get('checked', 0) < (TTL_OK if ent.get('sector') or ent.get('category') else TTL_MISS):
         return key, ent
-    res = _lookup(a['isin'], a['name'], a.get('ccy'))
+    res = _lookup(a['isin'], a['name'], a.get('ccy'), a.get('market'))
     if res is None:
         return key, ent                                  # stale or none
     res['checked'] = now

@@ -8,10 +8,11 @@
 
   const MAX_MSGS = 20;
   const POOL = [
-    'What are my total fees?', 'What does split orders mean?', 'Which is my biggest holding?', 'How much dividend have I received?',
-    'What is my all-time result?', 'Why is my habit score low?', 'What does TRIM mean?', 'How many positions are under 1 500 kr?',
-    'Which stocks should I add?', 'What is courtage?', 'Which holding is down the most?', 'How risky is my portfolio?',
-    'What is the 200-day average?', 'How many trades have I made?', 'What is profit factor?', 'Which is my top sector?',
+    'What is the short verdict?', 'Where does my next deposit go?', 'What should I sell this month?', 'Which holdings crossed SMA(200) this week?',
+    'What are my total fees?', 'Is my AI share too high?', 'Which is my biggest holding?', 'What should I do if the market crashes?',
+    'What is my all-time result?', 'Where was the money lost?', 'What does TRIM mean?', 'How long until I am on target?',
+    'Which stocks should I add?', 'What does split orders mean?', 'Which holding is down the most?', 'How risky is my portfolio?',
+    'What is the 200-day average?', 'How many trades have I made?', 'How much dividend have I received?', 'Which profile is active?',
   ];
   const LINK_LABEL = { advice: 'Advice', habits: 'Trading habits', deposits: 'Deposit behaviour', dividends: 'Dividends', assets: 'Assets' };
   const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -231,6 +231,14 @@ def evidence(owner, baskets):
     return {'ok': True, 'pending': True}
 
 
+def cached(owner, baskets):
+    """The last result for this user and holdings (fresh or stale) or None. Never starts a run: the chat uses it."""
+    sig = json.dumps({k: sorted(v) for k, v in sorted(baskets.items())})
+    with _LOCK:
+        e = _results.get((owner, sig))
+    return e['data'] if e else None
+
+
 def forget(owner):
     with _LOCK:
         for k in [k for k in _results if k[0] == owner]:

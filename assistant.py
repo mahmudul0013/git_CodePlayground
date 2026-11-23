@@ -4,7 +4,8 @@ assistant.py - small rule-based, local assistant for the dashboard ("organic cha
     answer(question, payload, advice) -> {answer, link, confidence, matched, suggestions}
 
 * Pure, deterministic, stdlib only, no network, never logs the question.
-* Every number comes from the caller's own `payload` (trade_analytics.get_payload) and `advice` (advisor.advise/get).
+* Every number comes from the caller's own `payload` (trade_analytics.get_payload, live-valued; optional extras: 'reports', 'nav'
+  summary, 'vol' {isin: Vol 3M}, 'evidence' = strategy_bt result) and `advice` (advisor.advise/get: plan, actions, weekly trend).
 * Answers are at most two short lines (about 220 characters). Below 0.5 confidence it says it cannot answer
   and offers up to three nearby questions. It never invents a figure: a missing figure is reported as missing.
 * Matching = normalised tokens (Swedish words mapped to English, light stemming, difflib typo tolerance) scored
@@ -41,6 +42,8 @@ SYN = {
     'costs': ['fee'], 'cost': ['fee'], 'paid': ['pay'], 'paying': ['pay'], 'pays': ['pay'], 'made': ['make'], 'earn': ['make'], 'earned': ['make'], 'money': ['money'], 'kronor': ['kr'], 'charges': ['fee'], 'commission': ['courtage'], 'worth': ['value'],
     'stocks': ['stock'], 'shares': ['stock'], 'names': ['stock'], 'payout': ['dividend'], 'payouts': ['dividend'],
     'losing': ['loss'], 'lose': ['loss'], 'lost': ['loss'], 'unrealized': ['unrealised'], 'realized': ['realised'], 'gain': ['profit'], 'gains': ['profit'], 'pnl': ['profit'],
+    'mal': ['target'], 'malen': ['target'], 'kategori': ['category'], 'kategorier': ['category'], 'profil': ['profile'], 'krasch': ['crash'],
+    'borsras': ['crash'], 'ras': ['crash'], 'stresstest': ['stress', 'test'], 'veckostangning': ['weekly', 'close'], 'morkt': ['dark'], 'ljust': ['light'],
 }
 
 
@@ -66,7 +69,11 @@ def _raw_tokens(text):
 
 def _question_tokens(text):
     """(stemmed tokens with Swedish mapped to English, stemmed raw tokens for asset names)"""
-    raw = _raw_tokens(text)[:60]
+    raw = []
+    for w in _raw_tokens(text)[:60]:
+        raw.append(w)
+        if '-' in w:                          # "200-day", "all-time": the parts match the keywords too ("200 day average")
+            raw.extend(p for p in w.split('-') if p)
     mapped = []
     for w in raw:
         mapped.extend(SYN.get(w, [w]))
@@ -163,6 +170,9 @@ class Ctx:
         self.adv = advice if isinstance(advice, dict) and advice.get('ok', True) and advice.get('assets') is not None else None
         self.asset = None
         self.sector = None
+        self.cat = None          # plan category named in the question ('ai', 'core', ...)
+        self.q = ''              # the question (lower-cased, folded), for amounts and sub-topics
+        self.raw = []            # its raw tokens
 
     # -- accessors that raise Missing instead of returning made-up numbers
     def ovv(self, key):
@@ -203,6 +213,22 @@ class Ctx:
     def adv_asset(self, isin):
         return (self.advice().get('assets') or {}).get(isin)
 
+    def plan(self):
+        return need(self.advice().get('plan'), 'the plan (open Analytics, Plan & advice once)')
+
+    def cats(self):
+        return {x['key']: x for x in self.plan().get('categories') or []}
+
+    def has(self, *words):
+        """True when any of these raw words (or a word starting with one ending in '*') is in the question."""
+        for w in words:
+            if w.endswith('*'):
+                if any(t.startswith(w[:-1]) for t in self.raw):
+                    return True
+            elif w in self.raw:
+                return True
+        return False
+
 
 LINKS = {'assets': '/analytics.html#assets', 'habits': '/analytics.html#habits', 'deposits': '/analytics.html#deposits',
          'dividends': '/analytics.html#dividends', 'advice': '/analytics.html#advice', 'portfolio': '/index.html',
@@ -213,11 +239,12 @@ INTENTS = []
 _W = {1: 1.0, 2: 2.3, 3: 3.4, 4: 4.2}
 
 
-def intent(iid, group, kind, kws, example, link=None, neg=(), asset=False):
+def intent(iid, group, kind, kws, example, link=None, neg=(), asset=False, cat=None):
+    """cat: None, 'need' (only when the question names a plan category) or 'use' (gets the category bonus when one is named)."""
     def deco(fn):
         INTENTS.append({
             'id': iid, 'group': group, 'kind': kind, 'fn': fn, 'example': example, 'link': LINKS.get(link, link),
-            'asset': asset,
+            'asset': asset, 'cat': cat,
             'kws': [[_stem(t) for t in _raw_tokens(k)] for k in kws],
             'neg': [[_stem(t) for t in _raw_tokens(k)] for k in neg],
         })
@@ -257,7 +284,42 @@ TICKERS = {
     'cola': 'coca-cola', 'pg': 'procter', 'tmo': 'thermo', 'lly': 'lilly', 'novo': 'novo', 'nvo': 'novo', 'blk': 'blackrock',
     'mcd': 'mcdonalds', 'wmt': 'walmart', 'qcom': 'qualcomm', 'nxpi': 'nxp', 'stm': 'stmicroelectronics', 'abbv': 'abbvie',
     'mdb': 'mongodb', 'hynix': 'hynix', 'meta': 'meta', 'orcl': 'oracle', 'ibm': 'ibm', 'intc': 'intel', 'snps': 'synopsys',
+    'mstr': 'strategy', 'microstrategy': 'strategy',
 }
+
+# Plan words that are never read as an asset name ("strategies" is not the company Strategy, "investing" not Investor,
+# "general rules" not General Dynamics). An asset with such a name is still found by its other words or ticker.
+STOP_RAW = {'strategy', 'strategies', 'general', 'invest', 'investing', 'invested', 'investment', 'investments', 'verdict', 'signal', 'signals',
+            'friday', 'choppy', 'weekly', 'profile', 'profiles', 'panic', 'stress', 'transition', 'evidence', 'budget', 'opportunity',
+            'protocol', 'queued', 'queue', 'dark', 'light', 'mode', 'theme', 'target', 'targets', 'mix', 'half', 'backtest'}
+
+# Plan categories named in a question (raw folded words; two-word names first). 'trend health' is not the health group.
+CAT_WORDS = {
+    'index funds': 'core', 'index fund': 'core', 'big tech': 'bigtech', 'real estate': 'defensive', 'ai chain': 'ai', 'semiconductor chain': 'ai',
+    'ai': 'ai', 'ais': 'ai', 'chip': 'ai', 'chips': 'ai', 'semis': 'ai', 'semi': 'ai', 'semiconductor': 'ai', 'semiconductors': 'ai',
+    'core': 'core', 'indexfond': 'core', 'indexfonder': 'core', 'bigtech': 'bigtech', 'software': 'bigtech',
+    'healthcare': 'health', 'health': 'health', 'consumer': 'health', 'pharma': 'health',
+    'industrials': 'industrials', 'industrial': 'industrials', 'industry': 'industrials', 'defence': 'industrials', 'defense': 'industrials',
+    'financials': 'financials', 'financial': 'financials', 'banks': 'financials', 'finance': 'financials',
+    'energy': 'materials', 'materials': 'materials', 'mining': 'materials', 'miners': 'materials', 'oil': 'materials',
+    'gold': 'defensive', 'bonds': 'defensive', 'defensive': 'defensive', 'reit': 'defensive', 'reits': 'defensive',
+}
+CAT_SOFT = {w for k in CAT_WORDS for w in k.split()}
+# with one of these in the question a category word means the category, not a company named after it ("how much healthcare")
+CAT_CUES = {'share', 'target', 'targets', 'much', 'too', 'weight', 'percent', '%', 'allocation', 'exposure', 'category', 'categories', 'group',
+            'groups', 'over', 'under', 'lost', 'lose', 'loss', 'losing', 'result', 'trend', 'uptrend', 'downtrend', 'rule', 'rules', 'strategy', 'mix', 'test'}
+
+
+def _find_cat(raw):
+    skip = {i + 1 for i in range(len(raw) - 1) if raw[i] == 'trend' and raw[i + 1] == 'health'}
+    for i in range(len(raw) - 1):
+        k = CAT_WORDS.get(raw[i] + ' ' + raw[i + 1])
+        if k:
+            return k
+    for i, w in enumerate(raw):
+        if i not in skip and w in CAT_WORDS:
+            return CAT_WORDS[w]
+    return None
 
 
 GENERIC_STEMS = {_stem(w) for w in GENERIC} | GENERIC
@@ -278,8 +340,13 @@ def _name_tokens(name):
 
 
 def _find_asset(ctx, raw_stems, raw):
+    for a in ctx.assets:                       # a name made of plan words ("Strategy A") still counts when it is written out in full
+        n = ' '.join(_raw_tokens(a.get('name') or ''))
+        if n and set(n.split()) & STOP_RAW and re.search(r'(?<![a-z0-9])' + re.escape(n) + r'(?![a-z0-9])', ' '.join(raw)):
+            return a
     extra = [_stem(TICKERS[w]) for w in raw if w in TICKERS]
-    q = [t for t in raw_stems if t not in STOP_Q] + extra
+    soft = CAT_SOFT if ctx.cat and set(raw) & CAT_CUES else set()
+    q = [t for t, w in zip(raw_stems, raw) if t not in STOP_Q and w not in STOP_RAW and w not in soft] + extra
     best, best_key = None, None
     for a in ctx.assets:
         nt = _name_tokens(a.get('name') or '')
@@ -454,9 +521,8 @@ def i_sma(c):
     a = _adv_held(c)
     dn = sum(1 for v in a if (v.get('metrics') or {}).get('wk_up') is False)
     up = sum(1 for v in a if (v.get('metrics') or {}).get('wk_up') is True)
-    return two('The 200-day average is a simple moving average of the last 200 daily closes, SMA(200), not an EMA. The plan checks it at the last close of each week: '
-               'a weekly close above it = uptrend, below it = downtrend. One weekly close decides.',
-               f"Your holdings at the last weekly close: {up} above SMA(200), {dn} below.")
+    return two('200-day average = SMA(200), a simple average of 200 daily closes (not an EMA), read at each weekly close.',
+               f"Above it at the last weekly close = uptrend; one weekly close decides. Yours: {up} above SMA(200), {dn} below.")
 
 
 @intent('momentum', 'glossary', 'gloss', ['12 1 momentum', 'momentum', '12 month momentum', 'twelve month momentum'], 'What is 12-1 momentum?', 'advice')
@@ -473,45 +539,49 @@ def i_rsi(c):
     a = [(v.get('metrics') or {}).get('rsi') for v in _adv_held(c)]
     a = [x for x in a if x is not None]
     lvl = ((c.advice().get('plan') or {}).get('rsi_add') if c.adv else None) or 40
-    return two(f'RSI (14 days) measures the speed of recent moves, 0-100. The plan uses it only to time new money: a stock in an uptrend gets new money below {lvl}. '
-               'It is never a sell signal: in the tests, RSI above 75 was followed by more gains. Planned sales are placed on a day the RSI is above 45.',
-               f"Yours: {sum(1 for x in a if x > 75)} above 75, {sum(1 for x in a if x < 35)} below 35, {sum(1 for x in a if x < 45)} below 45." if a else None)
+    return two(f'RSI(14) = speed of recent moves, 0-100. It only times new money (below {lvl}, in an uptrend); no RSI take-profit.',
+               _sentences(['Sales go on a day RSI is above 45.',
+                           f"Yours: {sum(1 for x in a if x > 75)} above 75, {sum(1 for x in a if x < 35)} below 35, {sum(1 for x in a if x < 45)} below 45." if a else ''], 106) or None)
 
 
 @intent('watch_idea', 'glossary', 'gloss', ['watch idea', 'watch', 'what does watch mean', 'close to a buy signal', 'watch list', 'watchlist idea'], 'What does WATCH mean?', 'advice')
 def i_watch(c):
     n = sum(1 for v in c.advice().get('assets', {}).values() if v.get('action') == 'WATCH') if c.adv else None
-    return two('WATCH means close to an entry: the stock is in an uptrend, its group is under its target, and its RSI(14) is a little above the level where new money may go in. No order yet.',
-               f'Right now {n} on watch.' if n is not None else None)
+    lvl = (c.adv.get('plan') or {}).get('rsi_add') if c.adv else None
+    return two(f"WATCH = close to an entry: uptrend, group under target, RSI(14) a little above the new-money level ({lvl or 40}).",
+               f'No order yet. Right now {n} on watch.' if n is not None else 'No order yet.')
 
 
 @intent('average_down', 'portfolio', 'fact', ['average down', 'averaging down', 'lower my average', 'lower the average', 'gav down', 'buy more to lower', 'catch a falling knife', 'falling knife'], 'Should I average down?', 'advice')
 def i_avg_down(c):
     plan = c.advice().get('plan') if c.adv else None
     over = [x for x in (plan or {}).get('categories', []) if x['status'] == 'over']
-    tail = (f"Right now {', '.join(x['label'] for x in over)} {'is' if len(over) == 1 else 'are'} over target, so no new money goes there." if over else None)
-    return two('Averaging down only to lower your average price is a trap: the average cost does not change what the stock does next. '
-               'Add to a holding only when you would buy it fresh today: its group is under its target, the weekly close is above SMA(200) and the RSI is low. '
-               'Below SMA(200) or in an over-target group, new money goes to the index funds instead.', tail)
+    tail = (f"Now {', '.join(x['label'] for x in over)} {'is' if len(over) == 1 else 'are'} over target: no new money there." if over else '')
+    return two('Averaging down just to lower your average price is a trap: your cost does not change what the stock does next.',
+               _sentences(['Add only as a fresh buy: group under target, weekly close above SMA(200), low RSI.', tail,
+                           'Otherwise new money goes to the index funds.'], 106))
 
 
-@intent('month_plan', 'portfolio', 'fact', ['plan', 'this month', 'what should i do', 'what to do', 'deposit plan', 'where should my deposit go', 'next deposit', 'monthly plan'], 'What is my plan this month?', 'advice')
+@intent('month_plan', 'portfolio', 'fact', ['plan', 'this month', 'what should i do', 'what to do', 'monthly plan', 'my plan', 'plan this month'], 'What is my plan this month?', 'advice',
+        neg=['crash', 'panic', 'profile'])
 def i_plan(c):
     plan = c.advice().get('plan') if c.adv else None
     if not plan:
         return two('The plan is not ready yet; open Analytics, Plan & advice.', None)
-    dep = ', '.join(f"{d['label']} {kr(d['amount'])}" for d in plan.get('deposit_plan', []))
     sells = plan.get('sells_now', [])
-    return two(f"Next deposit ({kr(plan['settings']['deposit'])}): {dep or 'nothing under target'}. "
-               f"Sales due this month: {len(sells)} ({kr(sum(x['amount'] for x in sells))})" + (f", {plan['queued']} more queued." if plan.get('queued') else '.'),
-               'Details and reasons on Analytics, Plan & advice.')
+    l1 = (_greedy(f"Next deposit {kr(plan['settings']['deposit'])}: ", [f"{CAT_SHORT.get(d['cat'], d['label'])} {kr(d['amount'])}" for d in plan['deposit_plan']], 112)
+          if plan.get('deposit_plan') else 'No deposit planned this month.')
+    return two(l1, _sentences([f"Sales due this month: {len(sells)} ({kr(sum(x['amount'] for x in sells))})" + (f", {plan['queued']} more queued." if plan.get('queued') else '.'),
+                               'Reasons on Plan & advice.'], 106))
 
 
 @intent('pullback', 'glossary', 'gloss', ['pullback', 'pulled back', 'below 52 week high', '52 week high', 'dip', 'from the high'], 'What is a pullback?', 'advice')
 def i_pull(c):
     a = [(v.get('metrics') or {}).get('dd52') for v in _adv_held(c) if (v.get('metrics') or {}).get('dd52') is not None]
     n = sum(1 for x in a if -0.25 <= x <= -0.05)
-    return two('A pullback is the distance below the 52-week high; the ADD rule wants a dip inside a rising trend.',
+    lvl = (c.adv.get('plan') or {}).get('rsi_add') if c.adv else None
+    return two('Pullback = distance below the 52-week high. New money goes into a stock only on a dip in an uptrend'
+               + (f' (RSI < {lvl}).' if lvl else '.'),
                f"{n} of your holdings are 5-25% below their high." if a else None)
 
 
@@ -525,25 +595,30 @@ def _count_adv(c, action):
     return xs, sum(v.get('amount') or 0 for v in xs)
 
 
-@intent('add_rule', 'glossary', 'gloss', ['add rule', 'what is add', 'add idea', 'add suggestion', 'add means'], 'What does ADD mean?', 'advice', asset=False)
+@intent('add_rule', 'glossary', 'gloss', ['add rule', 'what is add', 'add idea', 'add suggestion', 'add means', 'buy idea', 'what is a buy idea', 'buy ideas mean'], 'What does ADD mean?', 'advice', asset=False)
 def i_add(c):
     xs, tot = _count_adv(c, 'ADD')
-    return two('ADD: a small position in an uptrend that pulled back; the rule fills it to about 2% of the portfolio.',
-               f"Now: {len(xs)} ADD ideas, {kr(tot)} in total. Rule-based idea, not a forecast.")
+    lvl = (c.adv.get('plan') or {}).get('rsi_add') if c.adv else None
+    bb, _ = _count_adv(c, 'BUYBACK')
+    w, _ = _count_adv(c, 'WATCH')
+    return two(f"ADD = new money: index funds by the deposit plan, or a stock in an uptrend, RSI(14) < {lvl or 40}, group under target.",
+               f"Now: {len(xs)} ADD ({kr(tot)}), {len(bb)} BUY BACK, {len(w)} WATCH. Rule-based, not a forecast.")
 
 
-@intent('trim_rule', 'glossary', 'gloss', ['trim rule', 'what is trim', 'trim idea', 'trim means', 'trim suggestion'], 'What does TRIM mean?', 'advice')
+@intent('trim_rule', 'glossary', 'gloss', ['trim rule', 'what is trim', 'trim idea', 'trim means', 'trim suggestion', 'sell idea', 'what is a sell idea', 'sell rule', 'sell rules'], 'What does TRIM mean?', 'advice')
 def i_trim(c):
     xs, tot = _count_adv(c, 'TRIM')
-    return two('TRIM: sell part of a position above 4% of the portfolio, or a big holding in a sector above 40%.',
-               f"Now: {len(xs)} TRIM ideas, {kr(tot)} in total. Risk rule, not a forecast.")
+    later = [v for v in xs if v.get('when') == 'later']
+    return two('TRIM = a sale by rule: size cap (a stock above 4%), trend exit (weekly close under SMA(200)) or regime exit.',
+               f"Never on RSI. Now {len(xs)} sales, {kr(tot)}: {len(xs) - len(later)} this month, {len(later)} queued.")
 
 
 @intent('buyback_rule', 'glossary', 'gloss', ['buy back', 'buyback', 'buy back rule', 'buy back idea', 'what is buy back'], 'What is BUY BACK?', 'advice', neg=['rebuy'])
 def i_bb(c):
     xs, tot = _count_adv(c, 'BUYBACK')
-    return two('BUY BACK: a position you sold that is back in an uptrend after a pullback (one order, about 1.5%).',
-               f"Now: {len(xs)} buy-back ideas, {kr(tot)}. Rule-based, not a forecast.")
+    lvl = (c.adv.get('plan') or {}).get('rsi_add') if c.adv else None
+    return two(f"BUY BACK: a stock you sold, in a group under target, back above SMA(200) at the weekly close with RSI(14) below {lvl or 40}, 7+ days after the sale.",
+               f"Now: {len(xs)} buy-back ideas, {kr(tot)} (about 1% of the account each). Rule-based, not a forecast.")
 
 
 @intent('consolidate_rule', 'glossary', 'gloss', ['consolidate', 'consolidation', 'what is consolidate', 'dust', 'dust positions', 'tiny positions', 'small positions under'],
@@ -557,25 +632,48 @@ def i_cons(c):
 @intent('review_rule', 'glossary', 'gloss', ['review', 'what is review', 'review flag', 'review means'], 'What does REVIEW mean?', 'advice')
 def i_rev(c):
     xs, _ = _count_adv(c, 'REVIEW')
-    return two('REVIEW: in a downtrend with negative momentum and over 15% under your cost; re-check why you own it.',
+    return two('REVIEW = a quality stock with SMA(50) below SMA(200), over 15% under your cost. Not a sell order: re-check it.',
                f"Now: {len(xs)} holdings flagged." + (' ' + ', '.join(nm(v['name']) for v in xs[:2]) if xs else ''))
 
 
-@intent('profiles', 'glossary', 'gloss', ['conservative', 'balanced', 'aggressive', 'entry profile', 'profile', 'entry rules', 'strictness'],
+def _profile_nums():
+    """(index %, AI %, RSI level) per profile, from strategy.py when it is importable (one source), else the documented values."""
+    try:
+        import strategy
+        return {p: (strategy.TARGETS[p]['core'], strategy.TARGETS[p]['ai'], strategy.RSI_ADD[p]) for p in ('conservative', 'balanced', 'aggressive')}
+    except Exception:
+        return {'conservative': (60, 10, 35), 'balanced': (50, 15, 40), 'aggressive': (40, 22, 45)}
+
+
+@intent('profiles', 'glossary', 'gloss', ['conservative', 'balanced', 'aggressive', 'entry profile', 'profile', 'entry rules', 'strictness', 'plan profiles', 'which profile', 'change profile'],
         'What are the Conservative / Balanced / Aggressive profiles?', 'advice')
 def i_prof(c):
     s = c.adv_summary()
-    return two('Profiles set how strict ADD and BUY BACK are: Conservative waits for a bounce, Aggressive buys any dip.',
-               f"Active: {s.get('profile')}: {s.get('profile_about')}.")
+    P = _profile_nums()
+    cur = s.get('profile') or 'balanced'
+    named = next((p for p in ('conservative', 'balanced', 'aggressive') if c.has(p)), None)
+    head = ('Profiles (index % / AI % / RSI entry): '
+            + ', '.join(f"{p.capitalize()} {P[p][0]:g}/{P[p][1]:g}/{P[p][2]:g}" for p in ('conservative', 'balanced', 'aggressive')) + '.')
+    ai = c.cats().get('ai') if c.adv and c.adv.get('plan') else None
+    if named and named != cur:
+        tail = f"{named.capitalize()} would set index funds {P[named][0]:g}%, AI and chips {P[named][1]:g}%, RSI {P[named][2]:g}. Active: {cur.capitalize()}."
+    else:
+        tail = f"Active: {cur.capitalize()}, saved for your account (buttons on Plan & advice)" + (f"; AI and chips now {pc(ai['pct'], 0)}." if ai else '.')
+    return two(head, tail)
 
 
 @intent('twr', 'glossary', 'gloss', ['time weighted return', 'twr', 'return excluding deposits', 'return without deposits', 'performance without deposits'],
         'What is time-weighted return?', 'deposits')
 def i_twr(c):
+    nv = c.p.get('nav') if isinstance(c.p.get('nav'), dict) else {}
+    mx = (nv.get('ranges') or {}).get('max') or {}
+    if mx.get('twr_pct') is not None:                      # the growth curve (nav.py) is the documented time-weighted figure
+        return two('Time-weighted return strips out deposits, so adding money never looks like a gain.',
+                   f"Yours since {nv.get('first_date')}: {pc(mx['twr_pct'], 1, True)} (growth curve on the Portfolio page).")
     ser = (c.I.get('deposit_behavior') or {}).get('series') or []
     idx = ser[-1].get('index') if ser else None
     return two('Time-weighted return strips out deposits, so adding money never looks like a gain.',
-               f"Yours since {ser[0]['date']}: {pc(idx - 100, 1, True)}." if idx is not None else None)
+               f"Yours since {ser[0]['date']}: {pc(idx - 100, 1, True)} (Deposit behaviour estimate)." if idx is not None else None)
 
 
 @intent('net_deposits', 'glossary', 'fact', ['net deposits', 'deposited', 'money i put in', 'total deposits', 'how much deposited', 'insattningar'], 'How much have I deposited?', 'deposits')
@@ -584,8 +682,8 @@ def i_dep(c):
                'Net deposits = deposits minus withdrawals; the base for your all-time result.')
 
 
-@intent('all_time', 'glossary', 'fact', ['all time result', 'all time', 'total result', 'overall result', 'how am i doing', 'am i up or down', 'total profit', 'total return', 'in profit', 'my profit', 'profit', 'losing money'],
-        'What is my all-time result?', 'assets', neg=['realised', 'unrealised', 'biggest', 'worst', 'most', 'dividend', 'fee'])
+@intent('all_time', 'glossary', 'fact', ['all time result', 'all time', 'total result', 'overall result', 'how am i doing', 'am i up or down', 'total profit', 'total return', 'in profit', 'my profit', 'profit', 'losing money', 'result on deposits'],
+        'What is my all-time result?', 'assets', neg=['realised', 'unrealised', 'biggest', 'worst', 'most', 'dividend', 'fee', 'why', 'where', 'category', 'group'])
 def i_all(c):
     return two(f"All-time result: {kr(c.ovv('all_time_pnl'), True)} ({pc(c.ovv('all_time_pnl_pct'), 1, True)}) on {kr(c.ovv('net_deposits'))} deposited.",
                'It is account value minus net deposits, after fees and including dividends.')
@@ -600,13 +698,14 @@ def i_divtax(c):
                f"You: gross {kr(g)}, tax {kr(t)} ({pc(s['tax_pct'])}), net {kr(s['net'])}.")
 
 
-@intent('sector_cap', 'glossary', 'gloss', ['sector cap', 'theme cap', 'sector limit', 'concentration', 'concentrated', 'too much technology', 'theme concentration'],
+@intent('sector_cap', 'glossary', 'gloss', ['sector cap', 'theme cap', 'sector limit', 'concentration', 'concentrated', 'too much technology', 'theme concentration', 'category cap', 'group cap'],
         'What is the sector cap?', 'advice')
 def i_cap(c):
-    th = c.adv_summary().get('theme') or {}
-    top = next(((k, v) for k, v in th.items() if k not in ('Unclassified', 'Funds')), None)
-    return two('The sector cap is 40%: above it, new ADDs there are blocked and the largest holdings give back a fifth.',
-               f"Your top sector, {top[0]}, is {pc(top[1], 0)}." if top else None)
+    L = c.plan()
+    over = sorted((x for x in L['categories'] if x['status'] == 'over'), key=lambda x: -x['gap'])
+    return two(f"No sector cap now: a category 5+ points over its target gets no new money and sells at most {kr(L['settings']['reduce'])} a month.",
+               (f"Over now: {over[0]['label']} {pc(over[0]['pct'])} (target {pc(over[0]['target'], 0)})." if over else 'No category is more than 5 points over its target.')
+               + ' One stock: at most 4%.')
 
 
 @intent('fragmentation', 'glossary', 'gloss', ['fragmentation', 'too many positions', 'too many stocks', 'how many positions should', 'over diversified', 'number of holdings'],
@@ -614,7 +713,7 @@ def i_cap(c):
 def i_frag(c):
     s = c.adv_summary()
     small = len([a for a in c.held if a['value'] / (c.holdings_value or 1) < 0.01])
-    return two(f"{_n(s['positions'])} positions is a lot; 20-30 of at least 1.5-2% each is easier to follow and cheaper.",
+    return two(f"{_n(s['positions'])} positions is a lot; 15-30 of at least 1.5-2% each is easier to follow and cheaper.",
                f"{_n(small)} of yours are below 1% of the portfolio.")
 
 
@@ -691,8 +790,8 @@ def i_upload(c):
 
 @intent('help', 'help', 'help', ['help', 'what can you do', 'what can i ask', 'commands', 'examples', 'how do you work'], 'What can I ask?', None)
 def i_help(c):
-    return two('Ask about your fees, positions, dividends, habits or any term (split orders, GAV, RSI, TRIM...).',
-               'Name a stock for its value, fees, last buy or why it is flagged.')
+    return two('Ask about your plan (verdict, targets, deposit, sales, trend signals), fees, dividends or a term like SMA(200).',
+               'Name a stock for its value, trend, fees, last buy or why it is flagged.')
 
 
 @intent('greeting', 'help', 'help', ['hello', 'hi', 'hey', 'good morning', 'good evening'], 'Hello', None)
@@ -711,10 +810,10 @@ def i_account(c):
     return 'Open your user menu (top right): Account lets you change the password, upload files, delete your profile, or log out.'
 
 
-@intent('forecast', 'help', 'help', ['predict', 'forecast', 'tomorrow', 'go up', 'go down', 'will rise', 'will fall', 'next week', 'next month', 'price target', 'crash', 'future price', 'will it', 'guarantee'],
+@intent('forecast', 'help', 'help', ['predict', 'forecast', 'tomorrow', 'go up', 'go down', 'will rise', 'will fall', 'next week', 'next month', 'price target', 'future price', 'will it', 'guarantee'],
         'Will Micron go up tomorrow?', 'advice')
 def i_forecast(c):
-    return two("I can't predict prices; nobody reliably can.", 'The Add / Trim ideas are rule-based on size, sector and trend, not forecasts.')
+    return two("I can't predict prices; nobody reliably can.", "The plan's buy and sell ideas are rules (size, category targets, weekly SMA(200) trend), not forecasts.")
 
 
 SECTOR_ALIASES = {'tech': 'Technology', 'technology': 'Technology', 'semiconductor': 'Technology', 'semis': 'Technology', 'chips': 'Technology',
@@ -741,8 +840,8 @@ def f_sectorw(c):
     th = c.adv_summary().get('theme') or {}
     sec = need(c.sector, 'a matching sector')
     names = sorted(((v.get('weight') or 0, v['name']) for v in (c.advice().get('assets') or {}).values() if v.get('sector') == sec and not v.get('closed')), reverse=True)[:2]
-    return two(f"{sec} is {pc(th[sec], 0)} of holdings" + (' (above the 40% sector cap).' if th[sec] > 40 and sec not in ('Funds', 'Unclassified') else '.'),
-               ('Biggest: ' + ', '.join(f'{nm(n)} {pc(w)}' for w, n in names) + '.') if names else None)
+    return two(f"{sec} (Yahoo sector) is {pc(th[sec], 0)} of holdings.",
+               ('Biggest: ' + ', '.join(f'{nm(n)} {pc(w)}' for w, n in names) + '. The plan targets categories: ask "my category targets".') if names else None)
 
 
 # ═════════════════════════ GROUP B: portfolio facts ═════════════════════════
@@ -780,7 +879,7 @@ def f_pct(c):
 
 
 @intent('fees_total', 'portfolio', 'fact', ['total fees', 'fees paid', 'how much fees', 'broker costs', 'fees so far', 'what have i paid in fees', 'all fees', 'how much pay', 'what did i pay', 'fee', 'fees'],
-        'What are my total fees?', 'habits')
+        'What are my total fees?', 'habits', neg=['30 days', 'this month', 'last month', 'budget'])
 def f_fees(c):
     k = c.costs
     return two(f"Broker costs so far: {kr(need(k.get('broker_total'), 'broker costs'))}, {pc(k['pct_of_net_deposits'])} of your deposits.",
@@ -877,7 +976,7 @@ def f_payers(c):
 
 
 @intent('trade_counts', 'portfolio', 'fact', ['how many trades', 'number of trades', 'how many buys', 'how many sells', 'trades count', 'total trades', 'how many orders'],
-        'How many trades have I made?', 'habits')
+        'How many trades have I made?', 'habits', neg=['this month', '30 days', 'budget', 'this week', 'last month'])
 def f_trades(c):
     return two(f"{_n(c.ovv('trades'))} trades: {_n(c.ovv('buys'))} buys and {_n(c.ovv('sells'))} sells.",
                f"Over {_n(c.ovv('days_span'))} days, active on {_n(c.ovv('active_days'))} of them.")
@@ -892,7 +991,7 @@ def f_best(c):
 
 
 @intent('worst_realised', 'portfolio', 'fact', ['worst trade', 'worst realised', 'biggest loser', 'worst performer', 'worst stock', 'lost the most', 'my worst asset', 'lost most money', 'worst asset', 'loss the most'],
-        'Which asset lost me the most?', 'assets')
+        'Which asset lost me the most?', 'assets', neg=['category', 'group', 'where'])
 def f_worst(c):
     a = min(c.assets, key=lambda a: a.get('total_pnl') or 0, default=None)
     need(a, 'assets')
@@ -928,30 +1027,56 @@ def f_range(c):
     return f"Your data runs from {c.ovv('first_date')} to {c.ovv('last_date')} ({_n(c.ovv('days_span'))} days)."
 
 
-@intent('advice_summary', 'portfolio', 'fact', ['what should i do', 'suggestions', 'add trim ideas', 'ideas', 'what to buy', 'what to sell', 'advice', 'recommendations', 'rebalance', 'actions'],
+@intent('advice_summary', 'portfolio', 'fact', ['what should i do', 'suggestions', 'add trim ideas', 'ideas', 'what to buy', 'advice', 'recommendations', 'rebalance', 'actions',
+                                                  'buy and sell ideas', 'action column', 'add trim column', 'the add trim column'],
         'What are the add / trim ideas?', 'advice')
 def f_advice(c):
     cnt = c.adv_summary().get('counts') or {}
-    return two(f"Plan ideas now: {cnt.get('ADD', 0)} add, {cnt.get('BUYBACK', 0)} buy back, {cnt.get('TRIM', 0)} sell, {cnt.get('CONSOLIDATE', 0)} consolidate, {cnt.get('REVIEW', 0)} review.",
-               'Not a forecast; see the Advice tab for reasons and amounts.')
+    later = sum(1 for v in (c.advice().get('assets') or {}).values() if v.get('action') == 'TRIM' and v.get('when') == 'later')
+    return two(f"Plan ideas now: {cnt.get('ADD', 0)} add, {cnt.get('BUYBACK', 0)} buy back, {cnt.get('WATCH', 0)} watch, {cnt.get('TRIM', 0)} sell"
+               + (f" ({cnt.get('TRIM', 0) - later} this month, {later} queued)" if later else '') + f", {cnt.get('CONSOLIDATE', 0)} consolidate, {cnt.get('REVIEW', 0)} review.",
+               f"HOLD (nothing to do): {cnt.get('HOLD', 0)}. Rules, not forecasts; reasons on Plan & advice, buy ideas on the Portfolio page.")
 
 
-@intent('add_list', 'portfolio', 'fact', ['which to add', 'what should i add', 'should add', 'which add', 'add ideas', 'what to add', 'stocks to add', 'which stocks to buy more of', 'add candidates', 'buy more of'],
+@intent('add_list', 'portfolio', 'fact', ['which to add', 'what should i add', 'should add', 'which add', 'add ideas', 'what to add', 'stocks to add', 'which stocks to buy more of', 'add candidates', 'buy more of',
+                                            'buy this month', 'what should i buy', 'buy ideas'],
         'Which stocks should I add?', 'advice')
 def f_addlist(c):
     xs, _ = _count_adv(c, 'ADD')
-    xs = sorted(xs, key=lambda v: -(v.get('score') or 0))[:3]
-    return two(('Add ideas: ' + ', '.join(f"{nm(v['name'])} {kr(v['amount'])}" for v in xs) + '.') if xs else 'No add ideas right now under your active profile.',
-               'Rule-based ideas, not a forecast.')
+    xs += _count_adv(c, 'BUYBACK')[0]
+    if not xs:
+        return two('No buy ideas right now under your active profile.', None)
+    by = {}
+    for v in xs:
+        by[v.get('rule')] = by.get(v.get('rule'), 0) + 1
+    xs = sorted(xs, key=lambda v: (-(v.get('score') or 0), -(v.get('amount') or 0)))
+    return two(_greedy('Buy ideas: ', [f"{nm(v['name'], 22)} {kr(v['amount'])}" for v in xs], 112),
+               _cap(', '.join(f"{RULE_TXT.get(r, r)} {n}" for r, n in by.items())) + '. All of them on the Portfolio page; rules, not forecasts.')
 
 
-@intent('trim_list', 'portfolio', 'fact', ['which to trim', 'what should i trim', 'should trim', 'which trim', 'trim ideas', 'what to trim', 'what to reduce', 'which to sell', 'should sell', 'trim candidates'],
-        'Which stocks should I trim?', 'advice')
+RULE_TXT = {'size_cap': 'size cap', 'trend_exit': 'trend exit', 'regime_exit': 'regime exit', 'pullback': 'pullback in an uptrend', 'deposit_plan': 'deposit plan',
+            'consolidate': 'tiny position', 'review': 'review', 'hold_half': 'hold half', 'near_entry': 'close to an entry', 'buyback': 'buy back', 'core': 'index fund',
+            'fixed': 'defensive', None: 'no rule'}
+OK_RSI = 45            # a planned sale goes on a day the RSI(14) is above this (advisor.BOUNCE_RSI)
+
+
+@intent('trim_list', 'portfolio', 'fact', ['which to trim', 'what should i trim', 'should trim', 'which trim', 'trim ideas', 'what to trim', 'what to reduce', 'which to sell', 'should sell', 'trim candidates',
+                                             'sell this month', 'what to sell', 'sales due', 'what sales are due', 'what should i sell', 'sales this month', 'sell list'],
+        'What should I sell this month?', 'advice', neg=['queued', 'queue'])
 def f_trimlist(c):
-    xs, _ = _count_adv(c, 'TRIM')
-    xs = sorted(xs, key=lambda v: -(v.get('score') or 0))[:3]
-    return two(('Trim ideas: ' + ', '.join(f"{nm(v['name'])} {kr(v['amount'])}" for v in xs) + '.') if xs else 'No trim ideas: nothing breaks the size or sector limits.',
-               'Risk rules (position and sector size), not a forecast.')
+    L = c.plan()
+    xs = L.get('sells_now') or []
+    if not xs:
+        return two('No sale is due this month.', f"{L['queued']} queued for later months ({kr(L['queued_kr'])})." if L.get('queued') else None)
+    ok_now = sum(1 for x in xs if x.get('rsi') is None or math.floor(x['rsi'] + 0.5) > OK_RSI)      # rounded like the Plan tab's "RSI 45: wait"
+    top = sorted(xs, key=lambda x: -x['amount'])
+    l1 = _greedy(f"Sales due this month: {len(xs)}, {kr(sum(x['amount'] for x in xs))}, biggest ", [f"{nm(x['name'], 20)} {kr(x['amount'])}" for x in top], 112)
+    by = {}
+    for x in xs:
+        by[x['rule']] = by.get(x['rule'], 0) + 1
+    l2 = _sentences([f"{ok_now} OK today (RSI above {OK_RSI}).", f"{L['queued']} more queued ({kr(L['queued_kr'])})." if L.get('queued') else '',
+                     _cap(', '.join(f"{RULE_TXT.get(r, r)} {n}" for r, n in sorted(by.items(), key=lambda t: -t[1]))) + '.'], 106)
+    return two(l1, l2)
 
 
 @intent('buyback_list', 'portfolio', 'fact', ['which to buy back', 'stocks buy back', 'sold stocks buy back', 'could buy back', 'which buy back', 'buy back ideas', 'what sold stocks to buy back', 'buy back candidates', 'rebuy candidates'],
@@ -963,7 +1088,8 @@ def f_bblist(c):
                'Rule-based, not a forecast.')
 
 
-@intent('risk_summary', 'portfolio', 'fact', ['how risky is my portfolio', 'portfolio risk', 'risk level', 'my volatility', 'my drawdown', 'how much could i lose', 'risk'],
+@intent('risk_summary', 'portfolio', 'fact', ['how risky is my portfolio', 'portfolio risk', 'risk level', 'my volatility', 'my drawdown', 'how much could i lose', 'risk',
+                                                'volatility drawdown correlation', 'risk of the portfolio'],
         'How risky is my portfolio?', 'advice')
 def f_risk(c):
     p = c.adv_port()
@@ -1065,7 +1191,8 @@ def f_nav(c):
                f"Since {s['first_date']}: {pc(r['max']['twr_pct'], 1, True)}, worst drop {pc(r['max']['max_drop_pct'])}; {kr(s['net_deposits'])} deposited.")
 
 
-@intent('asset_summary', 'asset', 'fact', ['how is', 'tell me about', 'about', 'info', 'status'], 'How is Micron doing?', 'assets', asset=True)
+@intent('asset_summary', 'asset', 'fact', ['how is', 'tell me about', 'about', 'info', 'status'], 'How is Micron doing?', 'assets', asset=True,
+        neg=['volatile', 'volatility', 'trend', 'uptrend', 'downtrend', 'category', 'rsi', 'sma'])
 def a_summary(c):
     a = c.asset
     adv = c.adv_asset(a['isin']) if c.adv else None
@@ -1074,7 +1201,7 @@ def a_summary(c):
         s = f"{a['name']}: {kr(a['value'])} ({pc(w)} of holdings), unrealised {kr(a.get('unrealized') or 0, True)} ({pc(a.get('unrealized_pct') or 0, 0, True)})."
     else:
         s = f"{a['name']}: closed position, realised {kr(a.get('realized') or 0, True)} over {_n(a.get('buys', 0))} buys and {_n(a.get('sells', 0))} sells."
-    return two(s, f"Rule-based idea: {'BUY BACK' if adv['action'] == 'BUYBACK' else adv['action']}, not a forecast." if adv else None)
+    return two(s, _sentences([f"Plan: {_act_txt(adv)}; {adv.get('category_label', '')}.", 'Rules, not a forecast.'], 106) if adv else None)
 
 
 @intent('asset_return', 'asset', 'fact', ['doing', 'perform', 'performance', 'return', 'profit', 'loss', 'unrealised', 'result', 'up or down', 'pnl'], 'How is Micron doing?', 'assets', asset=True)
@@ -1149,14 +1276,584 @@ def a_advice(c):
     adv = c.adv_asset(a['isin'])
     if adv is None:
         c.advice()
-        return f"No idea for {a['name']} right now: a closed position needs an uptrend and a pullback to be flagged for buy back."
-    label = {'BUYBACK': 'BUY BACK'}.get(adv['action'], adv['action'])
-    amt = f" ~{kr(adv['amount'])}" if adv.get('amount') else ''
-    return two(f"{a['name']}: {label}{amt}. Rule-based idea, not a forecast.", _clip((adv.get('reasons') or [''])[0], 150))
+        return f"No idea for {a['name']} right now: a sold stock is a buy-back idea only when its group is under target, it is above SMA(200) and its RSI is low."
+    rs = adv.get('reasons') or ['']
+    why = rs[-1] if c.has('queue*', 'when', 'wait*', 'later') else rs[0]      # "when / why queued": the timing reason comes last
+    return two(f"{a['name']}: {_act_txt(adv)}. Rules, not a forecast.", _sentences(re.split(r'(?<=\.)\s+', why), 106))
+
+
+def _act_txt(v):
+    """The plan's action for one holding in words: 'sell 8 000 kr this month (size cap)'."""
+    act, amt, rule = v.get('action'), v.get('amount') or 0, v.get('rule')
+    if act == 'TRIM':
+        return f"sell {kr(amt)} " + ('queued for a later month' if v.get('when') == 'later' else 'this month') + f" ({RULE_TXT.get(rule, rule)})"
+    if act == 'ADD':
+        return f"ADD {kr(amt)} ({RULE_TXT.get(rule, rule)})"
+    if act == 'BUYBACK':
+        return f"BUY BACK about {kr(amt)}"
+    if act == 'WATCH':
+        return 'WATCH, close to an entry (no order yet)'
+    if act == 'CONSOLIDATE':
+        return f"CONSOLIDATE, only {kr(amt)}: sell it or top it up"
+    if act == 'REVIEW':
+        return 'REVIEW: trend broke with a loss over 15%'
+    return 'HOLD, nothing to do' + (' (hold half)' if v.get('keep') else '')
+
+
+# ═════════════════════════ GROUP D: the portfolio plan (Plan & advice tab, Portfolio panels, Trend Signals sidebar) ═════════════════════════
+# Every figure comes from advisor.advise()['plan'] / ['assets'] (the same object the pages render) or from the payload;
+# the short verdict repeats plan.js verdict() so the chat and the Plan tab say the same thing.
+CAT_SHORT = {'core': 'index funds', 'ai': 'AI and chips', 'bigtech': 'big tech', 'health': 'healthcare and consumer', 'industrials': 'industrials',
+             'financials': 'financials', 'materials': 'energy and materials', 'defensive': 'gold, bonds and real estate', 'cash': 'opportunity cash'}
+TGT_SHORT = {'core': 'index', 'ai': 'AI', 'bigtech': 'tech', 'health': 'health', 'industrials': 'industry', 'financials': 'finance',
+             'materials': 'energy', 'defensive': 'gold', 'cash': 'cash'}
+
+
+def _greedy(head, items, limit, sep=', ', end='.'):
+    """head + as many items as fit in `limit` characters (always at least one), then `end`."""
+    out = head
+    for i, x in enumerate(items):
+        add = (sep if i else '') + x
+        if i and len(out) + len(add) + len(end) > limit:
+            break
+        out += add
+    return out + end
+
+
+def _sentences(parts, limit):
+    """The sentences that fit in `limit` characters, in order (a long one is skipped so a later short one can still fit)."""
+    out = ''
+    for p in parts:
+        if p and (not out or len(out) + 1 + len(p) <= limit):
+            out = f'{out} {p}' if out else p
+    return out
+
+
+def _lc(s):
+    return s if s[:2].isupper() else s[:1].lower() + s[1:]
+
+
+def _cap(s):
+    return s[:1].upper() + s[1:]
+
+
+RULE_SHORT = {'core': 'buy and hold, never timed', 'half_trend': 'hold half, trend half on the weekly SMA(200) rule', 'quality': 'buy and hold, new money on pullbacks',
+              'regime': 'hold while SMA(50) is above SMA(200)', 'fixed': 'fixed weight, no timing', 'cash': 'cash for opportunities and the panic ladder'}
+
+
+def _day(d):
+    try:
+        return datetime.strptime(d, '%Y-%m-%d').strftime('%d %b %Y').lstrip('0')
+    except Exception:
+        return d
+
+
+def _verdict(c):
+    """plan.js verdict(): (line 1, [further sentences]) from the overview, costs, sell quality, the daily value series and plan.lifetime."""
+    L = c.plan()
+    res, nd, trades = c.ovv('all_time_pnl'), c.ovv('net_deposits'), c.ovv('trades')
+    life = need(L.get('lifetime') or None, 'the result per category')
+    cats = c.cats()
+    keys = sorted((k for k in life if life[k].get('n') or life[k].get('life')), key=lambda k: life[k]['life'])
+    l1 = f"Result {kr(res, True)} ({pc(c.ovv('all_time_pnl_pct'), 1, True)}) on {kr(nd)} deposited."
+    w = keys[0] if keys else None
+    if w and life[w]['life'] < 0 and res < 0 and -life[w]['life'] >= 0.5 * -res:
+        l1 += f" {_cap(CAT_SHORT.get(w, w))} lost {kr(-life[w]['life'])}; all the rest {kr(res - life[w]['life'], True)}."
+    elif w and life[w]['life'] < 0:
+        l1 += f" Largest loss: {CAT_SHORT.get(w, w)} {kr(life[w]['life'], True)}."
+    more = []
+    fees, gross = c.costs.get('broker_total'), (c.I.get('sell_quality') or {}).get('realized_before_fees')
+    months = max(1, round((datetime.strptime(c.ovv('last_date'), '%Y-%m-%d') - datetime.strptime(c.ovv('first_date'), '%Y-%m-%d')).days / 30.44))
+    if fees is not None and gross is not None and fees > max(gross, 0):
+        more.append(f"{_n(trades)} trades in {months} months cost {kr(fees)} in fees, more than the {kr(gross)} made selling.")
+    elif fees is not None and nd and fees > 0.02 * nd:
+        more.append(f"{_n(trades)} trades in {months} months cost {kr(fees)} in fees ({pc(fees / nd * 100)} of deposits).")
+    ser = (c.I.get('deposit_behavior') or {}).get('series') or []
+    if len(ser) > 30:
+        b = 0
+        for i, x in enumerate(ser):
+            if x['value'] - x['net_deposited'] > ser[b]['value'] - ser[b]['net_deposited']:
+                b = i
+        pk = ser[b]
+        gain, after = pk['value'] - pk['net_deposited'], nd - pk['net_deposited']
+        since = (c.ovv('total_value') - nd) - gain
+        if gain > 0 and after > 0.15 * nd and since < 0:
+            more.append(f"{kr(after)} was deposited after the best day ({_day(pk['date'])}); since then {kr(since, True)}.")
+    good = [CAT_SHORT.get(k, k) for k in keys if life[k]['life'] > 0 and life[k].get('n')]
+    if good:
+        more.append(f"In profit: {', '.join(good)}.")
+    s = c.adv_summary()
+    if (s.get('portfolio') or {}).get('eff_n'):
+        more.append(f"{s['positions']} positions act like {num(s['portfolio']['eff_n'], 1)} independent bets.")
+    return l1, more
+
+
+@intent('verdict', 'portfolio', 'fact', ['short verdict', 'verdict', 'why am i losing money', 'why loss money', 'why am i down', 'why down', 'what went wrong', 'why negative',
+                                           'why is my result negative', 'why loss', 'sum up my portfolio', 'in short', 'what is wrong', 'why below deposits', 'main problem'],
+        'What is the short verdict?', 'advice')
+def p_verdict(c):
+    l1, more = _verdict(c)
+    return two(l1, _sentences(more, 106) or None)
+
+
+@intent('lifetime', 'portfolio', 'fact', ['where was the money lost', 'where money loss', 'money lost', 'loss per category', 'result per category', 'lifetime result', 'category loss most',
+                                            'which category loss', 'which group loss', 'loss per group', 'where did i loss', 'category result', 'profit per category', 'how much loss in'],
+        'Where was the money lost?', 'advice', cat='use')
+def p_lifetime(c):
+    L = c.plan()
+    life = need(L.get('lifetime') or None, 'the result per category')
+    cats = c.cats()
+    k = c.cat if c.cat in life else None
+    if k:
+        x = life[k]
+        return two(f"{cats[k]['label']}: lifetime {kr(x['life'], True)} = unrealised {kr(x['unreal'], True)} + realised {kr(x['realized'], True)}.",
+                   f"Realised is after {kr(x['fees'])} fees; sold positions included. Now {kr(x['value'])} in {x['n']} holdings.")
+    keys = sorted((k for k in life if life[k].get('n') or life[k].get('life')), key=lambda k: life[k]['life'])
+    neg = [k for k in keys if life[k]['life'] < 0]
+    pos = [k for k in reversed(keys) if life[k]['life'] > 0]
+    l1 = (_greedy('Lost, lifetime per category: ', [f"{CAT_SHORT[k]} {kr(life[k]['life'], True)}" for k in neg], 112)
+          if neg else 'No category has lost money over its lifetime.')
+    l2 = _sentences([_greedy('In profit: ', [f"{CAT_SHORT[k]} {kr(life[k]['life'], True)}" for k in pos], 106) if pos else '',
+                     'Realised is after fees; sold positions are included.'], 106)
+    return two(l1, l2 or None)
+
+
+@intent('category', 'portfolio', 'fact', ['share', 'weight', 'target', 'too high', 'too much', 'too big', 'too low', 'how much', 'percent', 'allocation', 'exposure', 'over target',
+                                            'under target', 'on target', 'status', 'the core', 'core', 'trend', 'uptrend', 'how many', 'category', 'group', 'what is the'],
+        'Is my AI share too high?', 'advice', cat='need', neg=['loss', 'result', 'profit', 'rule', 'test', 'evidence', 'lifetime', 'how long', 'until'])
+def p_category(c):
+    x = need(c.cats().get(c.cat), 'that category in the plan')
+    gap = f"{'+' if x['gap'] > 0 else ''}{num(x['gap'], 1)} points"
+    st = {'over': f'over target, {gap}', 'under': f'under target, {gap}', 'ok': f'on target: {gap}, within the 5-point band'}[x['status']]
+    yes = ''
+    if c.has('too'):
+        if c.has('high', 'much', 'big', 'large', 'heavy'):
+            yes = 'Yes. ' if x['status'] == 'over' else 'No. '
+        elif c.has('low', 'little', 'small'):
+            yes = 'Yes. ' if x['status'] == 'under' else 'No. '
+    l1 = f"{yes}{x['label']}: {pc(x['pct'])} of the account, target {pc(x['target'], 0)} ({st})."
+    if x['key'] == 'cash':
+        return two(l1, f"{kr(x['kr'])} on the account. {x['strategy']}")
+    return two(l1, _sentences([f"{kr(x['kr'])} in {x['n']} holdings, {x['n_up']} of {x['n_trend']} above SMA(200).",
+                               f"Rule: {RULE_SHORT.get(x['rule'], x['strategy'])}."], 106))
+
+
+@intent('cat_targets', 'portfolio', 'fact', ['category targets', 'targets', 'target mix', 'my targets', 'on target', 'am i on target', 'off target', 'over target', 'under target',
+                                               'now and target', 'target weights', 'categories', 'category weights', 'my mix', 'how far from target', 'what is my target'],
+        'What is my target mix?', 'advice', neg=['how long', 'until', 'months', 'when will'])
+def p_targets(c):
+    L = c.plan()
+    xs = L['categories']
+    off = sorted((x for x in xs if x['status'] != 'ok'), key=lambda x: -abs(x['gap']))
+    l1 = (_greedy('Off target: ', [f"{x['label']} {pc(x['pct'])} (target {pc(x['target'], 0)}, {x['status']})" for x in off], 112, '; ')
+          if off else 'Every category is within 5 points of its target.')
+    return two(l1, _greedy(f"{L['profile'].capitalize()} targets %: ", [f"{TGT_SHORT.get(x['key'], x['key'])} {x['target']:g}" for x in xs], 106))
+
+
+def _amount(q):
+    """An amount of money named in the question ('10 000 kr', '10000', '10k'), or None."""
+    for m in re.finditer(r'(\d{1,3}(?:[ .,]\d{3})+|\d+)\s*(k|tkr|kr|sek|kronor)?\b', q):
+        v = int(re.sub(r'\D', '', m.group(1)))
+        if m.group(2) in ('k', 'tkr'):
+            v *= 1000
+        if m.group(2) or v >= 1000:
+            return v
+    return None
+
+
+@intent('deposit_plan', 'portfolio', 'fact', ['deposit plan', 'next deposit', 'where does my next deposit go', 'where next go', 'where deposit go', 'where should my deposit go',
+                                                'where should new money go', 'new money', 'where to put new money', 'where put money', 'buy with my deposit', 'monthly deposit',
+                                                'where invest deposit', 'split deposit', 'invest next month'],
+        'Where does my next deposit go?', 'advice')
+def p_deposit(c):
+    L = c.plan()
+    dep, dp = L['settings']['deposit'], L.get('deposit_plan') or []
+    if not dp:
+        return two('No deposit is planned' + ('.' if dep else ': the monthly deposit is set to 0 kr.'), None)
+    l1 = f"Next deposit {kr(dep)}: " + ', '.join(f"{CAT_SHORT.get(d['cat'], d['label'])} {kr(d['amount'])}" for d in dp) + '.'
+    asked = _amount(c.q)
+    if asked and asked != dep:
+        l1 += f" {kr(asked)} follows the same split."
+    where = [f"{nm(w['name'], 22)} {kr(w['amount'])}" for d in dp for w in d.get('where') or []]
+    stock = any(d['cat'] not in ('core', 'cash', 'defensive') for d in dp)
+    l2 = _sentences([_greedy('Into: ', where, 106) if where else '',
+                     '' if stock else 'Stock groups get money only with an entry signal.'], 106)
+    return two(l1, l2 or None)
+
+
+@intent('queued', 'portfolio', 'fact', ['queued', 'queued sales', 'queue', 'what is queued', 'why queued', 'later sales', 'sales next month', 'reduction budget', 'monthly reduction'],
+        'What are queued sales?', 'advice')
+def p_queued(c):
+    L = c.plan()
+    xs = sorted((v for v in c.advice()['assets'].values() if v.get('action') == 'TRIM' and v.get('when') == 'later'), key=lambda v: -v['amount'])
+    l1 = f"Queued = trend-half sales that wait: an over-target group sells at most {kr(L['settings']['reduce'])} a month, smallest names first."
+    l2 = (_greedy(f"You: {L['queued']} queued, {kr(L['queued_kr'])}. Largest: ", [f"{nm(v['name'], 20)} {kr(v['amount'])}" for v in xs], 106)
+          if xs else 'Nothing is queued.')
+    return two(l1, l2)
+
+
+def _sig(c):
+    """The Trend Signals sidebar (app.js renderSignals) from the same advice: every held asset with a weekly trend."""
+    rows = [v for v in c.advice()['assets'].values() if not v.get('closed') and (v.get('metrics') or {}).get('wk_up') is not None]
+    need(rows or None, 'weekly trend data (the price history is still loading)')
+    m = lambda v: v['metrics']                                      # noqa: E731
+    up = [v for v in rows if m(v)['wk_up']]
+    wt = sum(v.get('weight') or 0 for v in rows) or 1
+    return {
+        'up': up, 'down': [v for v in rows if not m(v)['wk_up']],
+        'up_pct': sum(v.get('weight') or 0 for v in up) / wt * 100,
+        'last': max(m(v).get('wk_date') or '' for v in rows),
+        'week': sorted((v for v in rows if m(v).get('wk_weeks') == 1), key=lambda v: (m(v)['wk_up'], -v['weight'])),
+        'maybe': sorted((v for v in rows if m(v).get('live_up') is not None and m(v)['live_up'] != m(v)['wk_up']), key=lambda v: -v['weight']),
+        'recent': sorted((v for v in rows if 2 <= (m(v).get('wk_weeks') or 0) <= 4), key=lambda v: (m(v)['wk_up'], -v['weight'])),
+        'choppy': sorted((v for v in rows if (m(v).get('wk_flips12') or 0) >= 3), key=lambda v: (-m(v)['wk_flips12'], -v['weight'])),
+    }
+
+
+@intent('trend_signals', 'glossary', 'gloss', ['trend signals', 'trend signal', 'signals', 'signal sidebar', 'what are trend signals', 'trend signals panel'],
+        'What are trend signals?', 'portfolio')
+def p_signals(c):
+    S = _sig(c)
+    return two("Trend Signals (Portfolio sidebar): each holding's last weekly close vs SMA(200), and what may change Friday.",
+               f"Now {len(S['up'])} above, {len(S['down'])} below ({pc(S['up_pct'], 0)} of the money up); {len(S['week'])} changed this week, "
+               f"{len(S['maybe'])} may change Friday, {len(S['choppy'])} choppy.")
+
+
+@intent('signals_week', 'portfolio', 'fact', ['crossed this week', 'changed this week', 'crossed sma 200 this week', 'which crossed', 'crossed', 'turned down', 'turned up',
+                                                'broke below', 'went below sma', 'went above sma', 'trend change', 'trend changes this week', 'what changed this week', 'changed trend',
+                                                'changed in 2 4 weeks', 'recent trend changes'],
+        'Which holdings crossed SMA(200) this week?', 'portfolio')
+def p_week(c):
+    S = _sig(c)
+    dn = [v for v in S['week'] if not v['metrics']['wk_up']]
+    d = _dshort(S['last'])
+    l2 = _sentences([f"Changed 2-4 weeks ago: {len(S['recent'])}; may change on Friday: {len(S['maybe'])}.",
+                     'Below SMA(200) the trend half is sold and quality stocks get no new money.'], 106)
+    if not S['week']:
+        return two(f"No holding crossed SMA(200) at the weekly close of {d}.", l2)
+    both = 0 < len(dn) < len(S['week'])
+    names = [nm(v['name'], 18) + ((' (up)' if v['metrics']['wk_up'] else ' (down)') if both else '') for v in S['week']]
+    return two(_greedy(f"Weekly close {d}: {len(dn)} fell below SMA(200), {len(S['week']) - len(dn)} rose above: ", names, 112), l2)
+
+
+@intent('signals_friday', 'portfolio', 'fact', ['may change on friday', 'change on friday', 'flip on friday', 'friday', 'may flip', 'about to flip', 'about to cross', 'close to sma 200',
+                                                  'near sma 200', 'next weekly close', 'could change', 'may change', 'flip this week'],
+        'Which holdings may change on Friday?', 'portfolio')
+def p_friday(c):
+    xs = _sig(c)['maybe']
+    if not xs:
+        return two("Nothing may change on Friday: every holding is on the same side of SMA(200) today as at the last weekly close.", None)
+    return two(_greedy(f"May change on Friday ({len(xs)}): ", [f"{nm(v['name'], 18)} (now {'above' if v['metrics']['live_up'] else 'below'})" for v in xs], 112),
+               "Today's price is on the other side of SMA(200) than the last weekly close; only Friday's close decides.")
+
+
+@intent('signals_choppy', 'portfolio', 'fact', ['choppy', 'which are choppy', 'choppy holdings', 'whipsaw', 'unreliable signal', 'crossed many times', 'flips', 'back and forth'],
+        'Which holdings are choppy?', 'portfolio')
+def p_choppy(c):
+    xs = _sig(c)['choppy']
+    return two('Choppy = 3 or more SMA(200) crosses in the last 12 weekly closes: the trend signal is unreliable there.',
+               _greedy(f"Yours: {len(xs)} choppy: ", [f"{nm(v['name'], 18)} ({v['metrics']['wk_flips12']}x)" for v in xs], 106) if xs else 'None of yours is choppy right now.')
+
+
+@intent('weekly_rule', 'glossary', 'gloss', ['weekly close', 'weekly close rule', 'weekly rule', 'weekly trend', 'why weekly', 'weekly sma 200', 'last close of the week', 'week close'],
+        'What is the weekly close rule?', 'advice')
+def p_weekly(c):
+    S = _sig(c)
+    te = [v for v in c.advice()['assets'].values() if v.get('action') == 'TRIM' and v.get('rule') == 'trend_exit']
+    now = sum(1 for v in te if v.get('when') != 'later')
+    return two("Only each week's last close vs SMA(200) counts: one weekly close below = trend half out, one above = back in.",
+               f"Last weekly close {_dshort(S['last'])}: {len(S['up'])} above, {len(S['down'])} below; {len(te)} trend-half sales follow ({now} this month).")
+
+
+@intent('hold_half', 'glossary', 'gloss', ['hold half', 'trend half', 'hold half vs trend half', 'half held', 'half trend', 'what is hold half', 'what is trend half', 'kept through the trend'],
+        'What is hold half vs trend half?', 'advice')
+def p_half(c):
+    rules = {x['key']: x['rule'] for x in c.plan()['categories']}
+    xs = [v for v in c.advice()['assets'].values() if not v.get('closed') and rules.get(v.get('category')) == 'half_trend']
+    hold = [v for v in xs if v.get('keep')]
+    tr = [v for v in xs if not v.get('keep')]
+    out = [v for v in tr if (v.get('metrics') or {}).get('wk_up') is False]
+    return two('Hold half = theme ETFs + the 5 largest stocks of AI/chips and industrials: kept through the trend, max 4% each.',
+               f"Trend half = the rest, on the weekly rule. You: {len(hold)} hold half, {len(tr)} trend half, {len(out)} of those below SMA(200).")
+
+
+@intent('trend_health', 'glossary', 'gloss', ['trend health', 'stock money in an uptrend', 'money in uptrend', 'share in uptrend', 'percent in uptrend', 'uptrend share'],
+        'What is trend health?', 'advice')
+def p_health(c):
+    L = c.plan()
+    rules = {x['key']: x['rule'] for x in L['categories']}
+    xs = [v for v in c.advice()['assets'].values() if not v.get('closed') and rules.get(v.get('category')) not in ('core', 'fixed')
+          and (v.get('metrics') or {}).get('wk_up') is not None]
+    dn = sum(1 for v in xs if not v['metrics']['wk_up'])
+    return two('Trend health = the stock money (no index funds, gold or bonds) whose last weekly close was above SMA(200).',
+               f"Yours: {pc(L['up_pct'], 0)}; {dn} of {len(xs)} stocks closed last week below it (trend half sells, no new money).")
+
+
+@intent('opp_cash', 'portfolio', 'fact', ['opportunity cash', 'cash reserve', 'opportunity', 'dry powder', 'cash target', 'how much cash should i have', 'cash buffer', 'reserve'],
+        'What is opportunity cash?', 'advice')
+def p_oppcash(c):
+    L = c.plan()
+    tgt = L['targets']['cash'] / 100 * L['total']
+    dep = next((d['amount'] for d in L.get('deposit_plan') or [] if d['cat'] == 'cash'), 0)
+    return two('Opportunity cash: kept for a pullback in an uptrend in an under-target group and for the panic ladder.',
+               f"You: {kr(L['cash'])} of a {kr(tgt)} target ({pc(L['targets']['cash'], 0)} of the account)" + (f"; the next deposit adds {kr(dep)}." if dep else '.'))
+
+
+PANIC_STEP = {1: 'pause stock buys, deposits still go to the index funds', 2: 'sell only by rule, look only on Sundays', 3: 'invest the opportunity cash in three steps'}
+
+
+@intent('panic', 'portfolio', 'fact', ['panic', 'panic protocol', 'panic ladder', 'market crash', 'crash', 'if the market crashes', 'what to do in a crash', 'market falls',
+                                         'market drops', 'what if market falls', 'sell everything', 'should i sell everything', 'stocks are falling', 'market is down', 'bear market what to do'],
+        'What should I do if the market crashes?', 'advice')
+def p_panic(c):
+    L = c.plan()
+    l1 = 'Panic protocol, from the high: -10% pause stock buys, -20% sell only by rule, -30% invest the cash in 3 steps.'
+    tail = 'Any unplanned sale waits 48 hours.'
+    nv = c.p.get('nav') if isinstance(c.p.get('nav'), dict) else {}
+    dd, src = nv.get('from_high_pct'), 'growth curve'
+    if dd is None:
+        idx = [x['index'] for x in (c.I.get('deposit_behavior') or {}).get('series') or [] if x.get('index')]
+        dd, src = ((idx[-1] / max(idx) - 1) * 100 if idx else None), 'Deposit behaviour estimate'
+    if dd is None:
+        return two(l1, f"{tail} Opportunity cash now {kr(L['cash'])}.")
+    step = 3 if dd <= -30 else 2 if dd <= -20 else 1 if dd <= -10 else 0
+    now = f"Now {pc(dd, 1)} from the high ({src}): " + (f"step {step} applies." if step else 'no step applies.')
+    return two(l1, _sentences([now, f"Step {step}: {PANIC_STEP[step]}." if step else '', tail, f"Cash {kr(L['cash'])}."], 106))
+
+
+@intent('trading_budget', 'portfolio', 'fact', ['trading budget', 'trade budget', 'fee budget', 'how many trades this month', 'trades this month', 'trades last 30 days', 'trades in 30 days',
+                                                  'fees last 30 days', 'fees this month', 'fees last month', 'fees 30 days', 'trading limit', 'max trades', 'am i trading too much',
+                                                  'too many trades', 'how much do i trade this month'],
+        'What is my trading budget?', 'advice')
+def p_budget(c):
+    T = c.plan()['trading']
+    over = T['trades_30d'] > T['max_trades']
+    return two(f"Last 30 days: {_n(T['trades_30d'])} trades (budget {T['max_trades']} a month{', over it' if over else ''}); fees {kr(T['fees_30d'])}.",
+               f"Fee budget {kr(T['fee_budget_year'])} a year (0,5% of the account); no same-day buy and sell of one stock.")
+
+
+FIT_WORDS = (('index', ('index', 'indexing', 'passive', 'saving')), ('trend', ('trend', 'trends')), ('quality', ('value', 'quality', 'buffett')),
+             ('momentum', ('momentum',)), ('allocation', ('diversification', 'diversified', 'diversify', 'mix', 'rebalancing', 'rebalance', 'allocation')))
+FIT_SHORT = {'index': 'index saving', 'trend': 'trend following', 'quality': 'value and quality', 'momentum': 'momentum', 'allocation': 'diversified mix'}
+
+
+@intent('strategy_fit', 'portfolio', 'fact', ['how well do i follow', 'how well follow', 'follow strategy', 'strategy fit', 'popular strategies', 'measures behind the ratings',
+                                                'strategy rating', 'strategy score', 'which strategy do i follow', 'am i an index investor', 'trend follower', 'value investor',
+                                                'momentum investor', 'how good is my diversification'],
+        'How well do I follow the popular strategies?', 'advice')
+def p_fit(c):
+    F = {f['key']: f for f in c.plan().get('fit') or []}
+    need(F or None, 'the strategy ratings')
+    key = next((k for k, ws in FIT_WORDS if c.has(*ws)), None)
+    if key in F:
+        f = F[key]
+        return two(f"{f['label']}: {f['score']} of 10. {f['measure']}", f"The strategy: {f['rule']}")
+    worst = min(F.values(), key=lambda f: f['score'])
+    return two('Strategy fit (0-10): ' + ', '.join(f"{FIT_SHORT.get(k, f['label'])} {f['score']}" for k, f in F.items()) + '.',
+               f"Weakest: {worst['measure']}")
+
+
+@intent('stress', 'portfolio', 'fact', ['stress test', 'stress', 'scenario', 'scenarios', 'what if ai falls', 'what if ai crashes', 'ai repeat', 'bear market', 'what happens in a bear market',
+                                          'ai recovers', 'shock'],
+        'What does the stress test show?', 'advice')
+def p_stress(c):
+    L = c.plan()
+    now, tgt = L['stress']['now'], L['stress']['target']
+    names = list(now)
+    item = lambda n: f"{_lc(n)} {pc(now[n], 1, True)} / {pc(tgt[n], 1, True)}"          # noqa: E731
+    l1 = 'Stress test, today / target mix: ' + ', '.join(item(n) for n in names[:2]) + '.'
+    first = names[0]
+    l2 = _sentences([(item(names[2])[0].upper() + item(names[2])[1:] + '.') if len(names) > 2 else '',
+                     f"{first} today: {kr(now[first] / 100 * L['total'], True)}.", 'Made-up shocks, not forecasts.'], 106)
+    return two(l1, l2)
+
+
+@intent('transition', 'portfolio', 'fact', ['transition', 'how long until on target', 'how long until', 'how long to target', 'when on target', 'when will i be on target', 'months to target',
+                                              'back on target', 'how many months', 'reach target', 'get to target', 'how long will it take', 'transition show'],
+        'How long until I am on target?', 'advice')
+def p_transition(c):
+    L = c.plan()
+    T, cats = L['transition'], c.cats()
+    P, dep, red = T['paths'], L['settings']['deposit'], L['settings']['reduce']
+    if not T.get('over'):
+        return two('No category is more than 5 points over its target, so there is nothing to wait for.',
+                   f"Index funds on the plan: {pc(P['plan']['core'][0])} now, {pc(P['plan']['core'][-1])} after {T['months']} months (prices held flat).")
+    k = T['over'][0]
+    x, m = cats[k], T.get('months_to_band')
+    l1 = f"{x['label']} {pc(x['pct'])} (target {pc(x['target'], 0)}): " + (f"back within 5 points in about {m} months on the plan." if m is not None
+                                                                        else f"not within 5 points in {T['months']} months; raise the deposit or the reduction.")
+    return two(l1, f"Plan: {kr(dep)} in, up to {kr(red)} sold a month, prices flat. Without sales: {pc(P['deposits_only'][k][-1])} after {T['months']} months.")
+
+
+EV_SHORT = {'BH': 'buy and hold', 'T200W': 'weekly SMA(200)', 'HALFW': 'half held + weekly SMA(200)', 'GX': 'SMA(50) above SMA(200)', 'DIP': 'RSI dip buying'}
+
+
+def _evidence(c):
+    """The 10-year test (strategy_bt) when the caller passed it in the payload as 'evidence'; the server computes it in the background."""
+    E = c.p.get('evidence')
+    return (E.get('categories') or {}) if isinstance(E, dict) and E.get('ok') and not E.get('pending') else {}
+
+
+@intent('evidence', 'portfolio', 'fact', ['evidence', '10 year test', '10-year test', 'ten year test', 'backtest', 'back test', 'which rule works', 'rule per category', 'which rule',
+                                            'why this rule', 'why buy and hold', 'test of my holdings', 'category strategy', 'strategy per category', 'one strategy per category',
+                                            'which strategy works', 'does trend following work', 'proof'],
+        'Which rule works for which category?', 'advice', cat='use')
+def p_evidence(c):
+    cats, EC, k = c.cats(), _evidence(c), c.cat
+    if k in cats:
+        x = cats[k]
+        if k in EC:
+            e = EC[k]
+            r = e['rules'][e['pick']]
+            if e['pick'] == 'BH':                      # buy and hold is the rule: compare with the best timing rule
+                alt = max((n for n in e['rules'] if n != 'BH'), key=lambda n: e['rules'][n]['cagr'])
+                other = f"best timing rule {pc(e['rules'][alt]['cagr'], 1)}."
+            else:
+                other = f"buy and hold {pc(e['rules']['BH']['cagr'], 1)}, {pc(e['rules']['BH']['mdd'], 0)}."
+            return two(f"{x['label']}: {RULE_SHORT.get(x['rule'], x['strategy'])}.",
+                       f"From {e['start'][:4]}, {e['n']} holdings: {EV_SHORT.get(e['pick'], e['pick'])} {pc(r['cagr'], 1)} a year, worst {pc(r['mdd'], 0)}; {other}")
+        return two(f"{x['label']}: {RULE_SHORT.get(x['rule'], x['strategy'])}.", 'Chosen in a 10-year test of your holdings; the figures are on Plan & advice, The evidence.')
+    l1 = '10-year test of your holdings: index and quality buy and hold; AI and industrials half + weekly SMA(200).'
+    bits = []
+    if 'core' in EC:
+        bits.append(f"Index buy and hold {pc(EC['core']['rules']['BH']['cagr'], 1)} a year.")
+    if 'ai' in EC:
+        bits.append(f"AI half + weekly rule worst fall {pc(EC['ai']['rules']['HALFW']['mdd'], 0)} vs {pc(EC['ai']['rules']['BH']['mdd'], 0)}.")
+    if not EC:
+        bits = ['Energy: SMA(50) > SMA(200).', 'The figures for your holdings are computed on Plan & advice, The evidence.']
+    return two(l1, _sentences(bits, 106))
+
+
+@intent('cagr', 'glossary', 'gloss', ['cagr', 'yearly return', 'annual return', 'compound annual growth', 'compound return'], 'What is CAGR?', 'advice')
+def p_cagr(c):
+    core = _evidence(c).get('core')
+    return two('CAGR = compound annual growth rate: the steady yearly return that gives the same end result as the real path.',
+               f"In the 10-year test your index funds made {pc(core['rules']['BH']['cagr'], 1)} a year buy and hold." if core
+               else 'Plan & advice shows it per category in the 10-year test: buy and hold against the rule used.')
+
+
+@intent('general_rules', 'glossary', 'gloss', ['general rules', 'rules', 'plan rules', 'rules that apply', 'the rules', 'what are the rules', 'house rules', 'my rules'],
+        'What are the general rules?', 'advice')
+def p_rules(c):
+    T = c.plan()['trading']
+    cap = sum(1 for v in c.advice()['assets'].values() if v.get('action') == 'TRIM' and v.get('rule') == 'size_cap')
+    return two(f"Rules: one deposit a month, a stock at most 4%, orders from 2 500 kr, max {T['max_trades']} trades a month, no averaging down.",
+               f"Sell on a day RSI(14) is above 45; review the first Sunday. You: {_n(T['trades_30d'])} trades in 30 days, {cap} stocks above 4%.")
+
+
+VOL3M_DEF = "Vol 3M = daily volatility, last 3 months: the standard deviation of daily changes, a typical day's move in %."
+
+
+@intent('vol3m', 'glossary', 'gloss', ['vol 3m', 'vol3m', 'daily volatility', '3 month volatility', 'most volatile', 'which holding is most volatile', 'most volatile holding',
+                                         'riskiest holding', 'riskiest stock'],
+        'What is Vol 3M?', 'portfolio')
+def p_vol3m(c):
+    vol = c.p.get('vol') or {}
+    names = {a['isin']: a['name'] for a in c.held if a.get('isin')}
+    xs = sorted(((v['daily'], names[i]) for i, v in vol.items() if i in names and isinstance(v, dict) and v.get('daily') is not None), reverse=True)
+    if not xs:
+        return two(VOL3M_DEF, None)
+    med = sorted(x[0] for x in xs)[len(xs) // 2]
+    return two(VOL3M_DEF,
+               'Most volatile: ' + ', '.join(f"{nm(n, 18)} {num(d, 1)}%" for d, n in xs[:2]) + f"; the middle holding {num(med, 1)}% a day.")
+
+
+@intent('theme_help', 'help', 'help', ['dark mode', 'light mode', 'dark theme', 'light theme', 'night mode', 'theme', 'switch theme', 'change colours', 'sun button', 'moon button', 'dark'],
+        'How do I switch to dark mode?', None)
+def h_theme(c):
+    return 'Light or dark mode: the sun / moon button in the header of every page. It is remembered in this browser and the charts repaint at once.'
+
+
+WHERE = [   # (question words, answer, link): first match wins
+    (('signal', 'signals', 'sidebar', 'crossed'), 'Trend Signals: Portfolio page, left sidebar above the Reports calendar (a drawer on phones); it folds away.', 'portfolio'),
+    (('behaviour', 'behavior', 'timing'), 'Analytics, Deposit behaviour tab.', 'deposits'),
+    (('buy', 'sell', 'ideas', 'sales'), 'Buy / Sell this month: panels on the Portfolio page (top 5 each); every sale with its reason on Analytics, Plan & advice.', 'portfolio'),
+    (('verdict', 'plan', 'targets', 'target', 'category', 'categories', 'profile', 'evidence', 'stress', 'transition', 'deposit', 'strategy', 'strategies', 'lifetime', 'advice'),
+     'Analytics, Plan & advice tab: the verdict, categories and targets, every holding, the deposit, the evidence, transition and stress test.', 'advice'),
+    (('heat', 'heatmap', 'treemap'), 'Heat map: Portfolio page, under the funds table (the Heat map button in the header scrolls there).', 'portfolio'),
+    (('growth', 'curve', 'nav'), 'Growth curve (net asset value): Portfolio page, under the summary, above Buy / Sell this month.', 'portfolio'),
+    (('reports', 'report', 'earnings', 'calendar'), 'Reports calendar: Portfolio page, left sidebar under Trend Signals.', 'portfolio'),
+    (('fees', 'fee', 'habits', 'habit', 'benchmark', 'costs'), 'Analytics, Trading habits & costs tab.', 'habits'),
+    (('dividend', 'dividends'), 'Analytics, Dividends tab.', 'dividends'),
+    (('deposits',), 'Analytics, Deposit behaviour tab.', 'deposits'),
+    (('assets', 'trades', 'history', 'chart'), 'Analytics, Assets tab: every asset ever held, with its trades on a price chart.', 'assets'),
+    (('dark', 'light', 'theme', 'mode'), 'The sun / moon button in the header switches light and dark mode.', None),
+    (('privacy', 'hide', 'eye'), 'The eye button in the header blurs every money value.', None),
+    (('upload', 'files', 'csv', 'password', 'account'), 'User menu (top right): Upload / replace files, Account, Log out.', 'account'),
+]
+
+
+@intent('where_ui', 'help', 'help', ['where is', 'where find', 'where can i find', 'where can i see', 'where do i see', 'where do i find', 'which tab', 'which page', 'how do i open', 'where'],
+        'Where do I find the trend signals?', None, neg=['money', 'loss', 'next', 'should', 'go', 'unnecessary', 'expensive', 'result', 'best', 'worst', 'most', 'profit'])
+def h_where(c):
+    for words, text, link in WHERE:
+        if c.has(*words):
+            return text, link
+    return two('Portfolio page: summary, growth curve, Buy / Sell this month, holdings, heat map; sidebar with Trend Signals and Reports.',
+               'Analytics: Assets, Trading habits, Deposit behaviour, Dividends, Plan & advice.'), 'portfolio'
+
+
+# ───── per asset: weekly trend, category, Vol 3M ─────
+@intent('asset_trend', 'asset', 'fact', ['trend', 'uptrend', 'downtrend', 'in an uptrend', 'in a downtrend', 'trend of', 'sma 200', 'sma200', '200 day', 'moving average', 'above sma',
+                                          'below sma', 'weekly close', 'rsi', 'crossed', 'flip', 'choppy', 'momentum'],
+        'Is Micron in an uptrend?', 'advice', asset=True)
+def a_trend(c):
+    a = c.asset
+    v = c.adv_asset(a['isin']) if c.adv else None
+    m = (v or {}).get('metrics') or {}
+    if m.get('wk_up') is None:
+        c.advice()
+        raise Missing(f"a weekly trend for {a['name']} (it needs Yahoo price history; Nordnet funds and most sold stocks have none here)")
+    up = m['wk_up']
+    l1 = (f"{nm(a['name'])}: {'uptrend' if up else 'downtrend'}, weekly close {'above' if up else 'below'} SMA(200) ({pc(m['wk_dist'] * 100, 0, True)}) "
+          f"for {m['wk_weeks']} week{'s' if m['wk_weeks'] != 1 else ''}, since {m.get('wk_since')}.")
+    bits = []
+    if m.get('live_dist') is not None:
+        bits.append(f"at today's price {pc(m['live_dist'] * 100, 0, True)} from SMA(200)" + (' (may flip on Friday)' if m.get('live_up') != up else ''))
+    if m.get('regime_up') is not None:
+        bits.append(f"SMA(50) {'above' if m['regime_up'] else 'below'} SMA(200)")
+    if m.get('rsi') is not None:
+        bits.append(f"RSI(14) {num(m['rsi'], 0)}")
+    if (m.get('wk_flips12') or 0) >= 3:
+        bits.append(f"choppy ({m['wk_flips12']} crosses in 12 weeks)")
+    if m.get('mom12_1') is not None:
+        bits.append(f"12-1 momentum {pc(m['mom12_1'] * 100, 0, True)}")
+    return two(l1, _greedy('', bits, 106, '; ', '.') if bits else None)
+
+
+@intent('asset_category', 'asset', 'fact', ['category', 'which category', 'what category', 'which group', 'group', 'classified', 'belongs', 'strategy for', 'which strategy', 'what rule',
+                                             'hold half', 'trend half'],
+        'Which category is Micron in?', 'advice', asset=True)
+def a_category(c):
+    a = c.asset
+    v = c.adv_asset(a['isin'])
+    if not v:
+        c.advice()
+        raise Missing(f"a plan category for {a['name']} (only holdings and buy-back ideas have one)")
+    x = c.cats().get(v['category']) or {}
+    if x.get('rule') == 'half_trend':
+        desc = 'hold half: kept through the trend, at most 4%' if v.get('keep') else 'trend half: out after a weekly close below SMA(200)'
+    else:
+        desc = RULE_SHORT.get(x.get('rule'), x.get('strategy', ''))
+    return two(f"{nm(a['name'])} is in {v['category_label']}, {desc}.",
+               f"{v['category_label']}: {pc(x['pct'])} of the account, target {pc(x['target'], 0)}. Change the category on Plan & advice." if x else None)
+
+
+@intent('asset_vol', 'asset', 'fact', ['volatile', 'volatility', 'vol', 'vol 3m', 'how volatile', 'how risky', 'risky', 'swings', 'daily move', 'how much does it move', 'bumpy'],
+        'How volatile is Micron?', 'portfolio', asset=True)
+def a_vol(c):
+    a = c.asset
+    v = (c.p.get('vol') or {}).get(a.get('isin'))
+    if not isinstance(v, dict) or v.get('daily') is None:
+        raise Missing(f"a Vol 3M figure for {a['name']} (it needs 3 months of Yahoo daily closes)")
+    lvl = 'high' if v['daily'] >= 5 else 'raised' if v['daily'] >= 3 else 'normal'
+    port = (c.adv_summary().get('portfolio') or {}).get('vol') if c.adv else None
+    return two(f"{nm(a['name'])}: Vol 3M {num(v['daily'], 1)}% a day (about {pc(v['annual'], 0)} a year); the average daily move is {num(v['avg_abs'], 1)}%.",
+               f"That is {lvl} (gold from 3%, red from 5% a day)" + (f"; your whole portfolio swings about {pc(port * 100, 0)} a year." if port else '.'))
 
 
 # ═════════════════════════ matching + answer ═════════════════════════
-DEFAULT_SUGGESTIONS = ['What are my total fees?', 'What does split orders mean?', 'Which is my biggest holding?']
+DEFAULT_SUGGESTIONS = ['What is my plan this month?', 'What are my total fees?', 'Which is my biggest holding?']
 
 
 def _rank(ctx, qtoks, cues, asset):
@@ -1166,6 +1863,8 @@ def _rank(ctx, qtoks, cues, asset):
         if it['asset'] and not asset:
             continue
         if it['id'] == 'sector_weight' and not getattr(ctx, 'sector', None):
+            continue
+        if it['cat'] == 'need' and not ctx.cat:
             continue
         if asset and not it['asset'] and it['group'] not in ('help',):
             s0 = _intent_score(it, qtoks)
@@ -1186,18 +1885,24 @@ def _rank(ctx, qtoks, cues, asset):
             s += 0.9                          # a bare asset name always gets a summary
         if it['id'] == 'sector_weight' and getattr(ctx, 'sector', None):
             s += 2.5
+        if it['cat'] and ctx.cat and not asset:
+            s += 2.5                          # a named category: the intents that answer per category come first
         ranked.append((s, it))
     ranked.sort(key=lambda x: -x[0])
     return ranked
 
 
 def _run(it, ctx):
+    """(answer text, link): an intent may return (text, link) to point at the page the answer is about."""
     try:
-        return _fit(it['fn'](ctx))
+        out = it['fn'](ctx)
+        if isinstance(out, tuple):
+            return _fit(out[0]), LINKS.get(out[1], out[1])
+        return _fit(out), it['link']
     except Missing as m:
-        return _fit(f"I don't have {m} in your data yet.")
+        return _fit(f"I don't have {m} in your data yet."), it['link']
     except (KeyError, TypeError, ValueError, IndexError, ZeroDivisionError, AttributeError):
-        return "I couldn't work that figure out from your data."
+        return "I couldn't work that figure out from your data.", it['link']
 
 
 def answer(question, payload, advice=None):
@@ -1211,9 +1916,11 @@ def answer(question, payload, advice=None):
             return base
         ctx = Ctx(payload, advice)
         mapped, stems, raw = _question_tokens(q)
+        ctx.q, ctx.raw = q.lower().translate(_FOLD), raw
+        ctx.cat = _find_cat(raw)
         asset = _find_asset(ctx, stems, raw)
         ctx.asset = asset
-        ctx.sector = None if asset else _find_sector(ctx, raw)
+        ctx.sector = None if asset or ctx.cat else _find_sector(ctx, raw)
         cues = _cues(raw, mapped)
         ranked = _rank(ctx, mapped, cues, asset)
         if ranked:
@@ -1240,9 +1947,9 @@ def answer(question, payload, advice=None):
                     sug.append(d)
             base.update(answer="I can't answer that from your data. Try one of these:", confidence=conf, suggestions=sug[:3])
             return base
-        text = _run(best, ctx)
+        text, link = _run(best, ctx)
         label = best['id'] + (f' · {asset["name"]}' if asset and best['asset'] else '')
-        base.update(answer=text, link=best['link'], confidence=conf, matched=label)
+        base.update(answer=text, link=link, confidence=conf, matched=label)
         return base
     except Exception:       # the assistant must never break the page
         base['answer'] = "I couldn't work that out from your data."

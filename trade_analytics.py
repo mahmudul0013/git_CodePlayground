@@ -239,6 +239,7 @@ def _parse_holdings_table(header, rows):
         'price': _col(header, 'senaste kurs', 'senaste nav'),
         'value': _col(header, 'värde sek'), 'pct': _col(header, 'avkast. %'),
         'pnl': _col(header, 'avkast. sek'),
+        'market': _col(header, 'market'),       # listing venue ('Xetra', 'Euronext Amsterdam', ...); '' for funds and old layouts
     }
     out = {}
     for r in rows:
@@ -250,11 +251,15 @@ def _parse_holdings_table(header, rows):
 
         def v(k):
             return _num(r[ix[k]]) if ix[k] is not None and ix[k] < len(r) else None
+
+        def s(k):
+            return r[ix[k]].strip() if ix[k] is not None and ix[k] < len(r) else ''
         out[name] = {
-            'name': name, 'ccy': r[ix['ccy']].strip() if ix['ccy'] is not None else '',
+            'name': name, 'ccy': s('ccy'),
             'qty': v('qty') or 0.0, 'gav': v('gav'), 'day_pct': v('day'),
             'price': v('price'), 'value_sek': v('value') or 0.0,
             'pnl_pct': v('pct'), 'pnl_sek': v('pnl') or 0.0,
+            'market': s('market'),
         }
     return out
 
@@ -603,6 +608,7 @@ def build(ledger, holdings):
             a['unrealized_pct'] = h['pnl_pct']
             a['day_pct'] = h['day_pct']
             a['ccy'] = h['ccy'] or a['ccy']
+            a['market'] = h.get('market') or ''        # picks the Yahoo listing (symbols.py); empty for funds / old exports
             if abs(h['qty'] - st['qty']) > 1e-3:
                 if h['qty'] > st['qty']:
                     # holdings export is live; the ledger books a trade only after the next day's close
@@ -614,6 +620,7 @@ def build(ledger, holdings):
                                     f"export {h['qty']:.4f}.")
         else:
             a['price'] = a['gav'] = a['unrealized_pct'] = a['day_pct'] = None
+            a['market'] = ''
             a['value'] = 0.0
             a['unrealized'] = 0.0
             if a['held']:

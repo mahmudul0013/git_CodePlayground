@@ -462,7 +462,9 @@ html, body {
    DATA TABLE
    ============================================================ */
 .table-wrap {
-  overflow-x: auto;           /* long tables show their first rows and a "Show all" button (TVRows), never a scroll box */
+  overflow: auto;             /* scrolls inside its box; the header row stays visible */
+  max-height: min(70vh, 640px);
+  overscroll-behavior: contain;
 }
 
 .data-table {

@@ -83,14 +83,20 @@
   .plan table.stack > tbody > tr.sub > td { width: auto; }
 }
 
-/* group headings (a category) look different from the rows under them: a band in the category colour with a thick left edge;
-   the rows under a heading are indented */
-.plan table tr.grp > td { background: color-mix(in srgb, var(--cat, var(--accent)) 20%, var(--surface)) !important; border-left: 4px solid var(--cat, var(--accent));
-  color: var(--white); font-weight: 700; font-size: 12.5px; text-align: left; padding-top: 9px; padding-bottom: 9px; }
-.plan table tr.grp > td .pl-small { color: var(--text); opacity: .85; }
-.plan table tbody tr.grp ~ tr:not(.grp):not(.why-row) > td:first-child { padding-left: 22px; }
+/* group headings: a quiet section row in the dashboard's own colours (no colour per category), rows under it indented */
+.plan table tr.grp > td { background: var(--surface2) !important; color: var(--white); font-weight: 600; font-size: 12.5px; text-align: left;
+  padding-top: 9px; padding-bottom: 9px; border-top: 1px solid var(--border); }
+.plan table tr.grp > td .pl-small { margin-left: 6px; }
+.plan table tr.grp > td .pill { margin-left: 8px; vertical-align: 1px; }
+.plan table tbody tr.grp ~ tr:not(.grp):not(.why-row) > td:first-child { padding-left: 24px; }
 .plan .pl-explain { max-width: 120ch; margin-top: -2px; }
+/* the category bar: accent, red when over target */
+.plan .bar i { background: var(--accent); }
+.plan .bar.over i { background: var(--red); }
+/* the per-row category choice is quiet until you point at it */
+.plan #pl-hold select { background: transparent; border-color: transparent; color: var(--text-dim); cursor: pointer; }
+.plan #pl-hold select:hover, .plan #pl-hold select:focus-visible { border-color: var(--border); color: var(--text); background: var(--bg); }
 @container (max-width: 900px) {
-  .plan table.stack.wide > tbody > tr.grp > td { border-radius: 6px; margin-top: 6px; }
+  .plan table.stack.wide > tbody > tr.grp > td { border-radius: 6px; margin-top: 6px; border-top: 0; }
   .plan table tbody tr.grp ~ tr:not(.grp):not(.why-row) > td:first-child { padding-left: 0; }
 }
