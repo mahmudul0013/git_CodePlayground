@@ -222,3 +222,15 @@ code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 1
   #asset-table thead th:nth-child(7), #asset-table thead th:nth-child(8),
   #asset-table tfoot td:nth-child(7), #asset-table tfoot td:nth-child(8) { display: none; }
 }
+
+/* data notes: folded at the bottom of the page (rows that could not be matched, ...) */
+.data-notes { margin: 20px 0 8px; }
+.data-notes details { border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 6px; background: var(--surface); font-size: 12px; color: var(--text-dim); }
+.data-notes summary { cursor: pointer; padding: 7px 10px; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
+.data-notes summary::-webkit-details-marker { display: none; }
+.data-notes summary::before { content: '\25B8'; color: var(--gold); transition: transform .15s; }
+.data-notes details[open] summary::before { transform: rotate(90deg); }
+.data-notes summary:hover { color: var(--text); }
+.data-notes .dn-n { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); border-radius: 9px; padding: 0 7px; font-weight: 600; font-size: 11px; }
+.data-notes ul { margin: 0 12px 9px 32px; padding: 0; }
+.data-notes li { margin: 2px 0; }

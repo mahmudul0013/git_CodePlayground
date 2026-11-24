@@ -263,7 +263,7 @@ def deposit_plan(cat_kr, total, tg, deposit, buy_ideas):
             gap[k] = 0
     tot_gap = sum(gap.values())
     if tot_gap <= 0:
-        return [{'cat': 'core', 'amount': deposit}]
+        return [{'cat': 'core', 'amount': deposit, 'pct': 100}]
     raw = {k: deposit * g / tot_gap for k, g in gap.items() if g > 0}
     small = [k for k, v in raw.items() if v < MIN_ORDER and k != 'cash']
     for k in small:                                   # too small for an order: merge into the biggest share
@@ -274,6 +274,22 @@ def deposit_plan(cat_kr, total, tg, deposit, buy_ideas):
     diff = deposit - sum(x['amount'] for x in out)
     if out:
         out[0]['amount'] += diff
+    # share of EVERY deposit (the gap shares before the 500 kr order rounding): true for any amount, whole % summing to 100
+    shares = pct_split([raw.get(x['cat'], 0) for x in out])
+    for x, p in zip(out, shares):
+        x['pct'] = p
+    return out
+
+
+def pct_split(weights, total=100):
+    """Whole numbers proportional to weights that add up to `total` (largest remainder)."""
+    s = sum(w for w in weights if w > 0)
+    if s <= 0:
+        return [0 for _ in weights]
+    exact = [max(w, 0) / s * total for w in weights]
+    out = [int(e) for e in exact]
+    for i in sorted(range(len(exact)), key=lambda i: -(exact[i] - out[i]))[:total - sum(out)]:
+        out[i] += 1
     return out
 
 

@@ -28,7 +28,7 @@ const Plan = (() => {
           <button class="chip" role="radio" data-p="conservative">Conservative</button><button class="chip" role="radio" data-p="balanced">Balanced</button><button class="chip" role="radio" data-p="aggressive">Aggressive</button></div></div>
         <span class="pl-saved" id="pl-saved" role="status" aria-live="polite"></span>
       </div>
-      <p class="hint pl-explain">The profile sets the target mix (index funds 60 / 50 / 40%, AI and chips at most 10 / 15 / 22%) and how low the RSI must be before new money goes into a stock (35 / 40 / 45). A click applies it at once and saves it for your account, so the Portfolio page, this tab, the assistant and every device use the same plan. The plan assumes <span id="pl-assume">your monthly deposit</span> a month.</p>
+      <p class="hint pl-explain">The profile sets the target mix (index funds 60 / 50 / 40%, AI and chips at most 10 / 15 / 22%) and how low the RSI must be before new money goes into a stock (35 / 40 / 45). A click applies it at once and saves it for your account, so the Portfolio page, this tab, the assistant and every device use the same plan.</p>
       <p class="hint" id="pl-status"></p>
 
       <section class="panel pl-verdict"><h3>The short verdict</h3><div id="pl-verdict"></div></section>
@@ -44,7 +44,7 @@ const Plan = (() => {
 
       <h2 class="sec">This month</h2>
       <section class="grid g2">
-        <div class="panel"><h3 id="pl-dep-title">Next deposit</h3><div class="tbl-wrap"><table id="pl-deposit"></table></div><p class="hint" id="pl-dep-note"></p></div>
+        <div class="panel"><h3 id="pl-dep-title">Each deposit goes to</h3><div class="tbl-wrap"><table id="pl-deposit"></table></div><p class="hint" id="pl-dep-note"></p></div>
         <div class="panel"><h3>Sell this month</h3><div class="tbl-wrap scroll"><table id="pl-sells"></table></div><p class="hint" id="pl-sell-note"></p></div>
       </section>
 
@@ -204,17 +204,17 @@ const Plan = (() => {
   function month(A) {
     const L = A.plan, rows = Object.entries(A.assets).map(([isin, v]) => ({ isin, ...v }));
     const dep = L.settings.deposit;
-    $('pl-dep-title').textContent = `Next deposit: ${fmt(dep)} kr`;
-    const as = $('pl-assume'); if (as) as.textContent = `${fmt(dep)} kr deposited`;
-    let h = '<thead><tr><th>Goes to</th><th>Amount</th></tr></thead><tbody>';
+    // shares of every deposit: true for any amount (kr only as a fallback for an older server answer)
+    const pc = (p, amt) => `<span class="nw">${p != null ? p + '%' : kr(amt)}</span>`;
+    let h = '<thead><tr><th>Goes to</th><th>Share</th></tr></thead><tbody>';
     L.deposit_plan.forEach(d => {
-      h += `<tr><td data-label=""><b>${esc(d.label)}</b></td><td data-label="Amount">${kr(d.amount)}</td></tr>`;
-      (d.where || []).forEach(w => { h += `<tr class="sub"><td data-label=""><span class="pl-small">→ ${esc(w.name)}</span></td><td data-label=""><span class="pl-small">${kr(w.amount)}</span></td></tr>`; });
+      h += `<tr><td data-label=""><b>${esc(d.label)}</b></td><td data-label="Share">${pc(d.pct, d.amount)}</td></tr>`;
+      (d.where || []).forEach(w => { h += `<tr class="sub"><td data-label=""><span class="pl-small">→ ${esc(w.name)}</span></td><td data-label=""><span class="pl-small">${pc(w.pct, w.amount)}</span></td></tr>`; });
       if (d.cat === 'cash') h += `<tr class="sub"><td data-label="" colspan="2"><span class="pl-small">→ stays as cash on the account</span></td></tr>`;
     });
     if (!L.deposit_plan.length) h += `<tr><td colspan="2" class="pl-empty">${dep ? 'Nothing is under its target.' : 'No monthly deposit is set in the plan.'}</td></tr>`;
     const el = $('pl-deposit'); el.className = 'stack'; el.innerHTML = h + '</tbody>';
-    $('pl-dep-note').textContent = 'Split over the groups furthest under their target. A stock group gets money only when one of its stocks has an entry signal; otherwise its share waits in the index funds. Orders under 2 500 kr are merged.';
+    $('pl-dep-note').textContent = 'Share of every deposit, whatever the amount: split over the groups furthest under their target. A stock group gets money only when one of its stocks has an entry signal; otherwise its share waits in the index funds. Orders under 2 500 kr are merged.';
 
     const sells = rows.filter(r => r.action === 'TRIM' && r.when !== 'later').sort((a, b) => a.amount - b.amount);
     let s = '<thead><tr><th>Holding</th><th>Amount</th><th>When</th><th></th></tr></thead><tbody>';

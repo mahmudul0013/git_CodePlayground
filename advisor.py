@@ -351,24 +351,30 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE, settings=None):
         k = item['cat']
         item['label'] = strategy.CATS[k][0]
         item['where'] = []
+        wts = []                                      # each name's share of the category, for its % of the deposit
         if k == 'core' and core_rows:
             for r, share in strategy.core_split([{'name': x['a']['name'], 'value': x['val'], 'isin': x['a']['isin']} for x in core_rows]):
                 amt = _round500(item['amount'] * share)
                 if amt > 0:
                     item['where'].append({'isin': r['isin'], 'name': r['name'], 'amount': amt})
+                    wts.append(share)
         elif k == 'defensive' and def_rows:
             r = max(def_rows, key=lambda x: x['val'])
             item['where'].append({'isin': r['a']['isin'], 'name': r['a']['name'], 'amount': item['amount']})
+            wts.append(1)
         elif k in buy_ideas:
             ideas = sorted(buy_ideas[k], key=lambda i: -out[i]['score'])[:max(1, item['amount'] // MIN_ORDER)]
             each = _round500(item['amount'] / len(ideas))
             for i in ideas:
                 item['where'].append({'isin': i, 'name': out[i]['name'], 'amount': each})
+                wts.append(1)
+        for wh, p in zip(item['where'], strategy.pct_split(wts, item.get('pct', 0))):
+            wh['pct'] = p
         for wh in item['where']:
             if wh['isin'] in out:
                 o = out[wh['isin']]
                 if o['action'] in ('HOLD', 'ADD', 'CONSOLIDATE', 'WATCH'):
-                    o.update(action='ADD', amount=wh['amount'], rule=o.get('rule') if o.get('rule') == 'pullback' else 'deposit_plan', score=max(o['score'], 50))
+                    o.update(action='ADD', amount=wh['amount'], deposit_pct=wh['pct'], rule=o.get('rule') if o.get('rule') == 'pullback' else 'deposit_plan', score=max(o['score'], 50))
                     o['reasons'].append(f'Deposit plan: {_n(wh["amount"])} kr of next month\'s deposit goes here ({_lc(item["label"])} is under its target).')
 
     # ───── buy-backs: closed stocks whose category is under target, in an uptrend and pulled back ─────

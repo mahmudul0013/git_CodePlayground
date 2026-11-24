@@ -51,8 +51,24 @@ canvas { max-width: 100%; }
 /* header: wraps, nothing cut off */
 #main-header { padding-inline: clamp(8px, 2vw, 18px); }
 .header-right { min-width: 0; }
-#last-updated-time { white-space: normal; overflow-wrap: break-word; }
-.status-bar { white-space: normal; min-width: 0; }
+#last-updated-time { white-space: nowrap; }          /* short ("Live · 20:42"); the file name is in its tooltip */
+.status-bar { white-space: nowrap; min-width: 0; }
+
+/* headers above phone width: always ONE row. Labels drop step by step instead of the buttons wrapping to a 2nd / 3rd row.
+   The Portfolio header sits right of the 230 px sidebar above 900 px, so its steps count that in. */
+@media (min-width: 701px) {
+  #main-header { flex-wrap: nowrap; }
+  #main-header .header-center { min-width: 0; }
+  #main-header .header-right { flex-wrap: nowrap; min-width: 0; gap: 8px; }
+  #top { flex-wrap: nowrap; }
+  #top .sync { width: auto; margin-left: auto; flex-wrap: nowrap; }
+}
+@media (max-width: 1180px) { .btn-label, .um-name { display: none; } }
+@media (max-width: 1000px) {
+  #main-header #last-updated-time, #main-header .um-caret { display: none; }
+  #main-header .nav-tab, #main-header .nav-link-out { padding: 5px 10px; }
+}
+@media (min-width: 901px) and (max-width: 1000px), (max-width: 820px) { #main-header .logo-text { display: none; } }
 @media (max-width: 700px) { .header-left { gap: 8px; } .header-right { margin-left: 0; width: 100%; justify-content: flex-start; } }
 
 /* data tables: scroll sideways inside their box, name column stays, low-priority columns hide first */
@@ -92,7 +108,7 @@ canvas { max-width: 100%; }
 #heatmap-section .tbl-wrap { max-width: 100%; }
 
 /* ───────── Analytics page ───────── */
-main { padding: clamp(10px, 2vw, 16px); }
+main:not(#main-content) { padding: clamp(10px, 2vw, 16px); }   /* Analytics only: on the Portfolio page it framed the header with a 16 px gap */
 .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex: none; white-space: nowrap; scroll-snap-align: start; }
@@ -210,8 +226,9 @@ table.stack td .nw, table.stack td.num { white-space: nowrap; overflow-wrap: nor
    instead of stopping at 300 px and leaving an empty gap under it; a 'full' table shows every row */
 .grid > .panel { display: flex; flex-direction: column; }
 .grid > .panel > .cv { flex: 1 0 auto; }
-.grid > .panel > .table-wrap.short { flex: 1 1 320px; max-height: none; min-height: 160px; }
-.table-wrap.short, .tbl-wrap.scroll { overflow-x: hidden; scrollbar-gutter: stable; }   /* fills the panel: no empty gap under a short box */
+.grid > .panel > .table-wrap.short { flex: 0 1 auto; max-height: 340px; min-height: 0; }   /* hugs its rows (no empty box); the chart takes any extra height */
+.table-wrap.short, .tbl-wrap.scroll { overflow-x: hidden; scrollbar-gutter: stable; }
+table td.nw, table .nw { white-space: nowrap; }     /* dates, numbers, % never break (a date broke at its hyphens) */
 .table-wrap.full { max-height: none; }
 /* two panels side by side only when each has room */
 @media (max-width: 900px) { .grid.g2 { grid-template-columns: minmax(0, 1fr); } }
@@ -279,4 +296,4 @@ table.stack td .nw, table.stack td.num { white-space: nowrap; overflow-wrap: nor
 .kpi .v .nw { white-space: nowrap; }
 .kpi { min-width: 0; }
 /* tablets: the Analytics header is one bar too (the sync details are the dot's tooltip) */
-@media (max-width: 1100px) { #sync-text { display: none; } #top { flex-wrap: nowrap; height: auto; } }
+#sync-text.warn { color: var(--gold); }

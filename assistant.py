@@ -569,7 +569,7 @@ def i_plan(c):
     if not plan:
         return two('The plan is not ready yet; open Analytics, Plan & advice.', None)
     sells = plan.get('sells_now', [])
-    l1 = (_greedy(f"Next deposit {kr(plan['settings']['deposit'])}: ", [f"{CAT_SHORT.get(d['cat'], d['label'])} {kr(d['amount'])}" for d in plan['deposit_plan']], 112)
+    l1 = (_greedy('Each deposit: ', [f"{CAT_SHORT.get(d['cat'], d['label'])} " + (f"{d['pct']}%" if d.get('pct') is not None else kr(d['amount'])) for d in plan['deposit_plan']], 112)
           if plan.get('deposit_plan') else 'No deposit planned this month.')
     return two(l1, _sentences([f"Sales due this month: {len(sells)} ({kr(sum(x['amount'] for x in sells))})" + (f", {plan['queued']} more queued." if plan.get('queued') else '.'),
                                'Reasons on Plan & advice.'], 106))
@@ -1470,11 +1470,14 @@ def p_deposit(c):
     dep, dp = L['settings']['deposit'], L.get('deposit_plan') or []
     if not dp:
         return two('No deposit is planned' + ('.' if dep else ': the monthly deposit is set to 0 kr.'), None)
-    l1 = f"Next deposit {kr(dep)}: " + ', '.join(f"{CAT_SHORT.get(d['cat'], d['label'])} {kr(d['amount'])}" for d in dp) + '.'
+    # shares of every deposit (the Plan tab shows the same %); an amount in the question is split by them
+    share = lambda x: f"{x['pct']}%" if x.get('pct') is not None else kr(x['amount'])
     asked = _amount(c.q)
-    if asked and asked != dep:
-        l1 += f" {kr(asked)} follows the same split."
-    where = [f"{nm(w['name'], 22)} {kr(w['amount'])}" for d in dp for w in d.get('where') or []]
+    if asked and all(d.get('pct') is not None for d in dp):
+        l1 = f"Of {kr(asked)}: " + ', '.join(f"{CAT_SHORT.get(d['cat'], d['label'])} {kr(asked * d['pct'] / 100)} ({d['pct']}%)" for d in dp) + '.'
+    else:
+        l1 = 'Each deposit: ' + ', '.join(f"{CAT_SHORT.get(d['cat'], d['label'])} {share(d)}" for d in dp) + '.'
+    where = [f"{nm(w['name'], 22)} {share(w)}" for d in dp for w in d.get('where') or []]
     stock = any(d['cat'] not in ('core', 'cash', 'defensive') for d in dp)
     l2 = _sentences([_greedy('Into: ', where, 106) if where else '',
                      '' if stock else 'Stock groups get money only with an entry signal.'], 106)
@@ -1594,9 +1597,10 @@ def p_health(c):
 def p_oppcash(c):
     L = c.plan()
     tgt = L['targets']['cash'] / 100 * L['total']
-    dep = next((d['amount'] for d in L.get('deposit_plan') or [] if d['cat'] == 'cash'), 0)
+    dep = next((d for d in L.get('deposit_plan') or [] if d['cat'] == 'cash'), None)
     return two('Opportunity cash: kept for a pullback in an uptrend in an under-target group and for the panic ladder.',
-               f"You: {kr(L['cash'])} of a {kr(tgt)} target ({pc(L['targets']['cash'], 0)} of the account)" + (f"; the next deposit adds {kr(dep)}." if dep else '.'))
+               f"You: {kr(L['cash'])} of a {kr(tgt)} target ({pc(L['targets']['cash'], 0)} of the account)"
+               + (f"; {dep['pct']}% of each deposit tops it up." if dep and dep.get('pct') is not None else f"; the next deposit adds {kr(dep['amount'])}." if dep else '.'))
 
 
 PANIC_STEP = {1: 'pause stock buys, deposits still go to the index funds', 2: 'sell only by rule, look only on Sundays', 3: 'invest the opportunity cash in three steps'}

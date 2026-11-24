@@ -148,9 +148,23 @@ function setSync(ok, err) {
   const s = S.data.sources, t = s.transactions, h = s.holdings;
   const stamp = x => x ? new Date(x.mtime * 1000).toLocaleString('sv-SE').slice(0, 16) : '—';
   const stale = t && h && t.mtime < h.mtime - 60;   // ledger older than holdings -> quantities may differ
-  $('sync-text').textContent = `Synced ${new Date().toLocaleTimeString('sv-SE')} · holdings: ${h ? h.file : 'none'} (${stamp(h)})`
+  const full = `Synced ${new Date().toLocaleTimeString('sv-SE')} · holdings: ${h ? h.file : 'none'} (${stamp(h)})`
     + ` · ledger: ${t ? t.file : 'none'} (${stamp(t)})` + (stale ? ' — ledger is older than holdings, export transactions again' : '');
-  $('sync-dot').title = $('sync-text').textContent;              // phones show only the dot
+  // the header shows only the time (and a stale-ledger warning); the file names are in the tooltip
+  $('sync-text').textContent = `Synced ${new Date().toLocaleTimeString('sv-SE').slice(0, 5)}` + (stale ? ' · ledger older than holdings' : '');
+  $('sync-text').classList.toggle('warn', !!stale);
+  $('sync-text').title = full;
+  $('sync-dot').title = full;                                    // phones show only the dot
+}
+
+// data notes (rows that could not be matched, ...): folded at the bottom of the page, the open / closed choice is remembered
+function renderNotes(w) {
+  const el = $('data-notes'); if (!el) return;
+  el.hidden = !w.length;
+  if (!w.length) { el.innerHTML = ''; return; }
+  let open = false; try { open = localStorage.getItem('tv_notes_open') === '1'; } catch (e) {}
+  el.innerHTML = `<details${open ? ' open' : ''}><summary>Data notes <span class="dn-n">${w.length}</span></summary><ul>${w.slice(0, 20).map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
+  el.querySelector('details').addEventListener('toggle', e => { try { localStorage.setItem('tv_notes_open', e.target.open ? '1' : '0'); } catch (er) {} });
 }
 
 function showBanner(html, isErr) {
@@ -240,8 +254,8 @@ function sortVal(r, key) {
 
 // ───────── render: top ─────────
 function renderAll() {
-  const w = S.data.warnings || [];
-  showBanner(w.length ? `<b>Data notes (${w.length}):</b><ul>${w.slice(0, 8).map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
+  showBanner('');
+  renderNotes(S.data.warnings || []);
   renderKpis();
   renderTab();
 }
@@ -253,6 +267,9 @@ function kpi(l, v, s, c) {
 function renderKpis() {
   const o = S.data.insights.overview, c = S.data.insights.costs, v = S.data.valuation || {};
   const valued = v.asof ? `valued ${v.asof.slice(11, 16)} · live prices for ${v.live_positions} of ${v.positions} holdings` : '';
+  // the span is the headline (fits any tile width); the exact dates are in the line under it
+  const span = (() => { const d0 = new Date(o.first_date), d1 = new Date(o.last_date); const m = Math.max(0, (d1.getFullYear() - d0.getFullYear()) * 12 + d1.getMonth() - d0.getMonth() + (d1.getDate() >= d0.getDate() ? 0 : -1));
+    return m >= 24 ? `${Math.floor(m / 12)} y ${m % 12} mo` : `${m} months`; })();
   $('kpis').innerHTML =
     kpi('Account value', fmt(o.total_value) + ' kr', `holdings ${fmt(o.holdings_value)} + cash ${fmt(o.cash_balance)}${valued ? ' · ' + valued : ''}`) +
     kpi('Deposited (net)', fmt(o.net_deposits) + ' kr', `${o.deposit_count} deposits`) +
@@ -260,7 +277,7 @@ function renderKpis() {
     kpi('Broker costs paid', fmt(c.broker_total) + ' kr', `${pct(c.pct_of_net_deposits)} of deposits · ${pct(c.pct_of_turnover, 2)} of turnover`, 'neg') +
     kpi('Realised (after fees)', sgn(o.realized) + ' kr', `${o.sells} sells`, cls(o.realized)) +
     kpi('Unrealised', sgn(o.unrealized) + ' kr', `${o.held_assets} open positions`, cls(o.unrealized)) +
-    kpi('Data range', `<span class="v-sm"><span class="nw">${o.first_date}</span> → <span class="nw">${o.last_date}</span></span>`, `${o.trades} trades · ${o.distinct_assets} assets`);
+    kpi('Data range', span, `<span class="nw">${o.first_date}</span> → <span class="nw">${o.last_date}</span> · ${o.trades} trades · ${o.distinct_assets} assets`);
 }
 
 // ───────── render: assets tab ─────────
@@ -430,11 +447,15 @@ function exportCsv() {
 // Tables never scroll sideways: class 'stack' lets cells wrap, and on phones every row becomes a card labelled from the header
 // (responsive.css). A cell can be a value or { v, c (class), l (label) }.
 const plainLabel = h => String(h).replace(/<[^>]*>/g, '').replace(/"/g, '&quot;').trim();
+// a short cell without letters (a date, a number, a %, "+1 234 kr") never wraps: "2025-08-19" broke at its hyphens
+const NW_CELL = v => { const t = String(v ?? '').replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, ' ').replace(/(kr|SEK|USD|EUR|d|x)/g, '').trim();
+  return t.length > 0 && t.length <= 24 && !/[A-Za-zÅÄÖåäö]/.test(t); };
 function table(id, head, rows, empty, wide) {
   const el = $(id); el.classList.add('stack'); el.classList.toggle('wide', !!wide);
   const lab = head.map(plainLabel);
+  const cls = c => { const v = c && c.v !== undefined ? c.v : c; const k = [c && c.c, NW_CELL(v) && 'nw'].filter(Boolean).join(' '); return k ? ` class="${k}"` : ''; };
   el.innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${
-    rows.length ? rows.map(r => `<tr>${r.map((c, i) => `<td data-label="${c && c.l !== undefined ? plainLabel(c.l) : lab[i] || ''}"${c && c.c ? ` class="${c.c}"` : ''}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')
+    rows.length ? rows.map(r => `<tr>${r.map((c, i) => `<td data-label="${c && c.l !== undefined ? plainLabel(c.l) : lab[i] || ''}"${cls(c)}>${c && c.v !== undefined ? c.v : c}</td>`).join('')}</tr>`).join('')
       : `<tr><td colspan="${head.length}" style="text-align:center;color:var(--text-dim);padding:14px">${empty || 'Nothing found.'}</td></tr>`}</tbody>`;
 }
 

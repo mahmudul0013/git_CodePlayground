@@ -562,11 +562,11 @@ async function refreshSnapshot() {
     S.snapState = 'ok';
     applySnapshot();
     window.dispatchEvent(new CustomEvent('tvsnapshot', { detail: d }));     // the heat map reuses this valuation instead of asking again
-    setStatus('live', 'Live · ' + d.asof.slice(11, 19) + (S.holdingsFile ? ' · ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
+    setStatus('live', 'Live · ' + d.asof.slice(11, 16), 'Live prices ' + d.asof.slice(11, 19) + (S.holdingsFile ? ' · holdings file: ' + S.holdingsFile.replace(/^Innehav Tabell Export, /, '') : ''));
   } catch (e) {
     console.warn('[snapshot]', e.message);
     if (!S.snap) S.snapState = 'failed';              // a failed refresh keeps the last good snapshot
-    setStatus('', S.snap ? 'Live prices: refresh failed, showing the last valuation' : 'Live prices unavailable');
+    setStatus('', S.snap ? 'Last valuation' : 'No live prices', S.snap ? 'Live prices: refresh failed, showing the last valuation' : 'Live prices unavailable');
   }
   S.stocks.forEach(s => { s.ticker = resolveTickerFor(s); });
   S.funds.forEach(f  => { f.ticker = resolveTickerFor(f); });
@@ -1215,13 +1215,13 @@ function renderPredictions() {
         <div class="pred-signals" title="${escHtml(e.reasons.join(' '))}">${escHtml(why)}</div>
       </div>
       <div class="pred-right">
-        <div class="pred-prob${watch ? '' : ' pv'}">${watch ? rsi : e.amount ? sign + fmtNum(e.amount, 0) + ' kr' : '—'}</div>
+        <div class="pred-prob${watch ? '' : ' pv'}">${watch ? rsi : e.deposit_pct != null ? e.deposit_pct + '% of deposit' : e.amount ? sign + fmtNum(e.amount, 0) + ' kr' : '—'}</div>
         <div class="pred-bar-wrap"><div class="pred-bar-fill" style="width:${Math.max(8, Math.min(100, e.score))}%"></div></div>
         <div class="pred-rsi">${watch ? 'close to an entry' : escHtml(RULE[e.rule] || ('priority ' + e.score))}</div>
       </div>
     </div>`;
   };
-  upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">No new money is due: set a monthly deposit in Analytics → Plan &amp; advice</div>';
+  upEl.innerHTML   = S.predictions.up.length   ? S.predictions.up.map((e, i) => card(e, i + 1)).join('')   : '<div class="pred-loading">No new money is due by the plan right now</div>';
   downEl.innerHTML = S.predictions.down.length ? S.predictions.down.map((e, i) => card(e, i + 1)).join('') : '<div class="pred-loading">No sale is due this month by the category rules</div>';
   document.querySelectorAll('#predictions-section [data-logo]').forEach(el => { el.appendChild(buildLogoEl(el.dataset.logo)); });
 }
@@ -1239,11 +1239,12 @@ function renderAll() {
 // ────────────────────────────────────────────────────────────
 // STATUS HELPER
 // ────────────────────────────────────────────────────────────
-function setStatus(type, msg) {
+// msg = the short header text; title = the full detail (tooltip of the dot and the text; phones show only the dot)
+function setStatus(type, msg, title) {
   const dot  = document.getElementById('status-dot');
   const text = document.getElementById('last-updated-time');
-  if (text) text.textContent = msg;
-  if (dot)  { dot.className = `dot ${type}`; dot.title = msg; }      // phones show only the dot; the text is its tooltip
+  if (text) { text.textContent = msg; text.title = title || msg; }
+  if (dot)  { dot.className = `dot ${type}`; dot.title = title || msg; }
 }
 
 // ────────────────────────────────────────────────────────────
