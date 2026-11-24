@@ -746,7 +746,8 @@ function renderValuationStatus() {
   }
   const t = S.snap.totals, extra = S.stocks.length + S.funds.length - t.positions;
   el.textContent = `Valued ${S.snap.asof.slice(11, 16)} with live prices for ${t.live_positions} of ${t.positions} holdings; the others at the Nordnet export of ${exp}.`
-    + (extra > 0 ? ` ${extra} export row${extra > 1 ? 's' : ''} without a position ${extra > 1 ? 'are' : 'is'} listed but not counted.` : '');
+    + (extra > 0 ? ` ${extra} export row${extra > 1 ? 's' : ''} without a position ${extra > 1 ? 'are' : 'is'} listed but not counted.` : '')
+    + (S.holdingsFile ? ` Source: ${S.holdingsFile.replace(/^Innehav Tabell Export, /, '')}.` : '');
 }
 
 function setText(id, val) {

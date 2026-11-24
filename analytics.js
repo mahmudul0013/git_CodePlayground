@@ -148,23 +148,44 @@ function setSync(ok, err) {
   const s = S.data.sources, t = s.transactions, h = s.holdings;
   const stamp = x => x ? new Date(x.mtime * 1000).toLocaleString('sv-SE').slice(0, 16) : '—';
   const stale = t && h && t.mtime < h.mtime - 60;   // ledger older than holdings -> quantities may differ
-  const full = `Synced ${new Date().toLocaleTimeString('sv-SE')} · holdings: ${h ? h.file : 'none'} (${stamp(h)})`
+  S.syncedAt = new Date();
+  const full = `Synced ${S.syncedAt.toLocaleTimeString('sv-SE')} · holdings: ${h ? h.file : 'none'} (${stamp(h)})`
     + ` · ledger: ${t ? t.file : 'none'} (${stamp(t)})` + (stale ? ' — ledger is older than holdings, export transactions again' : '');
-  // the header shows only the time (and a stale-ledger warning); the file names are in the tooltip
-  $('sync-text').textContent = `Synced ${new Date().toLocaleTimeString('sv-SE').slice(0, 5)}` + (stale ? ' · ledger older than holdings' : '');
+  // the header shows only the time (and a stale-ledger warning); the source bar under it shows the files
+  $('sync-text').textContent = `Synced ${S.syncedAt.toLocaleTimeString('sv-SE').slice(0, 5)}` + (stale ? ' · ledger older than holdings' : '');
   $('sync-text').classList.toggle('warn', !!stale);
   $('sync-text').title = full;
   $('sync-dot').title = full;                                    // phones show only the dot
+  renderSrcBar();
 }
 
-// data notes (rows that could not be matched, ...): folded at the bottom of the page, the open / closed choice is remembered
-function renderNotes(w) {
-  const el = $('data-notes'); if (!el) return;
-  el.hidden = !w.length;
-  if (!w.length) { el.innerHTML = ''; return; }
-  let open = false; try { open = localStorage.getItem('tv_notes_open') === '1'; } catch (e) {}
-  el.innerHTML = `<details${open ? ' open' : ''}><summary>Data notes <span class="dn-n">${w.length}</span></summary><ul>${w.slice(0, 20).map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
-  el.querySelector('details').addEventListener('toggle', e => { try { localStorage.setItem('tv_notes_open', e.target.open ? '1' : '0'); } catch (er) {} });
+// source bar at the top: the two export files, the last sync and the data notes. Folded it is one line (files, times,
+// a notes count); open it lists everything. Updated in place, so a sync every minute never closes it; the choice is remembered.
+function renderSrcBar() {
+  const bar = $('src-bar'); if (!bar || !S.data) return;
+  if (!bar.dataset.init) {
+    bar.dataset.init = '1';
+    try { bar.open = localStorage.getItem('tv_src_open') === '1'; } catch (e) {}
+    bar.addEventListener('toggle', () => { try { localStorage.setItem('tv_src_open', bar.open ? '1' : '0'); } catch (e) {} });
+  }
+  const s = S.data.sources || {}, t = s.transactions, h = s.holdings, w = S.data.warnings || [];
+  const stamp = x => x ? new Date(x.mtime * 1000).toLocaleString('sv-SE').slice(0, 16) : '—';
+  const short = f => String(f || '').replace(/^Innehav Tabell Export, /, '');
+  const stale = t && h && t.mtime < h.mtime - 60;
+  const at = S.syncedAt ? S.syncedAt.toLocaleTimeString('sv-SE') : '—';
+  $('sb-text').innerHTML = `<b>Sources</b> · holdings <span class="sb-f">${esc(short(h && h.file) || 'none')}</span> ${stamp(h)}`
+    + ` · ledger <span class="sb-f">${esc(t ? t.file : 'none')}</span> ${stamp(t)} · synced ${at.slice(0, 5)}`;
+  $('sb-stale').hidden = !stale;
+  $('sb-notes').hidden = !w.length;
+  $('sb-notes').textContent = `${w.length} data note${w.length === 1 ? '' : 's'}`;
+  $('sb-body').innerHTML = `<dl>
+      <dt>Holdings</dt><dd>${esc(h ? h.file : 'none')} <span class="dim">· saved ${stamp(h)}</span></dd>
+      <dt>Ledger</dt><dd>${esc(t ? t.file : 'none')} <span class="dim">· saved ${stamp(t)}</span></dd>
+      <dt>Synced</dt><dd>${at} <span class="dim">· checked for new files every minute (every 10 minutes outside market hours)</span></dd>
+    </dl>`
+    + (stale ? '<p class="sb-warn">The ledger is older than the holdings file: export the transactions again so quantities match.</p>' : '')
+    + (w.length ? `<div class="sb-h">Data notes (${w.length})</div><ul>${w.slice(0, 20).map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
+  bar.hidden = false;
 }
 
 function showBanner(html, isErr) {
@@ -255,7 +276,7 @@ function sortVal(r, key) {
 // ───────── render: top ─────────
 function renderAll() {
   showBanner('');
-  renderNotes(S.data.warnings || []);
+  renderSrcBar();
   renderKpis();
   renderTab();
 }

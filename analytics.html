@@ -46,6 +46,11 @@
 
   <main>
     <div id="banner" class="banner" hidden></div>
+    <!-- source files, last sync and data notes: one line, opens for the details (choice remembered) -->
+    <details id="src-bar" class="src-bar" hidden>
+      <summary><span class="sb-text" id="sb-text"></span><span class="sb-chip" id="sb-stale" hidden>ledger older than holdings</span><span class="sb-chip" id="sb-notes" hidden></span></summary>
+      <div class="sb-body" id="sb-body"></div>
+    </details>
 
     <section id="kpis" class="kpi-row"></section>
 
@@ -196,7 +201,6 @@
         <ul id="method"></ul>
       </section>
     </div>
-    <aside id="data-notes" class="data-notes" hidden></aside>
   </main>
 
   <script src="asset_chart.js"></script>
