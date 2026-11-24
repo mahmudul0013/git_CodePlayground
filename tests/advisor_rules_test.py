@@ -97,7 +97,7 @@ except ValueError:
 for prof in strategy.TARGETS:
     ok(f'{prof} targets sum to 100', abs(sum(strategy.targets(prof, strategy.DEFAULT_SETTINGS).values()) - 100) < 1e-9)
 t = strategy.targets('balanced', {'opportunity_pct': 8})
-ok('more opportunity cash comes out of the core', t['cash'] == 8 and t['core'] == 47, t)
+ok('more opportunity cash comes out of the core', t['cash'] == 8 and t['core'] == strategy.TARGETS['balanced']['core'] - 3, t)
 
 # ───── deposit plan and transition ─────
 cat_kr = {k: 0.0 for k in strategy.ORDER}
@@ -156,7 +156,12 @@ ok('index funds get new money from the deposit plan', A['Nordnet USA Index']['ac
 P = r['plan']
 ok('plan: the deposit plan spends the monthly deposit', sum(x['amount'] for x in P['deposit_plan']) == 10000, P['deposit_plan'])
 ok('plan: categories carry target, status and weekly trend counts', all({'key', 'pct', 'target', 'status', 'n_up'} <= set(c) for c in P['categories']))
-ok('plan: AI chain over target, core under target', {c['key']: c['status'] for c in P['categories']}['ai'] == 'over' and {c['key']: c['status'] for c in P['categories']}['core'] == 'under')
+CP = {c['key']: c for c in P['categories']}
+ok('plan: AI chain over target; core status follows its gap to target (band 5 points)', CP['ai']['status'] == 'over'
+   and CP['core']['status'] == ('under' if CP['core']['pct'] < CP['core']['target'] - strategy.BAND else 'over' if CP['core']['pct'] > CP['core']['target'] + strategy.BAND else 'ok'),
+   (CP['core']['pct'], CP['core']['target'], CP['core']['status']))
+ok('profile targets: index funds 50 / 40 / 30%, AI caps 10 / 15 / 22%', [strategy.TARGETS[k]['core'] for k in ('conservative', 'balanced', 'aggressive')] == [50, 40, 30]
+   and [strategy.TARGETS[k]['ai'] for k in ('conservative', 'balanced', 'aggressive')] == [10, 15, 22])
 ok('plan: five strategy-fit ratings 0-10', len(P['fit']) == 5 and all(0 <= f['score'] <= 10 for f in P['fit']))
 ok('plan: stress test for today and target', set(P['stress']['now']) == set(P['stress']['target']) == set(strategy.STRESS))
 ok('counts have no TRIMWATCH any more', 'TRIMWATCH' not in r['summary']['counts'], r['summary']['counts'])

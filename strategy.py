@@ -36,11 +36,13 @@ CATS = {
 }
 ORDER = ['core', 'ai', 'bigtech', 'health', 'industrials', 'financials', 'materials', 'defensive', 'cash']
 
-# target % of the whole account (holdings + cash) per profile; each column sums to 100
+# target % of the whole account (holdings + cash) per profile; each column sums to 100.
+# Nov 2026, the owner's choice: index funds 50 / 40 / 30% (was 60 / 50 / 40); the 10 points went to the other stock groups
+# and gold / bonds in their earlier proportions; AI caps (10 / 15 / 22%) and cash unchanged.
 TARGETS = {
-    'conservative': {'core': 60, 'ai': 10, 'bigtech': 6, 'health': 7, 'industrials': 4, 'financials': 3, 'materials': 2, 'defensive': 4, 'cash': 4},
-    'balanced':     {'core': 50, 'ai': 15, 'bigtech': 7, 'health': 7, 'industrials': 5, 'financials': 3, 'materials': 3, 'defensive': 5, 'cash': 5},
-    'aggressive':   {'core': 40, 'ai': 22, 'bigtech': 9, 'health': 7, 'industrials': 6, 'financials': 4, 'materials': 4, 'defensive': 3, 'cash': 5},
+    'conservative': {'core': 50, 'ai': 10, 'bigtech': 8, 'health': 10, 'industrials': 6, 'financials': 4, 'materials': 3, 'defensive': 5, 'cash': 4},
+    'balanced':     {'core': 40, 'ai': 15, 'bigtech': 9, 'health': 9, 'industrials': 7, 'financials': 4, 'materials': 4, 'defensive': 7, 'cash': 5},
+    'aggressive':   {'core': 30, 'ai': 22, 'bigtech': 12, 'health': 9, 'industrials': 8, 'financials': 5, 'materials': 5, 'defensive': 4, 'cash': 5},
 }
 RSI_ADD = {'conservative': 35, 'balanced': 40, 'aggressive': 45}     # new money into a stock only below this RSI(14), and only in an uptrend
 KEEP_LEADERS = 5        # single names kept as the 'hold half' of a half_trend category (theme ETFs are always kept)
@@ -352,8 +354,8 @@ def fit_scores(m):
     def clamp(x):
         return int(max(0, min(10, round(x))))
     return [
-        {'key': 'index', 'label': 'Index funds with regular saving', 'score': clamp(m['core_pct'] / 50 * 10),
-         'measure': f"{m['core_pct']:.0f}% of the account is in broad index funds; the rule is 50% or more.",
+        {'key': 'index', 'label': 'Index funds with regular saving', 'score': clamp(m['core_pct'] / m.get('core_target', 40) * 10),
+         'measure': f"{m['core_pct']:.0f}% of the account is in broad index funds; your profile's target is {m.get('core_target', 40):.0f}%.",
          'rule': 'Own the whole market, add every month, never time it.'},
         {'key': 'trend', 'label': 'Trend following', 'score': clamp(m['up_pct'] / 10),
          'measure': f"{m['up_pct']:.0f}% of the stock money had its last weekly close above SMA(200).",

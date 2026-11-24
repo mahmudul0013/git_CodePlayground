@@ -28,7 +28,7 @@ const Plan = (() => {
           <button class="chip" role="radio" data-p="conservative">Conservative</button><button class="chip" role="radio" data-p="balanced">Balanced</button><button class="chip" role="radio" data-p="aggressive">Aggressive</button></div></div>
         <span class="pl-saved" id="pl-saved" role="status" aria-live="polite"></span>
       </div>
-      <p class="hint pl-explain">The profile sets the target mix (index funds 60 / 50 / 40%, AI and chips at most 10 / 15 / 22%) and how low the RSI must be before new money goes into a stock (35 / 40 / 45). A click applies it at once and saves it for your account, so the Portfolio page, this tab, the assistant and every device use the same plan.</p>
+      <p class="hint pl-explain">The profile sets the target mix (index funds 50 / 40 / 30%, AI and chips at most 10 / 15 / 22%) and how low the RSI must be before new money goes into a stock (35 / 40 / 45). A click applies it at once and saves it for your account, so the Portfolio page, this tab, the assistant and every device use the same plan.</p>
       <p class="hint" id="pl-status"></p>
 
       <section class="panel pl-verdict"><h3>The short verdict</h3><div id="pl-verdict"></div></section>

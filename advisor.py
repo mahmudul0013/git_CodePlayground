@@ -58,9 +58,9 @@ MAX_BUYBACK = 5
 MAX_TRADES_MONTH = 10
 
 PROFILES = {
-    'conservative': {'label': 'Conservative', 'about': 'index funds 60%, AI and chips at most 10%; new money into a stock only in an uptrend with RSI(14) below 35'},
-    'balanced':     {'label': 'Balanced', 'about': 'index funds 50%, AI and chips at most 15%; new money into a stock only in an uptrend with RSI(14) below 40'},
-    'aggressive':   {'label': 'Aggressive', 'about': 'index funds 40%, AI and chips at most 22%; new money into a stock only in an uptrend with RSI(14) below 45'},
+    'conservative': {'label': 'Conservative', 'about': 'index funds 50%, AI and chips at most 10%; new money into a stock only in an uptrend with RSI(14) below 35'},
+    'balanced':     {'label': 'Balanced', 'about': 'index funds 40%, AI and chips at most 15%; new money into a stock only in an uptrend with RSI(14) below 40'},
+    'aggressive':   {'label': 'Aggressive', 'about': 'index funds 30%, AI and chips at most 22%; new money into a stock only in an uptrend with RSI(14) below 45'},
 }
 DEFAULT_PROFILE = 'balanced'
 
@@ -410,7 +410,7 @@ def advise(payload, live=None, profile=DEFAULT_PROFILE, settings=None):
     sq = (payload.get('insights') or {}).get('sell_quality') or {}
     distance = sum(abs(cat_pct[k] - tg[k]) for k in strategy.ORDER) / 2
     top = max((k for k in strategy.ORDER if k != 'core'), key=lambda k: cat_pct[k])
-    fit = strategy.fit_scores({'core_pct': cat_pct['core'], 'up_pct': up_pct, 'positions': len(rows), 'tiny': sum(1 for r in rows if r['val'] < DUST),
+    fit = strategy.fit_scores({'core_pct': cat_pct['core'], 'core_target': tg['core'], 'up_pct': up_pct, 'positions': len(rows), 'tiny': sum(1 for r in rows if r['val'] < DUST),
                                'avg_hold': sq.get('avg_hold_days'), 'mom_pct': mom_pct, 'distance': distance, 'top_label': strategy.CATS[top][0],
                                'top_pct': cat_pct[top], 'eff_n': port['eff_n'] if port else None})
 
